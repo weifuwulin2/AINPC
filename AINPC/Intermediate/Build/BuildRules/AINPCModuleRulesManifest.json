@@ -1,8 +1,0 @@
-{
-	"SourceFiles": [
-		"D:\\CombatDemos\\AINPC\\AINPC\\Source\\AINPC\\AINPC.Build.cs",
-		"D:\\CombatDemos\\AINPC\\AINPC\\Source\\AINPC.Target.cs",
-		"D:\\CombatDemos\\AINPC\\AINPC\\Source\\AINPCEditor.Target.cs"
-	],
-	"EngineVersion": "5.6.1"
-}
