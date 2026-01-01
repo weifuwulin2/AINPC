@@ -1,0 +1,13 @@
+{
+    "Version": "1.2",
+    "Data": {
+        "Source": "d:\\combatdemos\\ainpc\\ainpc\\intermediate\\build\\win64\\unrealeditor\\inc\\ainpc\\uht\\ainpc.init.gen.cpp",
+        "ProvidedModule": "",
+        "PCH": "d:\\combatdemos\\ainpc\\ainpc\\intermediate\\build\\win64\\x64\\ainpceditor\\development\\unrealed\\sharedpch.unrealed.project.valapi.valexpapi.cpp20.h.pch",
+        "Includes": [
+            "d:\\combatdemos\\ainpc\\ainpc\\intermediate\\build\\win64\\x64\\unrealeditor\\development\\ainpc\\definitions.ainpc.h"
+        ],
+        "ImportedModules": [],
+        "ImportedHeaderUnits": []
+    }
+}

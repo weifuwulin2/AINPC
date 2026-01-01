@@ -1,0 +1,23 @@
+{
+    "Version": "1.2",
+    "Data": {
+        "Source": "d:\\combatdemos\\ainpc\\ainpc\\source\\ainpc\\variant_combat\\gameplay\\combatdummy.cpp",
+        "ProvidedModule": "",
+        "PCH": "d:\\combatdemos\\ainpc\\ainpc\\intermediate\\build\\win64\\x64\\ainpceditor\\development\\unrealed\\sharedpch.unrealed.project.valapi.valexpapi.cpp20.h.pch",
+        "Includes": [
+            "d:\\combatdemos\\ainpc\\ainpc\\intermediate\\build\\win64\\x64\\unrealeditor\\development\\ainpc\\definitions.ainpc.h",
+            "d:\\combatdemos\\ainpc\\ainpc\\source\\ainpc\\variant_combat\\gameplay\\combatdummy.h",
+            "d:\\combatdemos\\ainpc\\ainpc\\source\\ainpc\\variant_combat\\interfaces\\combatdamageable.h",
+            "d:\\combatdemos\\ainpc\\ainpc\\intermediate\\build\\win64\\unrealeditor\\inc\\ainpc\\uht\\combatdamageable.generated.h",
+            "d:\\combatdemos\\ainpc\\ainpc\\intermediate\\build\\win64\\unrealeditor\\inc\\ainpc\\uht\\combatdummy.generated.h",
+            "g:\\ue_5.6\\engine\\source\\runtime\\engine\\classes\\physicsengine\\physicsconstraintcomponent.h",
+            "g:\\ue_5.6\\engine\\source\\runtime\\engine\\classes\\physicsengine\\constraintinstance.h",
+            "g:\\ue_5.6\\engine\\source\\runtime\\engine\\classes\\physicsengine\\constraintdrives.h",
+            "g:\\ue_5.6\\engine\\intermediate\\build\\win64\\unrealeditor\\inc\\engine\\uht\\constraintdrives.generated.h",
+            "g:\\ue_5.6\\engine\\intermediate\\build\\win64\\unrealeditor\\inc\\engine\\uht\\constraintinstance.generated.h",
+            "g:\\ue_5.6\\engine\\intermediate\\build\\win64\\unrealeditor\\inc\\engine\\uht\\physicsconstraintcomponent.generated.h"
+        ],
+        "ImportedModules": [],
+        "ImportedHeaderUnits": []
+    }
+}

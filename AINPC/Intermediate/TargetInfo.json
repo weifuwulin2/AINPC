@@ -1,0 +1,14 @@
+{
+	"Targets": [
+		{
+			"Name": "AINPC",
+			"Path": "..\\Source\\AINPC.Target.cs",
+			"Type": "Game"
+		},
+		{
+			"Name": "AINPCEditor",
+			"Path": "..\\Source\\AINPCEditor.Target.cs",
+			"Type": "Editor"
+		}
+	]
+}

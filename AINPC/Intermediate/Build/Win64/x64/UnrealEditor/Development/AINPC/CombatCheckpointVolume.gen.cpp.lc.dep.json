@@ -1,0 +1,19 @@
+{
+    "Version": "1.2",
+    "Data": {
+        "Source": "d:\\combatdemos\\ainpc\\ainpc\\intermediate\\build\\win64\\unrealeditor\\inc\\ainpc\\uht\\combatcheckpointvolume.gen.cpp",
+        "ProvidedModule": "",
+        "PCH": "d:\\combatdemos\\ainpc\\ainpc\\intermediate\\build\\win64\\x64\\ainpceditor\\development\\unrealed\\sharedpch.unrealed.project.valapi.valexpapi.cpp20.h.pch",
+        "Includes": [
+            "d:\\combatdemos\\ainpc\\ainpc\\intermediate\\build\\win64\\x64\\unrealeditor\\development\\ainpc\\definitions.ainpc.h",
+            "d:\\combatdemos\\ainpc\\ainpc\\source\\ainpc\\variant_combat\\gameplay\\combatcheckpointvolume.h",
+            "g:\\ue_5.6\\engine\\source\\runtime\\engine\\classes\\components\\boxcomponent.h",
+            "g:\\ue_5.6\\engine\\source\\runtime\\engine\\classes\\components\\shapecomponent.h",
+            "g:\\ue_5.6\\engine\\intermediate\\build\\win64\\unrealeditor\\inc\\engine\\uht\\shapecomponent.generated.h",
+            "g:\\ue_5.6\\engine\\intermediate\\build\\win64\\unrealeditor\\inc\\engine\\uht\\boxcomponent.generated.h",
+            "d:\\combatdemos\\ainpc\\ainpc\\intermediate\\build\\win64\\unrealeditor\\inc\\ainpc\\uht\\combatcheckpointvolume.generated.h"
+        ],
+        "ImportedModules": [],
+        "ImportedHeaderUnits": []
+    }
+}
