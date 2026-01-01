@@ -16,10 +16,23 @@
 
 PRAGMA_DISABLE_DEPRECATION_WARNINGS
 
+// ********** Begin ScriptStruct FMentalStateJson **************************************************
+#define FID_AINPC_Source_AINPC_Controller_UtilityAIController_h_19_GENERATED_BODY \
+	friend struct Z_Construct_UScriptStruct_FMentalStateJson_Statics; \
+	AINPC_API static class UScriptStruct* StaticStruct();
+
+
+struct FMentalStateJson;
+// ********** End ScriptStruct FMentalStateJson ****************************************************
+
 // ********** Begin Class AUtilityAIController *****************************************************
+#define FID_AINPC_Source_AINPC_Controller_UtilityAIController_h_43_RPC_WRAPPERS_NO_PURE_DECLS \
+	DECLARE_FUNCTION(execRequestUpdateFromLLM);
+
+
 AINPC_API UClass* Z_Construct_UClass_AUtilityAIController_NoRegister();
 
-#define FID_AINPC_Source_AINPC_Controller_UtilityAIController_h_16_INCLASS_NO_PURE_DECLS \
+#define FID_AINPC_Source_AINPC_Controller_UtilityAIController_h_43_INCLASS_NO_PURE_DECLS \
 private: \
 	static void StaticRegisterNativesAUtilityAIController(); \
 	friend struct Z_Construct_UClass_AUtilityAIController_Statics; \
@@ -30,24 +43,23 @@ public: \
 	DECLARE_SERIALIZER(AUtilityAIController)
 
 
-#define FID_AINPC_Source_AINPC_Controller_UtilityAIController_h_16_ENHANCED_CONSTRUCTORS \
-	/** Standard constructor, called after all reflected properties have been initialized */ \
-	NO_API AUtilityAIController(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get()); \
+#define FID_AINPC_Source_AINPC_Controller_UtilityAIController_h_43_ENHANCED_CONSTRUCTORS \
 	/** Deleted move- and copy-constructors, should never be used */ \
 	AUtilityAIController(AUtilityAIController&&) = delete; \
 	AUtilityAIController(const AUtilityAIController&) = delete; \
 	DECLARE_VTABLE_PTR_HELPER_CTOR(NO_API, AUtilityAIController); \
 	DEFINE_VTABLE_PTR_HELPER_CTOR_CALLER(AUtilityAIController); \
-	DEFINE_DEFAULT_OBJECT_INITIALIZER_CONSTRUCTOR_CALL(AUtilityAIController) \
+	DEFINE_DEFAULT_CONSTRUCTOR_CALL(AUtilityAIController) \
 	NO_API virtual ~AUtilityAIController();
 
 
-#define FID_AINPC_Source_AINPC_Controller_UtilityAIController_h_13_PROLOG
-#define FID_AINPC_Source_AINPC_Controller_UtilityAIController_h_16_GENERATED_BODY \
+#define FID_AINPC_Source_AINPC_Controller_UtilityAIController_h_40_PROLOG
+#define FID_AINPC_Source_AINPC_Controller_UtilityAIController_h_43_GENERATED_BODY \
 PRAGMA_DISABLE_DEPRECATION_WARNINGS \
 public: \
-	FID_AINPC_Source_AINPC_Controller_UtilityAIController_h_16_INCLASS_NO_PURE_DECLS \
-	FID_AINPC_Source_AINPC_Controller_UtilityAIController_h_16_ENHANCED_CONSTRUCTORS \
+	FID_AINPC_Source_AINPC_Controller_UtilityAIController_h_43_RPC_WRAPPERS_NO_PURE_DECLS \
+	FID_AINPC_Source_AINPC_Controller_UtilityAIController_h_43_INCLASS_NO_PURE_DECLS \
+	FID_AINPC_Source_AINPC_Controller_UtilityAIController_h_43_ENHANCED_CONSTRUCTORS \
 private: \
 PRAGMA_ENABLE_DEPRECATION_WARNINGS
 

@@ -18,7 +18,12 @@ public class AINPC : ModuleRules
 			"StateTreeModule",
 			"GameplayStateTreeModule",
 			"UMG",
-			"Slate"
+			"Slate",
+			
+			// 新增的模块：
+			"HTTP", 
+			"Json", 
+			"JsonUtilities"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });

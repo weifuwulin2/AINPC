@@ -4,8 +4,35 @@
 
 #include "CoreMinimal.h"
 #include "AIController.h"
+// 引入 HTTP 头文件
+#include "HttpModule.h"
+#include "Interfaces/IHttpRequest.h"
+#include "Interfaces/IHttpResponse.h"
 #include "UtilityAIController.generated.h"
 
+
+class UUtilityActionBase;
+// 定义一个结构体来匹配 JSON 格式
+USTRUCT()
+struct FMentalStateJson
+{
+	GENERATED_BODY()
+
+	UPROPERTY()
+	float Anger = 0.0f;
+
+	UPROPERTY()
+	float Fear = 0.0f;
+
+	UPROPERTY()
+	float Confidence = 0.0f;
+
+	UPROPERTY()
+	float SocialBattery = 0.0f;
+
+	UPROPERTY()
+	float Hunger = 0.0f;
+};
 class UNPCMentalState;
 /**
  * 
@@ -43,4 +70,12 @@ public:
 
 	// === 核心逻辑 ===
 	void EvaluateUtilityLogic();
+	
+	// 触发 HTTP 请求
+	UFUNCTION(BlueprintCallable, Category = "AI|Brain")
+	void RequestUpdateFromLLM(FString Prompt);
+
+private:
+	// 回调函数
+	void OnResponseReceived(FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful);
 };
