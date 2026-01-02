@@ -1,46 +1,86 @@
 #pragma once
+
 #include "CoreMinimal.h"
 #include "AIController.h"
 #include "Perception/AIPerceptionTypes.h" 
 #include "UtilityAIController.generated.h"
 
+// 前置声明 (Forward Declarations)
+class UAIPerceptionComponent;
 class UAISenseConfig_Sight;
-class UUtilityAIComponent;
+class UAISenseConfig_Hearing;
+class USensoryComponent;
 class UCognitionComponent;
+class UUtilityAIComponent;
 class UNPCMentalState;
+struct FMentalState; // 假设这是你的结构体
 
 UCLASS()
 class AINPC_API AUtilityAIController : public AAIController
 {
-	GENERATED_BODY()
+    GENERATED_BODY()
 
 public:
-	AUtilityAIController();
+    AUtilityAIController();
 
-	// --- 组件定义 ---
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI Components")
-	UUtilityAIComponent* UtilityComp; // 决策组件
+    // =========================================================
+    // 1. 组件声明 (Components)
+    // =========================================================
+    
+    // 物理感知组件 (引擎自带，负责看和听)
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI Components")
+    UAIPerceptionComponent* AIPerception;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI Components")
-	UCognitionComponent* CognitionComp; // 认知组件
+    // 感官翻译组件 (负责把物理信号翻译成文字)
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI Components")
+    USensoryComponent* SensoryComp;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI Components")
-	UAISenseConfig_Sight* SightConfig; // 视力配置
+    // 认知组件 (负责处理情绪和记忆)
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI Components")
+    UCognitionComponent* CognitionComp;
 
-	// --- 数据 ---
-	// 情绪状态依然放在 Controller 上作为共享数据，或者放在 Cognition 上也可以
-	// 这里为了方便 UtilityComp 读取，我们还是存在 Controller 里
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI Data")
-	UNPCMentalState* MentalState;
+    // 决策组件 (负责 Utility 算分和执行)
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI Components")
+    UUtilityAIComponent* UtilityComp;
+
+    // =========================================================
+    // 2. 感知配置 (Config)
+    // =========================================================
+    
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI Configuration")
+    UAISenseConfig_Sight* SightConfig;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI Configuration")
+    UAISenseConfig_Hearing* HearingConfig;
+
+    // =========================================================
+    // 3. 共享数据 (Shared Data)
+    // =========================================================
+    
+    // 情绪状态对象 (Blackboard) - Utility组件会读取这里
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI Data")
+    UNPCMentalState* MentalState;
+
+    // =========================================================
+    // 4. 对外接口 (External Interface)
+    // =========================================================
+
+    // 供聊天系统或剧情系统调用
+    UFUNCTION(BlueprintCallable, Category = "AI Communication")
+    void ReceiveSpeech(AActor* Speaker, FString Message);
 
 protected:
-	virtual void BeginPlay() override;
+    virtual void BeginPlay() override;
 
-	// 感知回调
-	UFUNCTION()
-	void OnTargetPerceived(AActor* Actor, FAIStimulus Stimulus);
+    // =========================================================
+    // 5. 内部回调 (Callbacks)
+    // =========================================================
 
-	// 认知更新回调
-	UFUNCTION()
-	void OnMindUpdated(const FMentalState& NewState);
+    // 回调：当 Sensory 组件翻译完信号后，中转给认知组件
+    UFUNCTION()
+    void RelaySensoryToCognition(const FString& StimulusDescription);
+
+    // 回调：当 Cognition 组件更新了情绪后，同步到本地 MentalState
+    UFUNCTION()
+    void OnMindUpdated(const FMentalState& NewState);
 };
