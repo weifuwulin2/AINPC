@@ -126,7 +126,7 @@ void AUtilityAIController::EvaluateUtilityLogic()
     // --- 遍历打分 ---
     for (UUtilityActionBase* Action : AvailableActions)
     {
-        float Score = Action->CalculateScore(MentalState);
+        float Score = Action->CalculateScore(MentalState,this);
         
         // 惯性分
         if (Action == CurrentAction)
