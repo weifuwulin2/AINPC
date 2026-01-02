@@ -79,15 +79,8 @@ void AUtilityAIController::BeginPlay()
     // 3. 初始化共享数据 (MentalState)
     // =========================================================
     MentalState = NewObject<UNPCMentalState>(this);
-    if (MentalState)
-    {
-        // 设置一些默认值，防止空指针或数值异常
-        MentalState->Anger = 0.0f;
-        MentalState->Fear = 0.0f;
-        MentalState->Confidence = 0.5f;
-        MentalState->SocialBattery = 1.0f;
-        MentalState->Hunger = 0.0f;
-    }
+    // ✅ 不需要手动设置默认值，构造函数已经使用宏自动初始化所有字段
+    // 所有字段的默认值在 MentalStateFields.h 中统一配置
 
     // =========================================================
     // 4. 神经接驳 (Wiring everything together)
@@ -164,14 +157,14 @@ void AUtilityAIController::RelaySensoryToCognition(const FString& StimulusDescri
 
 void AUtilityAIController::OnMindUpdated(const FMentalState& NewState)
 {
-    // 同步：把结构体数据存入 UObject，供 Utility 组件读取
+    // ✅ 使用转换函数，简化代码
     if (MentalState)
     {
-        MentalState->Anger          = NewState.Anger;
-        MentalState->Fear           = NewState.Fear;
-        MentalState->Confidence     = NewState.Confidence;
-        MentalState->SocialBattery  = NewState.SocialBattery;
-        MentalState->Hunger         = NewState.Hunger;
+        MentalState->UpdateFromStruct(NewState);
+        
+        // 可选：打印日志
+        UE_LOG(LogTemp, Log, TEXT("[Controller] Mental State Updated: Anger=%.2f, Fear=%.2f"), 
+               MentalState->Anger, MentalState->Fear);
         
         // UtilityComponent 不需要通知，它会在自己的 Tick 里自动读这个 MentalState
     }

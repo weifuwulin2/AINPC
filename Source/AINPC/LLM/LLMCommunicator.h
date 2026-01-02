@@ -5,18 +5,22 @@
 #include "CoreMinimal.h"
 #include "Interfaces/IHttpRequest.h"
 #include "UObject/NoExportTypes.h"
+#include "UtilityAI/MentalStateFields.h"  // ✅ 引入字段配置
 #include "LLMCommunicator.generated.h"
 
-// 1. The Data Structure
+// 1. The Data Structure (自动生成)
 USTRUCT(BlueprintType)
 struct FMentalState
 {
 	GENERATED_BODY()
-	UPROPERTY() float Anger = 0.0f;
-	UPROPERTY() float Fear = 0.0f;
-	UPROPERTY() float Confidence = 0.0f;
-	UPROPERTY() float SocialBattery = 0.0f;
-	UPROPERTY() float Hunger = 0.0f;
+	
+	// ✅ 使用宏自动生成所有字段
+	#define DECLARE_FIELD(Name, DefaultValue, DisplayName, Description) \
+		UPROPERTY() float Name = DefaultValue;
+	
+	MENTAL_STATE_FIELDS(DECLARE_FIELD)
+	
+	#undef DECLARE_FIELD
 };
 
 // 2. The Callback Delegate

@@ -11,37 +11,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🎉 Major Improvements
 
-#### Fixed Critical Bugs in LLM+Utility AI Data Flow
-- Fixed memory component initialization error that prevented memory system from working
-- Fixed prompt parameter passing to ensure LLM receives full context with historical memories
-- Enabled Dreaming mechanism for long-term memory consolidation
-- Resolved concurrent LLM request conflicts that caused callback errors
+#### Implemented Single-Point Configuration System for Mental State Attributes
+- **Centralized Configuration**: All mental state attributes now defined in a single file (`MentalStateFields.h`)
+- **Automatic Code Generation**: Field definitions, properties, initialization, conversion functions, and LLM prompts are automatically generated using C++ macros
+- **Reduced Maintenance**: Adding new attributes now requires modifying only 2 files instead of 8
+
+### ✨ New Features
+
+#### Single-Point Configuration System
+- **Created `MentalStateFields.h`**: Central configuration file for all mental state attributes
+  - Define attributes with name, default value, display name, and description
+  - Single source of truth for all emotion/physiological properties
+  
+- **Automatic Code Generation**:
+  - `FMentalState` struct fields auto-generated from macro
+  - `UNPCMentalState` class properties auto-generated with full UPROPERTY metadata
+  - Constructor initialization auto-generated
+  - `ResetState()` function auto-generated
+  - `UpdateFromStruct()` and `ToStruct()` conversion functions auto-generated
+  - LLM prompt field list auto-generated
+  - `GetConsiderationValue()` switch cases auto-generated for Utility AI
 
 ### 🐛 Bug Fixes
 
-#### Memory System
-- **Fixed MemoryComponent initialization** (Critical)
-  - Moved `CreateDefaultSubobject` call from `BeginPlay()` to constructor in `CognitionComponent`
-  - Memory system now properly stores and retrieves AI experiences
-  - Related files: `Components/CognitionComponent.cpp`
+#### Data Structure Optimization
+- **Added Conversion Functions**: Implemented `UpdateFromStruct()` and `ToStruct()` in `UNPCMentalState`
+  - Automatic field copying with value clamping (0.0-1.0)
+  - Eliminates manual field-by-field assignment
+  - Reduces code duplication
+
+- **Removed Manual Initialization**: Cleaned up `UtilityAIController::BeginPlay()`
+  - Removed redundant manual field initialization
+  - Constructor now handles all default values automatically
+  - Ensures consistency with central configuration
 
 #### LLM Integration
-- **Fixed Prompt parameter passing** (Critical)
-  - Changed `SendRequest()` to use constructed `Prompt` instead of raw `SituationDescription`
-  - LLM now receives complete context including retrieved memories
-  - Improves AI decision-making accuracy
-  - Related files: `Components/CognitionComponent.cpp`
-
-- **Fixed concurrent request handling** (High Priority)
+- **Fixed Concurrent Request Handling**: Resolved callback conflicts in `LLMCommunicator`
   - Replaced single callback variables with `TMap` for managing multiple concurrent requests
   - Prevents callback overwrites when Dreaming and perception events occur simultaneously
   - Added request ID tracking for better debugging
   - Related files: `LLM/LLMCommunicator.h`, `LLM/LLMCommunicator.cpp`
 
-### ✨ New Features
+- **Auto-Generated LLM Prompts**: LLM system prompt now automatically includes all mental state fields
+  - Field list generated from `MentalStateFields.h` macro
+  - Ensures LLM always requests correct attributes
+  - Eliminates manual prompt maintenance
 
 #### Dreaming System
-- **Enabled automatic memory consolidation**
+- **Enabled Automatic Memory Consolidation**
   - Added `FTimerHandle DreamingTimerHandle` to `UtilityAIController`
   - Dreaming cycle triggers every 5 minutes (configurable)
   - Sends recent memories to LLM for summarization
@@ -50,91 +67,101 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🔧 Technical Improvements
 
-#### LLMCommunicator
-- Implemented concurrent request support using `TMap<FHttpRequestPtr, Delegate>`
-- Added request ID logging for better traceability
-- Improved error handling with callback validation
-- Automatic cleanup of completed requests to prevent memory leaks
+#### Macro-Based Code Generation
+- **Field Definition Macro**: `MENTAL_STATE_FIELDS(FIELD)` in `MentalStateFields.h`
+  - Single macro expands to all necessary code
+  - Supports field name, default value, display name, and description
+  - Used across 7 different code generation contexts
 
-#### UtilityAIController
-- Added Dreaming timer initialization in `BeginPlay()`
-- Enhanced logging for debugging Dreaming cycles
-- Better component lifecycle management
+- **Automatic Switch Case Generation**: `GetConsiderationValue()` in `UtilityActionBase`
+  - Switch cases auto-generated for all mental state fields
+  - Eliminates manual case additions
+  - Reduces risk of missing fields
+
+#### Code Quality
+- **Reduced Code Duplication**: From ~50 lines of manual field handling to 1 macro invocation
+- **Improved Maintainability**: Adding new attributes requires 2 file edits instead of 8
+- **Type Safety**: Automatic generation ensures type consistency across all usages
+- **Self-Documenting**: Field descriptions embedded in configuration
 
 ### 📝 Documentation
 
-#### Added Comprehensive Documentation
-- `DataFlow_Analysis.md` - Complete data flow analysis with Mermaid diagrams
-- `BugFixes_Patch.md` - Detailed bug fix guide with code examples
-- `Dreaming_Test_Guide.md` - Testing guide for Dreaming functionality
-- `Bug4_Fix_Report.md` - Concurrent request fix detailed report
-- `LLM_Config_Guide.md` - API configuration guide
-- `FINAL_PROGRESS_REPORT.md` - Complete progress summary
-- `EXECUTIVE_SUMMARY.md` - Executive summary of all changes
+#### Added Comprehensive Guides
+- `docs/guides/Single_Point_Configuration_Guide.md` - Complete usage guide for the configuration system
+- `docs/guides/UENUM_Macro_Limitation.md` - Explanation of UE reflection system limitations
+- `docs/guides/Full_Automation_Proposal.md` - Original automation proposal and alternatives
+- `docs/reports/Single_Point_Config_Implementation.md` - Implementation details and code comparisons
+- `docs/reports/Full_Automation_Complete.md` - Final implementation report
+- `docs/reports/Bug1_Fix_Report.md` - Data structure optimization details
+- `docs/reports/Bug4_Fix_Report.md` - Concurrent request fix details
+- `docs/README.md` - Documentation index and navigation
 
-### 🧪 Testing
+### ⚠️ Known Limitations
 
-#### Verified Functionality
-- ✅ Memory storage and retrieval working correctly
-- ✅ LLM receives full context with historical memories
-- ✅ Dreaming timer triggers and processes memories
-- ✅ Multiple concurrent LLM requests handled correctly
-- ✅ No callback conflicts between Dreaming and perception events
+#### UENUM Macro Limitation
+- **Enum Values Require Manual Addition**: Due to Unreal Header Tool (UHT) limitations, `EUtilityInputType` enum values cannot be auto-generated
+  - UHT parses UENUM before macro expansion
+  - Workaround: Manually add enum values (1 line per attribute)
+  - Switch cases still auto-generated in .cpp file
+  - Trade-off: 2 manual edits vs 8 for full automation
 
-### 📊 Performance
+### 🔄 Migration Guide
 
-#### Impact
-- Memory usage: Negligible increase (TMap overhead ~48 bytes per request)
-- CPU overhead: < 0.01ms per request (TMap operations)
-- Network: No change (same number of API calls)
-- Stability: Significantly improved (no more callback conflicts)
+#### For Existing Code
+- No breaking changes - all modifications are backward compatible
+- Existing mental state attributes continue to work
+- Default values now centralized in `MentalStateFields.h`
 
-### 🔄 Migration Notes
+#### Adding New Attributes
+1. Edit `MentalStateFields.h` - Add `FIELD(Name, DefaultValue, DisplayName, Description)`
+2. Edit `UtilityActionBase.h` - Add enum value to `EUtilityInputType`
+3. Recompile - All other code auto-updates
 
-#### Breaking Changes
-- None - All changes are backward compatible
+### 📊 Performance Impact
 
-#### Configuration
-- API Key configuration remains in `Config/DefaultGame.ini`
-- No configuration changes required
-- Dreaming interval can be adjusted in `UtilityAIController.cpp` (default: 300 seconds)
+#### Compile Time
+- Macro expansion occurs at compile time - no runtime overhead
+- Code size identical to hand-written code
 
-### 🎯 What's Next
-
-#### Remaining Optional Improvements
-- Data structure unification (FMentalState vs UNPCMentalState)
-- Inertia bonus configuration support
-- Cooldown time logic clarification
+#### Runtime
+- Zero performance impact - macros expand to same code as manual implementation
+- Memory usage unchanged
+- CPU usage unchanged
 
 ---
 
 ## File Changes Summary
 
 ### Modified Files
-- `Source/AINPC/Components/CognitionComponent.cpp` - Fixed MemoryComponent init, fixed Prompt passing
-- `Source/AINPC/Controller/UtilityAIController.h` - Added DreamingTimerHandle
-- `Source/AINPC/Controller/UtilityAIController.cpp` - Added Dreaming timer initialization
-- `Source/AINPC/LLM/LLMCommunicator.h` - Replaced single callbacks with TMap
-- `Source/AINPC/LLM/LLMCommunicator.cpp` - Implemented concurrent request handling
+- `Source/AINPC/Public/UtilityAI/MentalStateFields.h` (NEW) - Central configuration
+- `Source/AINPC/LLM/LLMCommunicator.h` - Auto-generate FMentalState fields
+- `Source/AINPC/LLM/LLMCommunicator.cpp` - Auto-generate LLM prompts, fix concurrent requests
+- `Source/AINPC/Public/UtilityAI/UNPCMentalState.h` - Auto-generate properties, add conversion functions
+- `Source/AINPC/Private/UtilityAI/UNPCMentalState.cpp` - Auto-generate initialization and conversion
+- `Source/AINPC/Controller/UtilityAIController.h` - Add DreamingTimerHandle
+- `Source/AINPC/Controller/UtilityAIController.cpp` - Enable Dreaming, remove manual initialization
+- `Source/AINPC/Public/Base/UtilityActionBase.h` - Add MentalStateFields.h include
+- `Source/AINPC/Private/Base/UtilityActionBase.cpp` - Auto-generate switch cases
 
-### Added Files
-- `DataFlow_Analysis.md`
-- `BugFixes_Patch.md`
-- `Dreaming_Test_Guide.md`
-- `Bug4_Fix_Report.md`
-- `LLM_Config_Guide.md`
-- `FINAL_PROGRESS_REPORT.md`
-- `EXECUTIVE_SUMMARY.md`
-- `PROGRESS_REPORT.md`
-- `CHANGELOG.md`
+### Added Documentation Files
+- `docs/guides/Single_Point_Configuration_Guide.md`
+- `docs/guides/UENUM_Macro_Limitation.md`
+- `docs/guides/Full_Automation_Proposal.md`
+- `docs/reports/Single_Point_Config_Implementation.md`
+- `docs/reports/Full_Automation_Complete.md`
+- `docs/reports/Bug1_Fix_Report.md`
+- `docs/reports/Bug4_Fix_Report.md`
+- `docs/README.md`
+- `docs/REORGANIZATION_SUMMARY.md`
+- `CHANGELOG.md` (this file)
 
 ---
 
 ## Contributors
-- Bug fixes and feature implementation: AI Assistant + User
-- Testing and validation: User
+- Implementation: AI Assistant + User
+- Testing: User
 
 ---
 
 ## Notes
-This release fixes all critical (P0) and high-priority (P1) bugs in the LLM+Utility AI system. The system is now fully functional with complete data flow from perception to action execution, including long-term memory consolidation through the Dreaming mechanism.
+This release implements a macro-based single-point configuration system that significantly reduces maintenance overhead when adding or modifying mental state attributes. While complete automation is limited by UE's reflection system (UENUM cannot use macros), the current implementation still reduces manual work by 75% and eliminates the most error-prone parts (switch cases, conversion functions, LLM prompts).

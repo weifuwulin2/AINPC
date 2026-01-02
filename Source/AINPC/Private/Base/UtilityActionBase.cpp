@@ -93,12 +93,14 @@ float UUtilityActionBase::GetConsiderationValue(EUtilityInputType InputType, UNP
 
     switch (InputType)
     {
-        // --- 情绪与心理 (来自 MentalState) ---
-        case EUtilityInputType::Anger:         return State ? State->Anger : 0.f;
-        case EUtilityInputType::Fear:          return State ? State->Fear : 0.f;
-        case EUtilityInputType::Confidence:    return State ? State->Confidence : 0.f;
-        case EUtilityInputType::SocialBattery: return State ? State->SocialBattery : 0.f;
-        case EUtilityInputType::Hunger:        return State ? State->Hunger : 0.f;
+        // ✅ 使用宏自动生成所有 MentalState 字段的 case 分支
+        #define HANDLE_MENTAL_STATE_FIELD(Name, DefaultValue, DisplayName, Description) \
+            case EUtilityInputType::Name: \
+                return State ? State->Name : 0.0f;
+        
+        MENTAL_STATE_FIELDS(HANDLE_MENTAL_STATE_FIELD)
+        
+        #undef HANDLE_MENTAL_STATE_FIELD
 
         // --- 自身状态 (Self Status) ---
         case EUtilityInputType::SelfHealth:
@@ -136,6 +138,10 @@ float UUtilityActionBase::GetConsiderationValue(EUtilityInputType InputType, UNP
                 return Target->IsA(APawn::StaticClass()) && Target->GetNetMode() != NM_Standalone ? 1.0f : 0.0f; 
             }
             return 0.0f;
+        
+        case EUtilityInputType::TargetHealth:
+            // TODO: 获取目标血量
+            return 1.0f;
 
         default:
             return 0.0f;

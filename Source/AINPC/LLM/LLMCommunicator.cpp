@@ -47,19 +47,32 @@ void ULLMCommunicator::SendRequest(const FString& UserInput, FOnLLMResponse OnCo
     // --- SYSTEM MESSAGE (The Rules) ---
     TSharedPtr<FJsonObject> SystemMsg = MakeShareable(new FJsonObject());
     SystemMsg->SetStringField("role", "system");
-    // We strictly define the fields here to match FMentalState struct
-    FString SystemPrompt = TEXT(
+    
+    // ✅ 使用宏自动生成字段列表
+    FString FieldsList;
+    #define ADD_FIELD_TO_PROMPT(Name, DefaultValue, DisplayName, Description) \
+        FieldsList += FString::Printf(TEXT("  \"%s\": float,\n"), TEXT(#Name));
+    
+    MENTAL_STATE_FIELDS(ADD_FIELD_TO_PROMPT)
+    
+    #undef ADD_FIELD_TO_PROMPT
+    
+    // 移除最后的逗号和换行
+    if (FieldsList.Len() > 0)
+    {
+        FieldsList = FieldsList.Left(FieldsList.Len() - 2) + TEXT("\n");
+    }
+    
+    // 构建完整的 System Prompt
+    FString SystemPrompt = FString::Printf(TEXT(
         "You are an AI game engine. Analyze the input and output a STRICT JSON object.\n"
         "Return specific float values (0.0 to 1.0) for these fields:\n"
         "{\n"
-        "  \"Anger\": float,\n"
-        "  \"Fear\": float,\n"
-        "  \"Confidence\": float,\n"
-        "  \"SocialBattery\": float,\n"
-        "  \"Hunger\": float\n"
+        "%s"
         "}\n"
         "Do not include markdown formatting (```json). Just raw JSON."
-    );
+    ), *FieldsList);
+    
     SystemMsg->SetStringField("content", SystemPrompt);
     MessagesArray.Add(MakeShareable(new FJsonValueObject(SystemMsg)));
 
@@ -86,7 +99,7 @@ void ULLMCommunicator::SendRequest(const FString& UserInput, FOnLLMResponse OnCo
     Request->OnProcessRequestComplete().BindUObject(this, &ULLMCommunicator::OnResponseReceived);
     Request->ProcessRequest();
 
-    UE_LOG(LogTemp, Log, TEXT("[LLM] Request Sent (ID: %p): %s"), Request.Get(), *UserInput);
+    //UE_LOG(LogTemp, Log, TEXT("[LLM] Request Sent (ID: %p): %s"), Request.Get(), *UserInput);
 }
 
 void ULLMCommunicator::OnResponseReceived(FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful)
@@ -216,7 +229,7 @@ void ULLMCommunicator::SendRequestRaw(const FString& Prompt, FOnLLMResponseRaw O
     Request->OnProcessRequestComplete().BindUObject(this, &ULLMCommunicator::OnResponseReceivedRaw);
     Request->ProcessRequest();
     
-    UE_LOG(LogTemp, Log, TEXT("[LLM Raw] Request Sent (ID: %p)"), Request.Get());
+    //UE_LOG(LogTemp, Log, TEXT("[LLM Raw] Request Sent (ID: %p)"), Request.Get());
 }
 
 void ULLMCommunicator::OnResponseReceivedRaw(FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful)

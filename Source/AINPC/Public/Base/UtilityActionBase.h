@@ -6,6 +6,7 @@
 #include "GameFramework/Character.h"
 #include "Curves/CurveFloat.h"
 #include "UtilityAI/UNPCMentalState.h" // 确保路径引用正确
+#include "UtilityAI/MentalStateFields.h"  // ✅ 引入字段配置
 #include "UtilityActionBase.generated.h"
 
 // 前置声明
@@ -13,23 +14,29 @@ class AAIController;
 class UNPCMentalState;
 
 // =========================================================
-// 1. 枚举与配置结构
+// 1. 枚举与配置结构 (自动生成)
 // =========================================================
+
 
 UENUM(BlueprintType)
 enum class EUtilityInputType : uint8
 {
-    Anger,           // 情绪：愤怒
-    Fear,            // 情绪：恐惧
-    Confidence,      // 情绪：自信
-    SocialBattery,   // 情绪：社交电量
-    Hunger,          // 生理：饥饿
-    SelfHealth,      // 生理：自身血量百分比
-    TargetHealth,    // 环境：目标血量百分比
-    DistanceToTarget,// 环境：与目标的距离 (归一化)
-    AmmoCount,       // 环境：弹药量百分比
-    HasCover,        // 环境：附近是否有掩体 (0 或 1)
-    IsTargetPlayer   // 环境：目标是否是玩家
+	// === 情绪与生理属性 (来自 MentalState) ===
+	// ⚠️ 注意：添加新属性时，需要在这里手动添加枚举值
+	// 但 GetConsiderationValue() 中的 switch case 会自动生成
+	Anger,
+	Fear,
+	Confidence,
+	SocialBattery,
+	Hunger,
+	
+	// === 环境感知字段 (不在 MentalState 中) ===
+	SelfHealth,      // 生理：自身血量百分比
+	TargetHealth,    // 环境：目标血量百分比
+	DistanceToTarget,// 环境：与目标的距离 (归一化)
+	AmmoCount,       // 环境：弹药量百分比
+	HasCover,        // 环境：附近是否有掩体 (0 或 1)
+	IsTargetPlayer   // 环境：目标是否是玩家
 };
 
 USTRUCT(BlueprintType)
