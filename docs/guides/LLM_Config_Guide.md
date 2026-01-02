@@ -9,17 +9,6 @@ d:\CombatDemos\AINPC\Config\DefaultGame.ini
 
 ---
 
-## 📝 当前配置
-
-```ini
-[LLM.Settings]
-ApiKey=sk-2468a8422712496ea19806ce760702ad
-ApiUrl=https://api.deepseek.com/chat/completions
-ModelName=deepseek-chat
-```
-
----
-
 ## 🔧 配置说明
 
 ### 1. ApiKey (必需)
