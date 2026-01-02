@@ -9,6 +9,7 @@
 #include "Interfaces/IHttpRequest.h"
 #include "Interfaces/IHttpResponse.h"
 #include "LLM/LLMCommunicator.h"
+#include "Perception/AIPerceptionTypes.h"
 #include "UtilityAIController.generated.h"
 
 

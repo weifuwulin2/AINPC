@@ -163,3 +163,37 @@ void AUtilityAIController::EvaluateUtilityLogic()
         }
     }
 }
+
+// === 补上这段缺失的代码 ===
+void AUtilityAIController::OnTargetPerceived(AActor* Actor, FAIStimulus Stimulus)
+{
+    // 1. 只有当感知成功时才处理 (Stimulus.WasSuccessfullySensed())
+    //    如果你想处理“丢失视野”的情况，可以去掉这个 if
+    if (Actor && Stimulus.WasSuccessfullySensed())
+    {
+        // 2. 将看到的东西转化为自然语言描述
+        FString ObjectName = Actor->GetName();
+        
+        // 优化：如果有 Tag，优先用 Tag，比如 "Zombie", "Player"
+        if (Actor->ActorHasTag("Player")) 
+        {
+            ObjectName = "Player";
+        }
+        else if (Actor->ActorHasTag("Zombie"))
+        {
+            ObjectName = "Zombie";
+        }
+
+        // 3. 拼凑句子
+        FString EventDescription = FString::Printf(TEXT("I see a %s nearby."), *ObjectName);
+
+        // 4. 传给大脑 (Cognition Component)
+        if (CognitionComp)
+        {
+            CognitionComp->ProcessStimulus(EventDescription);
+        }
+        
+        // 可选：打印日志调试
+        UE_LOG(LogTemp, Log, TEXT("[Perception] %s"), *EventDescription);
+    }
+}

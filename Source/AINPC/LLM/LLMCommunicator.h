@@ -21,6 +21,9 @@ struct FMentalState
 
 // 2. The Callback Delegate
 DECLARE_DELEGATE_TwoParams(FOnLLMResponse, bool /*bSuccess*/, const FMentalState& /*State*/);
+
+// 用于 Dreaming、对话、或者任何非数值的返回
+DECLARE_DELEGATE_TwoParams(FOnLLMResponseRaw, bool, const FString&);
 /**
  * 
  */
@@ -33,10 +36,18 @@ public:
 	void Init(const FString& InApiKey, const FString& InUrl = TEXT("https://api.deepseek.com/chat/completions"));
 	void SendRequest(const FString& UserInput, FOnLLMResponse OnComplete);
 
+	// 它不会尝试解析 FMentalState，而是直接把 LLM 说的话原封不动给你
+	void SendRequestRaw(const FString& Prompt, FOnLLMResponseRaw OnComplete);
+	
 private:
 	void OnResponseReceived(FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful);
 
+	// === 【新增】通用内部回调 ===
+	void OnResponseReceivedRaw(FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful);
+	
 	FString ApiKey;
 	FString ApiUrl;
-	FOnLLMResponse CurrentCallback;
+	FOnLLMResponse CurrentCallback; // 存情绪回调
+
+	FOnLLMResponseRaw CurrentRawCallback; // 【新增】存通用回调
 };

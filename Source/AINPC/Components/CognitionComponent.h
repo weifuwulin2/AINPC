@@ -30,6 +30,9 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "AI | Cognition")
 	FOnMentalStateChanged OnMentalStateChanged;
 
+	UFUNCTION(BlueprintCallable)
+	void StartDreaming();
+	
 protected:
 	// 内部持有的 LLM 服务
 	UPROPERTY()
@@ -40,5 +43,8 @@ protected:
 
 	// 内部回调：处理 LLMCommunicator 返回的原始结果
 	void OnLLMReply(bool bSuccess, const FMentalState& NewState);
-		
+
+private:
+	// 专门的回调：处理总结结果
+	void OnDreamingAnalysisComplete(bool bSuccess, const FString& RawResponse);
 };

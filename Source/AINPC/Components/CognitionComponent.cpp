@@ -57,12 +57,13 @@ void UCognitionComponent::ProcessStimulus(FString SituationDescription)
 		ContextMemory = MemoryComp->RetrieveRelevantMemories(SituationDescription);
 	}
 
-	// 3. 拼 Prompt
-	FString FinalPrompt = FString::Printf(TEXT(
-		"Memories:\n%s\n" // 这里会填入 RetrieveRelevantMemories 返回的字符串
-		"Current Event: %s\n"
-		"Analyze mental state..."
-	), *ContextMemory, *SituationDescription);
+	FString Prompt = FString::Printf(TEXT(
+	"Memories:\n%s\n"
+	"Event: %s\n"
+	"Task: 1. Analyze mental state (Anger, Fear).\n"
+	"      2. Rate the 'Importance' of this event (0.0 to 1.0) based on how much it affects your survival or emotions.\n"
+	"Output JSON: {\"Anger\":..., \"Fear\":..., \"Importance\":...}"
+	),*ContextMemory,*SituationDescription);
 	
 	// 发送请求，并绑定内部回调 OnLLMReply
 	LLMService->SendRequest(
@@ -82,5 +83,56 @@ void UCognitionComponent::OnLLMReply(bool bSuccess, const FMentalState& NewState
 	else
 	{
 		UE_LOG(LogTemp, Error, TEXT("[Cognition] Failed to process thought."));
+	}
+}
+
+// CognitionComponent.cpp
+
+void UCognitionComponent::StartDreaming()
+{
+	if (!MemoryComp || !LLMService) return;
+
+	// 1. 获取流水账
+	FString DailyLogs = MemoryComp->GetAllRecentMemoriesAsString();
+	if (DailyLogs.IsEmpty()) return;
+
+	// 2. 构造 Prompt (强制让 LLM 输出 JSON 数组，方便代码解析)
+	FString Prompt = FString::Printf(TEXT(
+		"Here are my recent memories:\n%s\n"
+		"Task: Summarize these events into 3 concise, high-level insights about the world or the player.\n"
+		"Output Format: A pure JSON array of strings. Example: [\"Player is hostile\", \"Food is scarce\"]\n"
+		"Do NOT output markdown."
+	), *DailyLogs);
+
+	UE_LOG(LogTemp, Log, TEXT("[Dreaming] Sending logs to LLM..."));
+
+	// 3. 发送请求 (注意：这里我们复用 LLMService，但需要 LLMCommunicator 支持返回原始 String 的回调)
+	// 假设你的 LLMCommunicator 有一个 SendRequestRaw 或者你重载了回调，这里展示逻辑核心
+	LLMService->SendRequestRaw(Prompt, FOnLLMResponseRaw::CreateUObject(this, &UCognitionComponent::OnDreamingAnalysisComplete));
+}
+
+void UCognitionComponent::OnDreamingAnalysisComplete(bool bSuccess, const FString& RawResponse)
+{
+	if (!bSuccess) return;
+
+	// 4. 解析 JSON 数组
+	// RawResponse 应该是 ["Insight 1", "Insight 2"]
+	TArray<TSharedPtr<FJsonValue>> JsonArray;
+	TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(RawResponse);
+
+	TArray<FString> ExtractedInsights;
+    
+	if (FJsonSerializer::Deserialize(Reader, JsonArray))
+	{
+		for (auto Value : JsonArray)
+		{
+			ExtractedInsights.Add(Value->AsString());
+		}
+	}
+
+	// 5. 存入长期记忆
+	if (MemoryComp && ExtractedInsights.Num() > 0)
+	{
+		MemoryComp->ConsolidateMemories(ExtractedInsights);
 	}
 }

@@ -20,6 +20,9 @@ struct FMemoryFragment
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	float Importance;    // 重要性 (0.0 - 1.0) - 用于决定是否长期保留
+
+	// 新增：标记这是不是一条经过总结的长期记忆
+	UPROPERTY(VisibleAnywhere) bool bIsLongTermInsight = false;
 };
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
@@ -47,6 +50,12 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "AI | Memory")
 	FString RetrieveRelevantMemories(FString CurrentContext);
 
+	UFUNCTION(BlueprintCallable)
+	FString GetAllRecentMemoriesAsString();
+
+	UFUNCTION(BlueprintCallable)
+	void ConsolidateMemories(const TArray<FString>& NewInsights);
+	
 protected:
 	// 记忆流：按时间顺序存储
 	UPROPERTY(VisibleAnywhere, Category = "AI | Memory")

@@ -84,3 +84,43 @@ FString UMemoryComponent::RetrieveRelevantMemories(FString CurrentContext)
 
     return ResultString;
 }
+
+
+// MemoryComponent.cpp (补充实现)
+
+FString UMemoryComponent::GetAllRecentMemoriesAsString()
+{
+    FString CombinedLog = "";
+    for (const FMemoryFragment& Mem : MemoryStream)
+    {
+        // 只提取短期流水账
+        if (!Mem.bIsLongTermInsight)
+        {
+            CombinedLog += FString::Printf(TEXT("- [%s] %s\n"), *Mem.Timestamp.ToString(), *Mem.Description);
+        }
+    }
+    return CombinedLog;
+}
+
+void UMemoryComponent::ConsolidateMemories(const TArray<FString>& NewInsights)
+{
+    // 1. 清理掉所有的短期记忆 (保留原本就是 LongTerm 的)
+    // 使用 RemoveAll 配合 Lambda
+    MemoryStream.RemoveAll([](const FMemoryFragment& Mem) {
+        return !Mem.bIsLongTermInsight; // 删掉非长期记忆
+    });
+
+    // 2. 将新的 Insight 作为长期记忆加入
+    for (const FString& Insight : NewInsights)
+    {
+        FMemoryFragment NewMem;
+        NewMem.Description = Insight;
+        NewMem.Timestamp = FDateTime::Now();
+        NewMem.Importance = 1.0f; // 总结出来的通常很重要
+        NewMem.bIsLongTermInsight = true; // 标记为长期
+
+        MemoryStream.Add(NewMem);
+    }
+
+    UE_LOG(LogTemp, Warning, TEXT("[Memory] Dreaming complete. Consolidated to %d insights."), NewInsights.Num());
+}
