@@ -110,6 +110,31 @@ void AUtilityAIController::BeginPlay()
         // 假设 CognitionComp 有这个委托
         CognitionComp->OnMentalStateChanged.AddDynamic(this, &AUtilityAIController::OnMindUpdated);
     }
+
+    // =========================================================
+    // 5. 启动 Dreaming 定时器 (Memory Consolidation)
+    // =========================================================
+    
+    // 每5分钟触发一次记忆整理，将短期记忆转化为长期洞察
+    if (CognitionComp)
+    {
+        GetWorldTimerManager().SetTimer(
+            DreamingTimerHandle,
+            [this]() 
+            { 
+                if (CognitionComp)
+                {
+                    CognitionComp->StartDreaming();
+                    UE_LOG(LogTemp, Log, TEXT("[%s] Dreaming cycle triggered - consolidating memories..."), 
+                           *GetName());
+                }
+            },
+            300.0f,  // 每5分钟 (300秒)
+            true     // 循环执行
+        );
+        
+        UE_LOG(LogTemp, Log, TEXT("[%s] Dreaming timer initialized (interval: 5 minutes)"), *GetName());
+    }
 }
 
 // =========================================================

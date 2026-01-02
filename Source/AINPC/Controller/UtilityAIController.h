@@ -83,4 +83,12 @@ protected:
     // 回调：当 Cognition 组件更新了情绪后，同步到本地 MentalState
     UFUNCTION()
     void OnMindUpdated(const FMentalState& NewState);
+
+private:
+    // =========================================================
+    // 6. 定时器 (Timers)
+    // =========================================================
+    
+    // Dreaming 定时器：定期整理记忆，提取长期洞察
+    FTimerHandle DreamingTimerHandle;
 };

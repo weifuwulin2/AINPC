@@ -47,7 +47,9 @@ private:
 	
 	FString ApiKey;
 	FString ApiUrl;
-	FOnLLMResponse CurrentCallback; // 存情绪回调
-
-	FOnLLMResponseRaw CurrentRawCallback; // 【新增】存通用回调
+	
+	// ✅ 修复并发冲突：使用 TMap 存储多个请求的回调
+	// Key: HTTP请求指针, Value: 对应的回调函数
+	TMap<FHttpRequestPtr, FOnLLMResponse> PendingCallbacks;
+	TMap<FHttpRequestPtr, FOnLLMResponseRaw> PendingRawCallbacks;
 };

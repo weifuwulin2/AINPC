@@ -5,7 +5,9 @@
 UCognitionComponent::UCognitionComponent()
 {
 	// 大脑不需要每帧 Tick，它只在事件驱动下工作
-	PrimaryComponentTick.bCanEverTick = false; 
+	PrimaryComponentTick.bCanEverTick = false;
+
+	MemoryComp = CreateDefaultSubobject<UMemoryComponent>(TEXT("Memory"));
 }
 
 void UCognitionComponent::BeginPlay()
@@ -39,7 +41,7 @@ void UCognitionComponent::BeginPlay()
     
 	UE_LOG(LogTemp, Log, TEXT("[Cognition] Brain Initialized via Config."));
 
-	MemoryComp = CreateDefaultSubobject<UMemoryComponent>(TEXT("Memory"));
+	
 }
 
 void UCognitionComponent::ProcessStimulus(FString SituationDescription)
@@ -67,7 +69,7 @@ void UCognitionComponent::ProcessStimulus(FString SituationDescription)
 	
 	// 发送请求，并绑定内部回调 OnLLMReply
 	LLMService->SendRequest(
-		SituationDescription,
+		Prompt,
 		FOnLLMResponse::CreateUObject(this, &UCognitionComponent::OnLLMReply)
 	);
 }

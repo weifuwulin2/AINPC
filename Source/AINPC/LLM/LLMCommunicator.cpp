@@ -15,10 +15,7 @@ void ULLMCommunicator::Init(const FString& InApiKey, const FString& InUrl)
 
 void ULLMCommunicator::SendRequest(const FString& UserInput, FOnLLMResponse OnComplete)
 {
-    // 1. Store the callback to execute later
-    CurrentCallback = OnComplete;
-
-    // 2. Create the HTTP Request
+    // 1. Create the HTTP Request first
     FHttpRequestRef Request = FHttpModule::Get().CreateRequest();
     Request->SetURL(ApiUrl);
     Request->SetVerb("POST");
@@ -29,12 +26,12 @@ void ULLMCommunicator::SendRequest(const FString& UserInput, FOnLLMResponse OnCo
     {
         UE_LOG(LogTemp, Error, TEXT("[LLM] API Key is empty! Call Init() first."));
         FMentalState EmptyState;
-        CurrentCallback.ExecuteIfBound(false, EmptyState);
+        OnComplete.ExecuteIfBound(false, EmptyState);
         return;
     }
     Request->SetHeader("Authorization", FString::Printf(TEXT("Bearer %s"), *ApiKey));
 
-    // 3. Construct the JSON Payload
+    // 2. Construct the JSON Payload
     TSharedPtr<FJsonObject> RootObject = MakeShareable(new FJsonObject());
     RootObject->SetStringField("model", "deepseek-chat"); // Or "deepseek-reasoner"
     RootObject->SetNumberField("temperature", 0.7);
@@ -74,7 +71,7 @@ void ULLMCommunicator::SendRequest(const FString& UserInput, FOnLLMResponse OnCo
 
     RootObject->SetArrayField("messages", MessagesArray);
 
-    // 4. Serialize to String
+    // 3. Serialize to String
     FString RequestBody;
     // TJsonWriterFactory is used to safely write to FString
     TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&RequestBody);
@@ -82,29 +79,46 @@ void ULLMCommunicator::SendRequest(const FString& UserInput, FOnLLMResponse OnCo
 
     Request->SetContentAsString(RequestBody);
 
+    // ✅ 4. Store callback in TMap (instead of overwriting CurrentCallback)
+    PendingCallbacks.Add(Request, OnComplete);
+
     // 5. Bind Callback & Send
     Request->OnProcessRequestComplete().BindUObject(this, &ULLMCommunicator::OnResponseReceived);
     Request->ProcessRequest();
 
-    UE_LOG(LogTemp, Log, TEXT("[LLM] Request Sent: %s"), *UserInput);
+    UE_LOG(LogTemp, Log, TEXT("[LLM] Request Sent (ID: %p): %s"), Request.Get(), *UserInput);
 }
 
 void ULLMCommunicator::OnResponseReceived(FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful)
 {
     FMentalState ResultState; // Default initialized to 0.0f
+    
+    // ✅ 1. Retrieve the callback from TMap
+    FOnLLMResponse* CallbackPtr = PendingCallbacks.Find(Request);
+    if (!CallbackPtr)
+    {
+        UE_LOG(LogTemp, Error, TEXT("[LLM] Callback not found for request %p! This should never happen."), Request.Get());
+        return;
+    }
+    
+    // Copy the callback and remove from map immediately
+    FOnLLMResponse Callback = *CallbackPtr;
+    PendingCallbacks.Remove(Request);
+    
+    UE_LOG(LogTemp, Log, TEXT("[LLM] Processing response for request %p"), Request.Get());
 
     // --- Network & Protocol Validation ---
     if (!bWasSuccessful || !Response.IsValid())
     {
         UE_LOG(LogTemp, Error, TEXT("[LLM] Network Connection Failed."));
-        CurrentCallback.ExecuteIfBound(false, ResultState);
+        Callback.ExecuteIfBound(false, ResultState);
         return;
     }
 
     if (Response->GetResponseCode() != 200)
     {
         UE_LOG(LogTemp, Error, TEXT("[LLM] API Error Code: %d. Response: %s"), Response->GetResponseCode(), *Response->GetContentAsString());
-        CurrentCallback.ExecuteIfBound(false, ResultState);
+        Callback.ExecuteIfBound(false, ResultState);
         return;
     }
 
@@ -116,7 +130,7 @@ void ULLMCommunicator::OnResponseReceived(FHttpRequestPtr Request, FHttpResponse
     if (!FJsonSerializer::Deserialize(Reader, JsonResponse) || !JsonResponse.IsValid())
     {
         UE_LOG(LogTemp, Error, TEXT("[LLM] Failed to deserialize API Root JSON."));
-        CurrentCallback.ExecuteIfBound(false, ResultState);
+        Callback.ExecuteIfBound(false, ResultState);
         return;
     }
 
@@ -137,18 +151,18 @@ void ULLMCommunicator::OnResponseReceived(FHttpRequestPtr Request, FHttpResponse
         {
             // SUCCESS!
             UE_LOG(LogTemp, Log, TEXT("[LLM] Success! Parsed: Anger=%.2f, Fear=%.2f"), ResultState.Anger, ResultState.Fear);
-            CurrentCallback.ExecuteIfBound(true, ResultState);
+            Callback.ExecuteIfBound(true, ResultState);
         }
         else
         {
             UE_LOG(LogTemp, Error, TEXT("[LLM] Struct Conversion Failed. Content was: %s"), *InnerContentString);
-            CurrentCallback.ExecuteIfBound(false, ResultState);
+            Callback.ExecuteIfBound(false, ResultState);
         }
     }
     else
     {
         UE_LOG(LogTemp, Error, TEXT("[LLM] 'choices' field missing or empty in response."));
-        CurrentCallback.ExecuteIfBound(false, ResultState);
+        Callback.ExecuteIfBound(false, ResultState);
     }
 }
 
@@ -156,17 +170,14 @@ void ULLMCommunicator::OnResponseReceived(FHttpRequestPtr Request, FHttpResponse
 
 void ULLMCommunicator::SendRequestRaw(const FString& Prompt, FOnLLMResponseRaw OnComplete)
 {
-    // 1. 保存回调
-    CurrentRawCallback = OnComplete;
-
-    // 2. 创建请求 (和之前一样)
+    // 1. 创建请求
     FHttpRequestRef Request = FHttpModule::Get().CreateRequest();
     Request->SetURL(ApiUrl);
     Request->SetVerb("POST");
     Request->SetHeader("Content-Type", "application/json");
     Request->SetHeader("Authorization", FString::Printf(TEXT("Bearer %s"), *ApiKey));
 
-    // 3. 构建 JSON
+    // 2. 构建 JSON
     TSharedPtr<FJsonObject> RootObject = MakeShareable(new FJsonObject());
     RootObject->SetStringField("model", "deepseek-chat");
     RootObject->SetNumberField("temperature", 0.7);
@@ -191,24 +202,43 @@ void ULLMCommunicator::SendRequestRaw(const FString& Prompt, FOnLLMResponseRaw O
 
     RootObject->SetArrayField("messages", MessagesArray);
 
-    // 4. 序列化发送
+    // 3. 序列化发送
     FString RequestBody;
     TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&RequestBody);
     FJsonSerializer::Serialize(RootObject.ToSharedRef(), Writer);
 
     Request->SetContentAsString(RequestBody);
 
-    // 【区别点】：绑定到 OnResponseReceivedRaw
+    // ✅ 4. Store callback in TMap
+    PendingRawCallbacks.Add(Request, OnComplete);
+
+    // 5. 绑定到 OnResponseReceivedRaw
     Request->OnProcessRequestComplete().BindUObject(this, &ULLMCommunicator::OnResponseReceivedRaw);
     Request->ProcessRequest();
+    
+    UE_LOG(LogTemp, Log, TEXT("[LLM Raw] Request Sent (ID: %p)"), Request.Get());
 }
 
 void ULLMCommunicator::OnResponseReceivedRaw(FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful)
 {
+    // ✅ 1. Retrieve the callback from TMap
+    FOnLLMResponseRaw* CallbackPtr = PendingRawCallbacks.Find(Request);
+    if (!CallbackPtr)
+    {
+        UE_LOG(LogTemp, Error, TEXT("[LLM Raw] Callback not found for request %p!"), Request.Get());
+        return;
+    }
+    
+    // Copy the callback and remove from map immediately
+    FOnLLMResponseRaw Callback = *CallbackPtr;
+    PendingRawCallbacks.Remove(Request);
+    
+    UE_LOG(LogTemp, Log, TEXT("[LLM Raw] Processing response for request %p"), Request.Get());
+    
     if (!bWasSuccessful || !Response.IsValid() || Response->GetResponseCode() != 200)
     {
         UE_LOG(LogTemp, Error, TEXT("[LLM Raw] Network Error"));
-        CurrentRawCallback.ExecuteIfBound(false, "");
+        Callback.ExecuteIfBound(false, "");
         return;
     }
 
@@ -231,10 +261,10 @@ void ULLMCommunicator::OnResponseReceivedRaw(FHttpRequestPtr Request, FHttpRespo
 
             // 【成功】：直接返回字符串，不转 Struct
             UE_LOG(LogTemp, Log, TEXT("[LLM Raw] Success: %s"), *Content);
-            CurrentRawCallback.ExecuteIfBound(true, Content);
+            Callback.ExecuteIfBound(true, Content);
             return;
         }
     }
 
-    CurrentRawCallback.ExecuteIfBound(false, "");
+    Callback.ExecuteIfBound(false, "");
 }
