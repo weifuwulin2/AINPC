@@ -11,11 +11,14 @@ UTestAction_Idle::UTestAction_Idle()
 	IdleCounter = 0;
 }
 
-void UTestAction_Idle::OnEnter_Implementation(AAIController* Controller)
+void UTestAction_Idle::Enter_Implementation(AAIController* Controller)
 {
-	Super::OnEnter_Implementation(Controller);
+	Super::Enter_Implementation(Controller);
 	
-	ExecutionTime = 0.0f;
+	if (UWorld* World = Controller ? Controller->GetWorld() : nullptr)
+	{
+		ExecutionTime = World->GetTimeSeconds();
+	}
 	IdleCounter++;
 	
 	UE_LOG(LogTemp, Display, TEXT("───────────────────────────────────────"));
@@ -23,27 +26,37 @@ void UTestAction_Idle::OnEnter_Implementation(AAIController* Controller)
 	UE_LOG(LogTemp, Display, TEXT("───────────────────────────────────────"));
 }
 
-void UTestAction_Idle::OnExecute_Implementation(AAIController* Controller, float DeltaTime)
+void UTestAction_Idle::Execute_Implementation(AAIController* Controller)
 {
-	Super::OnExecute_Implementation(Controller, DeltaTime);
+	Super::Execute_Implementation(Controller);
 	
-	ExecutionTime += DeltaTime;
-	
-	// 每2秒打印一次
-	if (FMath::Fmod(ExecutionTime, 2.0f) < DeltaTime)
+	if (UWorld* World = Controller ? Controller->GetWorld() : nullptr)
 	{
-		UE_LOG(LogTemp, Verbose, TEXT("[Idle] Waiting... Time: %.1fs"), ExecutionTime);
+		float CurrentTime = World->GetTimeSeconds();
+		float ElapsedTime = CurrentTime - ExecutionTime;
+		
+		// 每2秒打印一次
+		if (FMath::Fmod(ElapsedTime, 2.0f) < World->GetDeltaSeconds())
+		{
+			UE_LOG(LogTemp, Verbose, TEXT("[Idle] Waiting... Time: %.1fs"), ElapsedTime);
+		}
 	}
 	
 	// Idle 永不完成，除非被其他动作打断
 }
 
-void UTestAction_Idle::OnExit_Implementation(AAIController* Controller)
+void UTestAction_Idle::Exit_Implementation(AAIController* Controller)
 {
-	Super::OnExit_Implementation(Controller);
+	Super::Exit_Implementation(Controller);
+	
+	float Duration = 0.0f;
+	if (UWorld* World = Controller ? Controller->GetWorld() : nullptr)
+	{
+		Duration = World->GetTimeSeconds() - ExecutionTime;
+	}
 	
 	UE_LOG(LogTemp, Display, TEXT("───────────────────────────────────────"));
 	UE_LOG(LogTemp, Display, TEXT("[TEST] Idle Action EXITED"));
-	UE_LOG(LogTemp, Display, TEXT("[TEST] Idle duration: %.1fs"), ExecutionTime);
+	UE_LOG(LogTemp, Display, TEXT("[TEST] Idle duration: %.1fs"), Duration);
 	UE_LOG(LogTemp, Display, TEXT("───────────────────────────────────────"));
 }

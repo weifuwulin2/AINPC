@@ -19,13 +19,16 @@ class AINPC_API UTestAction_Flee : public UUtilityActionBase
 public:
 	UTestAction_Flee();
 
-	virtual void OnEnter_Implementation(AAIController* Controller) override;
-	virtual void OnExecute_Implementation(AAIController* Controller, float DeltaTime) override;
-	virtual void OnExit_Implementation(AAIController* Controller) override;
+	virtual void Enter_Implementation(AAIController* Controller) override;
+	virtual void Execute_Implementation(AAIController* Controller) override;
+	virtual void Exit_Implementation(AAIController* Controller) override;
 
 private:
 	float ExecutionTime;
 	
 	UPROPERTY(EditAnywhere, Category = "Test")
 	float MaxExecutionTime = 1.5f;
+	
+	// 是否完成
+	bool bIsComplete;
 };

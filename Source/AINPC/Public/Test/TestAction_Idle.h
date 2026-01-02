@@ -19,9 +19,9 @@ class AINPC_API UTestAction_Idle : public UUtilityActionBase
 public:
 	UTestAction_Idle();
 
-	virtual void OnEnter_Implementation(AAIController* Controller) override;
-	virtual void OnExecute_Implementation(AAIController* Controller, float DeltaTime) override;
-	virtual void OnExit_Implementation(AAIController* Controller) override;
+	virtual void Enter_Implementation(AAIController* Controller) override;
+	virtual void Execute_Implementation(AAIController* Controller) override;
+	virtual void Exit_Implementation(AAIController* Controller) override;
 
 private:
 	float ExecutionTime;

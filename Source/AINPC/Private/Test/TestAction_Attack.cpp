@@ -9,13 +9,18 @@ UTestAction_Attack::UTestAction_Attack()
 {
 	ActionName = "Test_Attack";
 	ExecutionTime = 0.0f;
+	bIsComplete = false;
 }
 
-void UTestAction_Attack::OnEnter_Implementation(AAIController* Controller)
+void UTestAction_Attack::Enter_Implementation(AAIController* Controller)
 {
-	Super::OnEnter_Implementation(Controller);
+	Super::Enter_Implementation(Controller);
 	
-	ExecutionTime = 0.0f;
+	if (UWorld* World = Controller ? Controller->GetWorld() : nullptr)
+	{
+		ExecutionTime = World->GetTimeSeconds();
+	}
+	bIsComplete = false;
 	
 	UE_LOG(LogTemp, Warning, TEXT("═══════════════════════════════════════"));
 	UE_LOG(LogTemp, Warning, TEXT("[TEST] Attack Action ENTERED"));
@@ -29,32 +34,42 @@ void UTestAction_Attack::OnEnter_Implementation(AAIController* Controller)
 	}
 }
 
-void UTestAction_Attack::OnExecute_Implementation(AAIController* Controller, float DeltaTime)
+void UTestAction_Attack::Execute_Implementation(AAIController* Controller)
 {
-	Super::OnExecute_Implementation(Controller, DeltaTime);
+	Super::Execute_Implementation(Controller);
 	
-	ExecutionTime += DeltaTime;
-	
-	// 每秒打印一次
-	if (FMath::Fmod(ExecutionTime, 1.0f) < DeltaTime)
+	if (UWorld* World = Controller ? Controller->GetWorld() : nullptr)
 	{
-		UE_LOG(LogTemp, Log, TEXT("[Attack] Executing... Time: %.1fs"), ExecutionTime);
-	}
-	
-	// 执行一段时间后完成
-	if (ExecutionTime >= MaxExecutionTime)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("[Attack] Completed after %.1fs"), ExecutionTime);
-		bIsComplete = true;
+		float CurrentTime = World->GetTimeSeconds();
+		float ElapsedTime = CurrentTime - ExecutionTime;
+		
+		// 每秒打印一次
+		if (FMath::Fmod(ElapsedTime, 1.0f) < World->GetDeltaSeconds())
+		{
+			UE_LOG(LogTemp, Log, TEXT("[Attack] Executing... Time: %.1fs"), ElapsedTime);
+		}
+		
+		// 执行一段时间后完成
+		if (ElapsedTime >= MaxExecutionTime)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[Attack] Completed after %.1fs"), ElapsedTime);
+			bIsComplete = true;
+		}
 	}
 }
 
-void UTestAction_Attack::OnExit_Implementation(AAIController* Controller)
+void UTestAction_Attack::Exit_Implementation(AAIController* Controller)
 {
-	Super::OnExit_Implementation(Controller);
+	Super::Exit_Implementation(Controller);
+	
+	float Duration = 0.0f;
+	if (UWorld* World = Controller ? Controller->GetWorld() : nullptr)
+	{
+		Duration = World->GetTimeSeconds() - ExecutionTime;
+	}
 	
 	UE_LOG(LogTemp, Warning, TEXT("═══════════════════════════════════════"));
 	UE_LOG(LogTemp, Warning, TEXT("[TEST] Attack Action EXITED"));
-	UE_LOG(LogTemp, Warning, TEXT("[TEST] Total execution time: %.1fs"), ExecutionTime);
+	UE_LOG(LogTemp, Warning, TEXT("[TEST] Total execution time: %.1fs"), Duration);
 	UE_LOG(LogTemp, Warning, TEXT("═══════════════════════════════════════"));
 }

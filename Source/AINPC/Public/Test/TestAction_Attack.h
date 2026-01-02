@@ -20,15 +20,18 @@ public:
 	UTestAction_Attack();
 
 	// 动作生命周期
-	virtual void OnEnter_Implementation(AAIController* Controller) override;
-	virtual void OnExecute_Implementation(AAIController* Controller, float DeltaTime) override;
-	virtual void OnExit_Implementation(AAIController* Controller) override;
+	virtual void Enter_Implementation(AAIController* Controller) override;
+	virtual void Execute_Implementation(AAIController* Controller) override;
+	virtual void Exit_Implementation(AAIController* Controller) override;
 
 private:
-	// 执行时间计数器
+	// 执行开始时间戳
 	float ExecutionTime;
 	
 	// 最大执行时间（秒）
 	UPROPERTY(EditAnywhere, Category = "Test")
 	float MaxExecutionTime = 2.0f;
+	
+	// 是否完成
+	bool bIsComplete;
 };
