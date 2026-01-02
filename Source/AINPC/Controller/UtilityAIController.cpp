@@ -24,19 +24,6 @@ void AUtilityAIController::BeginPlay()
         MentalState->Anger = 0.0f;
         MentalState->Fear = 0.0f;
     }
-    
-    // 2. 初始化所有 Action
-    for (TSubclassOf<UUtilityActionBase> Class : ActionClasses)
-    {
-        if (Class)
-        {
-            UUtilityActionBase* NewAction = NewObject<UUtilityActionBase>(this, Class);
-            if (NewAction)
-            {
-                AvailableActions.Add(NewAction);
-            }
-        }
-    }
 
     // 3. 初始化 LLM 服务
     LLMService = NewObject<ULLMCommunicator>(this);
@@ -66,6 +53,36 @@ void AUtilityAIController::BeginPlay()
     LLMService->Init(ConfigApiKey, ConfigApiUrl);
     
     UE_LOG(LogTemp, Log, TEXT("LLM Service Initialized via Config."));
+
+    // === 从 DataTable 加载 Actions ===
+    if (ActionDataTable)
+    {
+        static const FString ContextString(TEXT("UtilityAI Actions Context"));
+        TArray<FUtilityActionConfig*> Rows;
+        ActionDataTable->GetAllRows(ContextString, Rows);
+
+        for (FUtilityActionConfig* Row : Rows)
+        {
+            if (Row && Row->ActionClass)
+            {
+                // 1. 创建 Action 实例
+                UUtilityActionBase* NewAction = NewObject<UUtilityActionBase>(this, Row->ActionClass);
+                
+                // 2. 注入表格里的配置 (曲线、权重、输入类型)
+                NewAction->InitFromConfig(*Row);
+                
+                // 3. 加入列表
+                AvailableActions.Add(NewAction);
+
+                UE_LOG(LogTemp, Log, TEXT("Loaded Action: %s | Driven By: %d | Weight: %.2f"), 
+                    *NewAction->ActionName, (int)Row->InputType, Row->Weight);
+            }
+        }
+    }
+    else
+    {
+        UE_LOG(LogTemp, Error, TEXT("ActionDataTable is MISSING! Please assign it in Blueprint."));
+    }
 }
 
 void AUtilityAIController::Tick(float DeltaTime)

@@ -37,8 +37,8 @@ public:
 	// === 动作层 ===
     
 	// 动作配置表：在蓝图里把 Action_Attack 填进去
-	UPROPERTY(EditDefaultsOnly, Category = "AI")
-	TArray<TSubclassOf<UUtilityActionBase>> ActionClasses;
+	UPROPERTY(EditDefaultsOnly, Category = "AI Config")
+	UDataTable* ActionDataTable;
 
 	// 运行时实例化的动作列表
 	UPROPERTY()

@@ -17,6 +17,4 @@ public:
 
 	UAction_Attack();
 	
-	virtual float CalculateScore(const UNPCMentalState* State) override;
-	virtual void Execute(AAIController* Controller) override;
 };
