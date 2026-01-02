@@ -8,6 +8,11 @@ float UUtilityActionBase::CalculateScore(const UNPCMentalState* State)
 	return 0.0f; // 基类默认 0 分
 }
 
+void UUtilityActionBase::Enter(AAIController* Controller)
+{
+	
+}
+
 void UUtilityActionBase::Execute(AAIController* Controller)
 {
 	// 基类留空，或者打印日志

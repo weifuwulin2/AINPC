@@ -8,31 +8,11 @@
 #include "HttpModule.h"
 #include "Interfaces/IHttpRequest.h"
 #include "Interfaces/IHttpResponse.h"
+#include "LLM/LLMCommunicator.h"
 #include "UtilityAIController.generated.h"
 
 
 class UUtilityActionBase;
-// 定义一个结构体来匹配 JSON 格式
-USTRUCT()
-struct FMentalStateJson
-{
-	GENERATED_BODY()
-
-	UPROPERTY()
-	float Anger = 0.0f;
-
-	UPROPERTY()
-	float Fear = 0.0f;
-
-	UPROPERTY()
-	float Confidence = 0.0f;
-
-	UPROPERTY()
-	float SocialBattery = 0.0f;
-
-	UPROPERTY()
-	float Hunger = 0.0f;
-};
 class UNPCMentalState;
 /**
  * 
@@ -70,12 +50,22 @@ public:
 
 	// === 核心逻辑 ===
 	void EvaluateUtilityLogic();
-	
-	// 触发 HTTP 请求
-	UFUNCTION(BlueprintCallable, Category = "AI|Brain")
-	void RequestUpdateFromLLM(FString Prompt);
+
+	// 1. 你的“黑板” (AI 的大脑状态)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
+	FMentalState CurrentMentalState;
+
+	// 2. 对外接口：让 AI 更新大脑
+	UFUNCTION(BlueprintCallable, Category = "AI")
+	void UpdateMind(FString SituationDescription);
+
 
 private:
-	// 回调函数
-	void OnResponseReceived(FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful);
+	// 3. 你的秘书 (通信器实例)
+	UPROPERTY()
+	ULLMCommunicator* LLMService;
+
+	// 4. 回调函数：这就是你用来“接收具体数值”的地方！
+	// 签名必须匹配 FOnLLMResponse: (bool, const FMentalState&)
+	void OnMindUpdated(bool bSuccess, const FMentalState& NewState);
 };
