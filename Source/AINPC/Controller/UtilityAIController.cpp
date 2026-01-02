@@ -1,199 +1,107 @@
-#include "Controller/UtilityAIController.h"
-#include "JsonObjectConverter.h" // 如果还需要手动处理JSON才引用，否则可删
-#include "Base/UtilityActionBase.h"
+#include "UtilityAIController.h"
+#include "Components/UtilityAIComponent.h"
 #include "Components/CognitionComponent.h"
+#include "LLM/LLMCommunicator.h"
 #include "Perception/AIPerceptionComponent.h"
 #include "Perception/AISenseConfig_Sight.h"
 #include "UtilityAI/UNPCMentalState.h"
 
 AUtilityAIController::AUtilityAIController()
-    : MentalState(nullptr), CurrentAction(nullptr)
 {
-    PrimaryActorTick.bCanEverTick = true;
-
-    // 1. 创建认知组件 (标准组件创建方式)
+    // 1. 在构造函数中创建所有组件
+    UtilityComp = CreateDefaultSubobject<UUtilityAIComponent>(TEXT("UtilityComponent"));
     CognitionComp = CreateDefaultSubobject<UCognitionComponent>(TEXT("CognitionComponent"));
+    
+    // 感知相关
+    SetPerceptionComponent(*CreateDefaultSubobject<UAIPerceptionComponent>(TEXT("PerceptionComponent")));
+    SightConfig = CreateDefaultSubobject<UAISenseConfig_Sight>(TEXT("SightConfig"));
+    
+    // 配置视力
+    if (SightConfig) {
+        SightConfig->SightRadius = 1000.0f;
+        SightConfig->LoseSightRadius = 1200.0f;
+        SightConfig->PeripheralVisionAngleDegrees = 90.0f;
+        SightConfig->DetectionByAffiliation.bDetectEnemies = true;
+        SightConfig->DetectionByAffiliation.bDetectNeutrals = true;
+        SightConfig->DetectionByAffiliation.bDetectFriendlies = true;
+        
+        GetPerceptionComponent()->ConfigureSense(*SightConfig);
+        GetPerceptionComponent()->SetDominantSense(SightConfig->GetSenseImplementation());
+    }
 }
 
 void AUtilityAIController::BeginPlay()
 {
     Super::BeginPlay();
-    
-    // 2. 初始化数据对象
+
+    // 2. 初始化数据
     MentalState = NewObject<UNPCMentalState>(this);
-    if (MentalState)
+
+    // 3. 绑定事件
+    if (GetPerceptionComponent())
     {
-        MentalState->Anger = 0.0f;
-        MentalState->Fear = 0.0f;
+        GetPerceptionComponent()->OnTargetPerceptionUpdated.AddDynamic(this, &AUtilityAIController::OnTargetPerceived);
     }
 
-    // 1. 初始化感知组件
-    AIPerception = CreateDefaultSubobject<UAIPerceptionComponent>(TEXT("AIPerception"));
-    SightConfig = CreateDefaultSubobject<UAISenseConfig_Sight>(TEXT("SightConfig"));
-    CognitionComp = CreateDefaultSubobject<UCognitionComponent>(TEXT("Cognition"));
-
-    // 配置视力参数
-    SightConfig->SightRadius = 1000.0f;       // 看多远
-    SightConfig->LoseSightRadius = 1200.0f;   // 离开多远看不见
-    SightConfig->PeripheralVisionAngleDegrees = 90.0f; // 视野角度
-    SightConfig->DetectionByAffiliation.bDetectEnemies = true;
-    SightConfig->DetectionByAffiliation.bDetectNeutrals = true;
-    SightConfig->DetectionByAffiliation.bDetectFriendlies = true;
-
-    AIPerception->ConfigureSense(*SightConfig);
-    AIPerception->SetDominantSense(SightConfig->GetSenseImplementation());
-
-    // 3. 绑定组件事件
-    // 当认知组件想明白时，调用我的 OnMindUpdated
     if (CognitionComp)
     {
         CognitionComp->OnMentalStateChanged.AddDynamic(this, &AUtilityAIController::OnMindUpdated);
     }
-
-    // 4. 加载 Actions (保持原样)
-    if (ActionDataTable)
-    {
-        static const FString ContextString(TEXT("UtilityAI Actions Context"));
-        TArray<FUtilityActionConfig*> Rows;
-        ActionDataTable->GetAllRows(ContextString, Rows);
-
-        for (FUtilityActionConfig* Row : Rows)
-        {
-            if (Row && Row->ActionClass)
-            {
-                UUtilityActionBase* NewAction = NewObject<UUtilityActionBase>(this, Row->ActionClass);
-                NewAction->InitFromConfig(*Row);
-                AvailableActions.Add(NewAction);
-
-                UE_LOG(LogTemp, Log, TEXT("Loaded Action: %s | Weight: %.2f"), *NewAction->ActionName, Row->Weight);
-            }
-        }
-    }
-    else
-    {
-        UE_LOG(LogTemp, Error, TEXT("ActionDataTable is MISSING! Please assign it in Blueprint."));
-    }
 }
 
-void AUtilityAIController::Tick(float DeltaTime)
-{
-    Super::Tick(DeltaTime);
-    
-    // 只负责执行当前动作
-    if (CurrentAction)
-    {
-        CurrentAction->Execute(this);
-    }
-}
-
-// 这依然是你的对外接口，但现在它只是个中间人
-void AUtilityAIController::UpdateMind(FString SituationDescription)
-{
-    if (CognitionComp)
-    {
-        // 委托给组件去处理
-        CognitionComp->ProcessStimulus(SituationDescription);
-    }
-}
-
-// 接收组件传回来的数据
-void AUtilityAIController::OnMindUpdated(const FMentalState& NewState)
-{
-    if (MentalState)
-    {
-        // 1. 数据同步
-        MentalState->Anger = NewState.Anger;
-        MentalState->Fear = NewState.Fear;
-        MentalState->Confidence = NewState.Confidence;
-        MentalState->SocialBattery = NewState.SocialBattery;
-        MentalState->Hunger = NewState.Hunger;
-
-        UE_LOG(LogTemp, Warning, TEXT(">>> Controller Sync: Anger: %.2f, Fear: %.2f <<<"), 
-            MentalState->Anger, MentalState->Fear);
-
-        // 2. 数据变了，重新跑分
-        EvaluateUtilityLogic(); 
-    }
-}
-
-void AUtilityAIController::EvaluateUtilityLogic()
-{
-    if (!MentalState || AvailableActions.Num() == 0) return;
-
-    UUtilityActionBase* BestAction = nullptr;
-    float BestScore = -1.0f;
-
-    // --- 遍历打分 ---
-    for (UUtilityActionBase* Action : AvailableActions)
-    {
-        float Score = Action->CalculateScore(MentalState,this);
-        
-        // 惯性分
-        if (Action == CurrentAction)
-        {
-            Score += 0.1f; 
-        }
-
-        if (Score > BestScore)
-        {
-            BestScore = Score;
-            BestAction = Action;
-        }
-    }
-
-    // --- 切换动作 ---
-    if (BestAction && BestAction != CurrentAction)
-    {
-        if (CurrentAction) CurrentAction->Exit(this);
-
-        CurrentAction = BestAction;
-        CurrentAction->Enter(this); 
-        
-        UE_LOG(LogTemp, Warning, TEXT("DECISION: Switching to %s (Score: %.2f)"), *CurrentAction->ActionName, BestScore);
-
-        // === 告诉大脑我正在做什么 ===
-        if (CognitionComp)
-        {
-            FString ActionDesc = FString::Printf(TEXT("I decided to perform action: %s"), *CurrentAction->ActionName);
-        
-            // 注意：这里可能只 AddMemory 但不一定非要立刻 ProcessStimulus(发请求给LLM)
-            // 为了省钱，我们可以给 CognitionComp 加一个 "AddMemoryOnly" 的函数
-            // 或者就在 ProcessStimulus 里加个 bool bTriggerLLM = true
-            CognitionComp->ProcessStimulus(ActionDesc); 
-        }
-    }
-}
-
-// === 补上这段缺失的代码 ===
 void AUtilityAIController::OnTargetPerceived(AActor* Actor, FAIStimulus Stimulus)
 {
-    // 1. 只有当感知成功时才处理 (Stimulus.WasSuccessfullySensed())
-    //    如果你想处理“丢失视野”的情况，可以去掉这个 if
-    if (Actor && Stimulus.WasSuccessfullySensed())
+    if (Actor && Stimulus.WasSuccessfullySensed() && CognitionComp)
     {
-        // 2. 将看到的东西转化为自然语言描述
-        FString ObjectName = Actor->GetName();
-        
-        // 优化：如果有 Tag，优先用 Tag，比如 "Zombie", "Player"
-        if (Actor->ActorHasTag("Player")) 
-        {
-            ObjectName = "Player";
-        }
-        else if (Actor->ActorHasTag("Zombie"))
-        {
-            ObjectName = "Zombie";
-        }
+        // 简单描述并传给认知
+        FString Desc = FString::Printf(TEXT("Saw %s"), *Actor->GetName());
+        CognitionComp->ProcessStimulus(Desc);
+    }
+}
 
-        // 3. 拼凑句子
-        FString EventDescription = FString::Printf(TEXT("I see a %s nearby."), *ObjectName);
+// AUtilityAIController.cpp
 
-        // 4. 传给大脑 (Cognition Component)
-        if (CognitionComp)
-        {
-            CognitionComp->ProcessStimulus(EventDescription);
-        }
+void AUtilityAIController::OnMindUpdated(const FMentalState& NewState)
+{
+    // 安全检查：确保我们的数据容器 (MentalState) 已经初始化
+    if (MentalState)
+    {
+        // ====================================================
+        // 1. 完整数据同步 (Data Sync)
+        //    将认知组件发过来的结构体数据，一一赋值给我们持有的 UObject
+        // ====================================================
         
-        // 可选：打印日志调试
-        UE_LOG(LogTemp, Log, TEXT("[Perception] %s"), *EventDescription);
+        MentalState->Anger          = NewState.Anger;
+        MentalState->Fear           = NewState.Fear;
+        MentalState->Confidence     = NewState.Confidence;
+        MentalState->SocialBattery  = NewState.SocialBattery;
+        MentalState->Hunger         = NewState.Hunger;
+
+        // 如果以后你加了新的属性（比如 Stamina），记得在这里也加上：
+        // MentalState->Stamina = NewState.Stamina;
+
+        // ====================================================
+        // 2. 调试日志 (可选)
+        //    让你在 Output Log 里清楚看到情绪变了
+        // ====================================================
+        UE_LOG(LogTemp, Log, TEXT("[MindSync] State Updated -> Anger: %.2f | Fear: %.2f | Hunger: %.2f"), 
+            MentalState->Anger, MentalState->Fear, MentalState->Hunger);
+
+        // ====================================================
+        // 3. 关于“是否需要立即打分”的说明
+        // ====================================================
+        // 目前你的 UtilityAIComponent 有自己的 Tick (每 0.1 秒跑一次)。
+        // 所以这里不需要手动调用 Evaluate。
+        // UtilityComponent 会在下一次 Tick 时，自动读到上面更新后的 MentalState 数据。
+        
+        // *高级用法*：
+        // 如果这是一个“紧急突发状况”（比如Fear瞬间从0飙升到1），你可能不想等那 0.1 秒。
+        // 你可以在 UtilityAIComponent 里写一个 public 函数叫 ForceUpdate()，然后在这里调用它。
+        /*
+        if (UtilityComp && NewState.Fear > 0.9f)
+        {
+             UtilityComp->EvaluateAndDecide(); // 立即反应，别等 Tick 了
+        }
+        */
     }
 }
