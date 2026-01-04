@@ -25,12 +25,18 @@ void UUtilityAIComponent::BeginPlay()
 
 void UUtilityAIComponent::LoadActionsFromTable()
 {
-    if (!ActionDataTable) return;
+    if (!ActionDataTable)
+    {
+        UE_LOG(LogTemp, Error, TEXT("[UtilityAI] ActionDataTable is not set!"));
+        return;
+    }
 
     static const FString ContextString(TEXT("UtilityAI Actions Load"));
     TArray<FUtilityActionConfig*> Rows;
     ActionDataTable->GetAllRows(ContextString, Rows);
 
+    UE_LOG(LogTemp, Log, TEXT("[UtilityAI] Loading actions from DataTable..."));
+    
     for (FUtilityActionConfig* Row : Rows)
     {
         if (Row && Row->ActionClass)
@@ -39,8 +45,14 @@ void UUtilityAIComponent::LoadActionsFromTable()
             UUtilityActionBase* NewAction = NewObject<UUtilityActionBase>(this, Row->ActionClass);
             NewAction->InitFromConfig(*Row);
             AvailableActions.Add(NewAction);
+            
+            FString ActionNameStr = NewAction->ActionName;
+            UE_LOG(LogTemp, Log, TEXT("[UtilityAI] Loaded: %s (Weight: %.2f)"), 
+                *ActionNameStr, NewAction->BaseWeight);
         }
     }
+    
+    UE_LOG(LogTemp, Log, TEXT("[UtilityAI] Total actions loaded: %d"), AvailableActions.Num());
 }
 
 void UUtilityAIComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
@@ -67,7 +79,16 @@ void UUtilityAIComponent::EvaluateAndDecide()
     float BestScore = -1.0f;
     UNPCMentalState* State = OwnerController->MentalState;
 
+    // 🔍 调试：查看当前 MentalState
+    if (State)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[UtilityAI] Current MentalState: Anger=%.2f, Fear=%.2f, Confidence=%.2f"),
+            State->Anger, State->Fear, State->Confidence);
+    }
+
     // --- 遍历打分 ---
+    UE_LOG(LogTemp, Warning, TEXT("[UtilityAI] === Evaluating %d actions ==="), AvailableActions.Num());
+    
     for (UUtilityActionBase* Action : AvailableActions)
     {
         // 调用 Action 自身的算分逻辑
@@ -76,7 +97,16 @@ void UUtilityAIComponent::EvaluateAndDecide()
         // 惯性奖励 (Momentum)
         if (Action == CurrentAction)
         {
-            Score += Action->InertiaBonus; // 或者直接写死 +0.1f
+            Score += Action->InertiaBonus;
+            FString ActionNameStr = Action->ActionName;
+            UE_LOG(LogTemp, Warning, TEXT("[UtilityAI] %s: Base=%.2f + Inertia=%.2f = %.2f"), 
+                *ActionNameStr, Score - Action->InertiaBonus, Action->InertiaBonus, Score);
+        }
+        else
+        {
+            FString ActionNameStr = Action->ActionName;
+            UE_LOG(LogTemp, Warning, TEXT("[UtilityAI] %s: Score=%.2f"), 
+                *ActionNameStr, Score);
         }
 
         if (Score > BestScore)
@@ -85,6 +115,10 @@ void UUtilityAIComponent::EvaluateAndDecide()
             BestAction = Action;
         }
     }
+    
+    FString BestActionName = BestAction ? BestAction->ActionName : TEXT("None");
+    UE_LOG(LogTemp, Warning, TEXT("[UtilityAI] Best Action: %s (Score: %.2f)"), 
+        *BestActionName, BestScore);
 
     // --- 状态切换 ---
     if (BestAction && BestAction != CurrentAction)
@@ -103,6 +137,7 @@ void UUtilityAIComponent::EvaluateAndDecide()
         CurrentAction->MarkExecutionTime(GetWorld()->GetTimeSeconds());
 
         // 可选：打印日志
-        UE_LOG(LogTemp, Warning, TEXT("[UtilityAI] Switch Action: %s (Score: %.2f)"), *CurrentAction->ActionName, BestScore);
+        FString CurrentActionName = CurrentAction->ActionName;
+        UE_LOG(LogTemp, Warning, TEXT("[UtilityAI] Switch Action: %s (Score: %.2f)"), *CurrentActionName, BestScore);
     }
 }

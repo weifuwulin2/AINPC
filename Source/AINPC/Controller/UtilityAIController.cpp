@@ -162,9 +162,9 @@ void AUtilityAIController::OnMindUpdated(const FMentalState& NewState)
     {
         MentalState->UpdateFromStruct(NewState);
         
-        // 可选：打印日志
-        UE_LOG(LogTemp, Log, TEXT("[Controller] Mental State Updated: Anger=%.2f, Fear=%.2f"), 
-               MentalState->Anger, MentalState->Fear);
+        // 打印所有关键情绪字段
+        UE_LOG(LogTemp, Log, TEXT("[Controller] Mental State Updated: Anger=%.2f, Fear=%.2f, Confidence=%.2f"), 
+               MentalState->Anger, MentalState->Fear, MentalState->Confidence);
         
         // UtilityComponent 不需要通知，它会在自己的 Tick 里自动读这个 MentalState
     }

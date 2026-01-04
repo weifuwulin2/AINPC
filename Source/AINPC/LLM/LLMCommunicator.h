@@ -15,8 +15,9 @@ struct FMentalState
 	GENERATED_BODY()
 	
 	// ✅ 使用宏自动生成所有字段
+	// 注意：UPROPERTY 需要完整的元数据才能被 JsonObjectConverter 正确解析
 	#define DECLARE_FIELD(Name, DefaultValue, DisplayName, Description) \
-		UPROPERTY() float Name = DefaultValue;
+		UPROPERTY(BlueprintReadWrite, Category = "Mental State") float Name = DefaultValue;
 	
 	MENTAL_STATE_FIELDS(DECLARE_FIELD)
 	

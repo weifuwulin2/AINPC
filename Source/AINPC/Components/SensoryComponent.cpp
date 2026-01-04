@@ -79,8 +79,39 @@ void USensoryComponent::ReceiveSpeech(AActor* Speaker, FString Message)
 
 FString USensoryComponent::FormatDescription(FString Verb, AActor* Target, FString ExtraInfo)
 {
-    FString TargetName = Target ? Target->GetName() : "Unknown";
-    if (Target && Target->ActorHasTag("Player")) TargetName = "Player";
+    FString TargetName = "Unknown";
+    
+    if (Target)
+    {
+        // 方法 1: 检查 Player 标签
+        if (Target->ActorHasTag("Player"))
+        {
+            TargetName = "Player";
+        }
+        // 方法 2: 检查是否是玩家控制的角色
+        else if (ACharacter* Character = Cast<ACharacter>(Target))
+        {
+            if (Character->IsPlayerControlled())
+            {
+                TargetName = "Player";
+            }
+            else
+            {
+                // 如果是 AI 控制的角色，尝试获取更友好的名称
+                TargetName = "an enemy NPC";
+            }
+        }
+        // 方法 3: 检查类名是否包含 "Player" 或 "Character"
+        else if (Target->GetName().Contains("Player") || Target->GetName().Contains("Character"))
+        {
+            TargetName = "Player";
+        }
+        else
+        {
+            // 默认使用技术名称
+            TargetName = Target->GetName();
+        }
+    }
     
     if (ExtraInfo.IsEmpty())
         return FString::Printf(TEXT("I %s %s"), *Verb, *TargetName);

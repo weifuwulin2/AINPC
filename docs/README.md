@@ -57,6 +57,49 @@ AINPC/
 
 ## 📖 使用指南
 
+### [Testing_Complete_Guide.md](guides/Testing_Complete_Guide.md) ⭐ **推荐起点**
+**测试完整指南**
+- 测试入门指南
+- 根据角色选择测试路径
+- 完整测试文档索引
+- 常见问题解答
+
+### [Quick_Test_Workflow.md](guides/Quick_Test_Workflow.md)
+**5分钟快速测试**
+- 编译验证
+- 快速功能检查
+- 常见问题诊断
+- 适合日常开发
+
+### [Testing_Strategy.md](guides/Testing_Strategy.md)
+**完整测试策略**
+- 测试金字塔 (单元/集成/E2E)
+- 单元测试指南
+- 集成测试方法
+- 性能测试
+- 自动化测试
+
+### [Framework_Testing_Guide.md](guides/Framework_Testing_Guide.md)
+**框架测试指南**
+- 测试 Action 配置
+- DataTable 设置
+- 完整测试场景
+- 验证清单
+
+### [Testing_Documentation_Summary.md](guides/Testing_Documentation_Summary.md)
+**测试文档总结**
+- 所有测试文档索引
+- 测试路线图
+- 测试覆盖率
+- 测试优先级
+
+### [Testing_Architecture_Visualization.md](guides/Testing_Architecture_Visualization.md)
+**测试架构可视化**
+- 测试金字塔图
+- 数据流测试图
+- 组件覆盖图
+- 测试决策树
+
 ### [BugFixes_Patch.md](guides/BugFixes_Patch.md)
 **逐步Bug修复指南**
 - P0/P1/P2 修复方案
@@ -74,6 +117,18 @@ AINPC/
 - 配置文件位置
 - API Key设置
 - 常见问题
+
+### [Single_Point_Configuration_Guide.md](guides/Single_Point_Configuration_Guide.md)
+**单点配置系统**
+- 宏驱动配置
+- 添加新属性
+- 自动化代码生成
+
+### [Utility_AI_Configuration_Guide.md](guides/Utility_AI_Configuration_Guide.md)
+**Utility AI 配置**
+- 创建新动作
+- 配置 ResponseCurve
+- 调试技巧
 
 ---
 

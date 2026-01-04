@@ -25,17 +25,35 @@ void UUtilityActionBase::InitFromConfig(const FUtilityActionConfig& Config)
 
 float UUtilityActionBase::CalculateScore(UNPCMentalState* MentalState, AAIController* Controller)
 {
+    // 🔍 调试：显示 Action 信息
+    UE_LOG(LogTemp, Warning, TEXT("[CalculateScore] Action=%s, Considerations=%d, BaseWeight=%.2f"),
+        *ActionName, Considerations.Num(), BaseWeight);
+
     // 0. 安全检查
-    if (!Controller || Considerations.Num() == 0) return 0.0f;
+    if (!Controller) return 0.0f;
+    
+    // 如果没有任何 Consideration，直接返回 BaseWeight
+    // 这对于 Idle 等不需要条件的动作很重要
+    if (Considerations.Num() == 0)
+    {
+        return BaseWeight;
+    }
 
     // 1. 冷却检查 (Cooldown)
     float CurrentTime = 0.0f;
     if (UWorld* World = Controller->GetWorld())
     {
         CurrentTime = World->GetTimeSeconds();
+        float TimeSinceLastExecution = CurrentTime - LastExecutedTime;
+        
+        // 🔍 调试日志
+        UE_LOG(LogTemp, Warning, TEXT("[CalculateScore] %s: CooldownTime=%.2f, TimeSince=%.2f, LastExecuted=%.2f"),
+            *ActionName, CooldownTime, TimeSinceLastExecution, LastExecutedTime);
+        
         // 如果还在冷却期内，直接返回 0 分
-        if (CurrentTime - LastExecutedTime < CooldownTime)
+        if (TimeSinceLastExecution < CooldownTime)
         {
+            UE_LOG(LogTemp, Warning, TEXT("[CalculateScore] %s is on cooldown!"), *ActionName);
             return 0.0f; 
         }
     }
@@ -54,12 +72,17 @@ float UUtilityActionBase::CalculateScore(UNPCMentalState* MentalState, AAIContro
                             ? Factor.ResponseCurve->GetFloatValue(RawValue) 
                             : FMath::Clamp(RawValue, 0.0f, 1.0f);
 
+        // 🔍 调试日志
+        UE_LOG(LogTemp, Warning, TEXT("[Action] Consideration: RawValue=%.2f, FactorScore=%.2f, HasCurve=%s"),
+            RawValue, FactorScore, Factor.ResponseCurve ? TEXT("Yes") : TEXT("No"));
+
         // C. 乘法累积 (核心：任何一个因子为0，总分为0)
         FinalScore *= FactorScore;
 
         // 优化：如果分数已经归零，直接退出，节省性能
         if (FinalScore <= UE_KINDA_SMALL_NUMBER) 
         {
+            UE_LOG(LogTemp, Warning, TEXT("[Action] Score became 0, early exit"));
             return 0.0f;
         }
     }

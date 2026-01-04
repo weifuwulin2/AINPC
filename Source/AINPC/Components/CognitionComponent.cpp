@@ -24,22 +24,32 @@ void UCognitionComponent::BeginPlay()
 	GConfig->GetString(TEXT("LLM.Settings"), TEXT("ApiKey"), ConfigApiKey, GGameIni);
 	GConfig->GetString(TEXT("LLM.Settings"), TEXT("ApiUrl"), ConfigApiUrl, GGameIni);
 
+	// 🔍 调试日志：查看实际读取的配置
+	UE_LOG(LogTemp, Warning, TEXT("=== LLM Configuration Debug ==="));
+	UE_LOG(LogTemp, Warning, TEXT("[DEBUG] Config File: %s"), *GGameIni);
+	UE_LOG(LogTemp, Warning, TEXT("[DEBUG] ApiKey: %s"), ConfigApiKey.IsEmpty() ? TEXT("<EMPTY>") : TEXT("<SET>"));
+	UE_LOG(LogTemp, Warning, TEXT("[DEBUG] ApiUrl: %s"), ConfigApiUrl.IsEmpty() ? TEXT("<EMPTY>") : *ConfigApiUrl);
+	UE_LOG(LogTemp, Warning, TEXT("=============================="));
+
 	// 安全检查
 	if (ConfigApiKey.IsEmpty())
 	{
 		UE_LOG(LogTemp, Error, TEXT("[Cognition] FATAL: API Key not found in DefaultGame.ini!"));
+		UE_LOG(LogTemp, Error, TEXT("[Cognition] Please check Config/DefaultGame.ini has [LLM.Settings] section"));
 		return;
 	}
 
 	if (ConfigApiUrl.IsEmpty())
 	{
 		ConfigApiUrl = TEXT("https://api.deepseek.com/chat/completions");
+		UE_LOG(LogTemp, Warning, TEXT("[Cognition] ApiUrl not set, using default: %s"), *ConfigApiUrl);
 	}
 
 	// 3. 初始化 Service
 	LLMService->Init(ConfigApiKey, ConfigApiUrl);
     
 	UE_LOG(LogTemp, Log, TEXT("[Cognition] Brain Initialized via Config."));
+	UE_LOG(LogTemp, Log, TEXT("[Cognition] Using API URL: %s"), *ConfigApiUrl);
 
 	
 }
@@ -60,12 +70,36 @@ void UCognitionComponent::ProcessStimulus(FString SituationDescription)
 	}
 
 	FString Prompt = FString::Printf(TEXT(
-	"Memories:\n%s\n"
-	"Event: %s\n"
-	"Task: 1. Analyze mental state (Anger, Fear).\n"
-	"      2. Rate the 'Importance' of this event (0.0 to 1.0) based on how much it affects your survival or emotions.\n"
-	"Output JSON: {\"Anger\":..., \"Fear\":..., \"Importance\":...}"
+	"You are an NPC in a combat game. Analyze the following event and determine your emotional response.\n"
+	"\n"
+	"Context:\n"
+	"- You are a combat NPC who can feel emotions\n"
+	"- Seeing a Player should make you alert or aggressive\n"
+	"- Being attacked should increase Anger and Fear\n"
+	"- Neutral events should have low emotional values\n"
+	"\n"
+	"Recent Memories:\n%s\n"
+	"\n"
+	"Current Event: %s\n"
+	"\n"
+	"Task: Analyze your emotional state based on this event.\n"
+	"- Anger: 0.0 (calm) to 1.0 (furious). Increase when threatened or attacked.\n"
+	"- Fear: 0.0 (brave) to 1.0 (terrified). Increase when facing danger.\n"
+	"- Confidence: 0.0 (scared) to 1.0 (confident). Decrease when outmatched.\n"
+	"\n"
+	"Examples:\n"
+	"- Event: 'I saw Player' → {\"Anger\":0.6, \"Fear\":0.3, \"Confidence\":0.5}\n"
+	"- Event: 'I was attacked by Player taking 50.0 damage' → {\"Anger\":0.9, \"Fear\":0.7, \"Confidence\":0.3}\n"
+	"- Event: 'I saw an enemy NPC' → {\"Anger\":0.4, \"Fear\":0.2, \"Confidence\":0.6}\n"
+	"\n"
+	"Output ONLY a JSON object with these exact fields (no markdown, no explanation):\n"
+	"{\"Anger\":..., \"Fear\":..., \"Confidence\":...}"
 	),*ContextMemory,*SituationDescription);
+	
+	// 🔍 调试：查看发送给 LLM 的 Prompt
+	UE_LOG(LogTemp, Warning, TEXT("=== LLM Prompt ==="));
+	UE_LOG(LogTemp, Warning, TEXT("%s"), *Prompt);
+	UE_LOG(LogTemp, Warning, TEXT("=================="));
 	
 	// 发送请求，并绑定内部回调 OnLLMReply
 	LLMService->SendRequest(
