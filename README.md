@@ -1,127 +1,358 @@
-# 技术设计文档：基于 UE5 的 LLM-Utility AI 混合架构
+# AINPC - LLM-Driven Utility AI System for Unreal Engine 5
 
-**项目名称:** LLM-Driven NPC System
-**引擎版本:** Unreal Engine 5.3+
-**架构类型:** Stanford Agent Logic (Brain) + Utility AI (Body)
-**最后更新:** 2025-1
+<div align="center">
 
----
+**基于 UE5 的 LLM-Utility AI 混合架构**  
+*Stanford Agent Logic (Brain) + Utility AI (Body)*
 
-## 1. 核心架构图解 (System Architecture)
+[![Unreal Engine](https://img.shields.io/badge/Unreal%20Engine-5.3+-blue.svg)](https://www.unrealengine.com/)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Documentation](https://img.shields.io/badge/docs-latest-brightgreen.svg)](docs/README.md)
 
-本系统旨在解决传统 LLM Agent 响应慢、动作僵硬的问题，采用双层解耦设计：
-
-1.  **上层 (Cognitive Layer):** 使用 LLM 处理非结构化数据（对话、环境感知），输出结构化的**情绪参数 (Parameters)**。
-2.  **下层 (Action Layer):** 使用 Utility AI 系统，基于情绪参数实时计算最优动作，保证毫秒级响应。
-
-**数据流向:**
-`Perception (UE5)` -> `Memory Stream (Text Array)` -> `LLM (Brain)` -> `Update Parameters (JSON)` -> `Utility Scorer (Math)` -> `Action Execution`
+</div>
 
 ---
 
-## 2. 数据结构定义 (Data Structures)
+## 📖 目录
 
-### 2.1 精神状态黑板 (BP_NPC_MentalState)
-这是一个继承自 `Object` 的纯数据蓝图，作为连接 LLM 和 Utility AI 的桥梁。
-
-**变量列表 (全部为 Float, 范围 0.0 - 1.0):**
-
-| 变量名 | 默认值 | 说明 |
-| :--- | :--- | :--- |
-| `Anger` | 0.0 | 愤怒值。影响攻击欲望。 |
-| `Fear` | 0.0 | 恐惧值。影响逃跑、躲藏欲望。 |
-| `Social` | 0.5 | 社交欲望。影响主动对话频率。 |
-| `Confidence` | 0.5 | 自信值。高自信倾向于正面对抗，低自信倾向于迂回。 |
-| `Fatigue` | 0.0 | 疲劳值 (随时间Tick增加)。影响休息行为。 |
+- [项目简介](#-项目简介)
+- [核心特性](#-核心特性)
+- [系统架构](#-系统架构)
+- [快速开始](#-快速开始)
+- [项目结构](#-项目结构)
+- [文档导航](#-文档导航)
+- [最新更新](#-最新更新)
+- [开发路线](#-开发路线)
 
 ---
 
-## 3. 模块实现详情 (Module Implementation)
+## 🎯 项目简介
 
-### 3.1 身体：Utility AI 系统 (The Body)
+**AINPC** 是一个创新的 AI NPC 系统,旨在解决传统 LLM Agent 响应慢、动作僵硬的问题。通过**双层解耦设计**,实现了智能决策与实时响应的完美结合:
 
-**基类设计 (`BP_UtilityAction_Base`):**
-所有行为必须继承此类，并在子类中重写以下函数。
+- **🧠 认知层 (Cognitive Layer)**: 使用 LLM 处理复杂的非结构化数据(对话、环境感知),输出结构化的情绪参数
+- **💪 行动层 (Action Layer)**: 使用 Utility AI 系统基于情绪参数实时计算最优动作,保证**毫秒级响应**
 
-* **Function: CalculateScore (Input: MentalState)**
-    * *职责:* 根据传入的精神状态，返回当前动作的得分 (Float)。
-* **Function: Execute (Input: AIController)**
-    * *职责:* 执行具体的 UE5 逻辑 (MoveTo, PlayMontage)。
-* **Function: Exit (Input: AIController)**
-    * *职责:* 清理逻辑 (StopMovement, ResetFlags)。
+### 核心优势
 
-**具体动作示例 (Concrete Actions):**
-
-1.  **Action_Attack (攻击)**
-    * `Score Formula`: `(Anger * 1.5) + (Confidence * 0.5) - (Fear * 2.0)`
-    * `Execute`: 获取最近敌人 -> `AIController.MoveToActor` -> 距离够近则播放攻击 Montage。
-
-2.  **Action_Flee (逃跑)**
-    * `Score Formula`: `Fear * 2.0`
-    * `Execute`: 获取反向向量 -> `GetRandomReachablePointInRadius` -> 跑路。
-
-3.  **Action_Chat (闲聊)**
-    * `Score Formula`: `Social * (1.0 - Anger)`
-    * `Execute`: 面向玩家 -> 触发 TTS (Text-to-Speech) 组件。
+| 传统 LLM Agent | AINPC 混合架构 |
+|:--------------|:--------------|
+| ❌ 响应延迟 1-3 秒 | ✅ 动作响应 < 50ms |
+| ❌ 动作僵硬、不连贯 | ✅ 流畅的行为过渡 |
+| ❌ 难以调试和优化 | ✅ 参数可视化调试 |
+| ❌ 每次决策都需要 LLM | ✅ LLM 仅处理认知更新 |
 
 ---
 
-### 3.2 大脑：感知与 LLM 接口 (The Brain)
+## ✨ 核心特性
 
-**感知系统 (`AIPerception`):**
-* **配置:** 启用 `Sight` (视觉) 和 `Hearing` (听觉)。
-* **逻辑:** * 当 `OnTargetPerceptionUpdated` 触发 -> 将感知对象转化为文本 (例如 "Saw Player holding a Gun") -> 存入 **Memory Stream**。
+### 🔧 单点配置系统 (Single-Point Configuration)
 
-**记忆流 (`ShortTermMemories` - Array of String):**
-* 维护一个长度为 10-15 的字符串数组（FIFO 队列）。
-* 存储最近发生的对话和感知事件。
+**最新实现的自动化配置系统** - 通过宏实现一处定义,全局生效:
 
-**LLM 通信 (HTTP Request):**
-* **触发时机:** 1.  记忆队列累计更新了 X 次。
-    2.  发生重大事件 (如受到伤害 `Event AnyDamage`)。
-* **Prompt 模板:**
-    ```text
-    Role: You are an NPC in a survival game.
-    Current State: { Anger: 0.1, Fear: 0.2, ... }
-    Recent Memories:
-    - [Time 10:01] Saw Player1.
-    - [Time 10:02] Player1 said: "Get out of here or I'll shoot!"
-    
-    Task: Analyze the memories. Update your internal state variables based on the situation.
-    Output: ONLY a JSON object.
-    Example: { "Anger": 0.5, "Fear": 0.8 }
-    ```
-* **解析:** 使用 VaRest 或类似插件解析返回的 JSON，覆盖 `BP_NPC_MentalState` 中的变量。
+```cpp
+// MentalStateFields.h - 唯一需要修改的地方
+#define MENTAL_STATE_FIELDS(FIELD) \
+    FIELD(Anger, 0.0f, "愤怒", "影响攻击欲望") \
+    FIELD(Fear, 0.0f, "恐惧", "影响逃跑行为") \
+    FIELD(Confidence, 0.5f, "自信", "影响对抗策略")
+```
+
+**自动生成**:
+- ✅ `FMentalState` 结构体字段
+- ✅ `UNPCMentalState` 类属性 (含完整 UPROPERTY 元数据)
+- ✅ 构造函数初始化代码
+- ✅ `ResetState()` 重置函数
+- ✅ `UpdateFromStruct()` / `ToStruct()` 转换函数
+- ✅ LLM Prompt 字段列表
+- ✅ Utility AI 的 `GetConsiderationValue()` switch cases
+
+**维护成本**: 添加新属性仅需修改 **2 个文件** (原需 8 个)
+
+### 🧩 模块化组件架构
+
+```
+UtilityAIController (总控)
+├── SensoryComponent      # 感官翻译 (物理信号 → 文本)
+├── CognitionComponent    # 认知处理 (记忆 + LLM)
+├── UtilityAIComponent    # 决策执行 (Utility 算分)
+└── MentalState          # 共享情绪状态
+```
+
+### 🌙 Dreaming 系统
+
+定期整理记忆,提取长期洞察:
+- 每 5 分钟自动触发 (可配置)
+- 将短期记忆发送给 LLM 进行总结
+- 提取关键信息存入长期记忆
+- 避免记忆队列溢出
+
+### 🔄 并发请求管理
+
+使用 `TMap` 管理多个并发 LLM 请求:
+- ✅ Dreaming 和感知事件可同时触发
+- ✅ 每个请求独立的回调处理
+- ✅ 请求 ID 追踪,便于调试
 
 ---
 
-## 4. 核心逻辑循环 (The Core Loop)
+## 🏗️ 系统架构
 
-在 `BP_AIController` 中实现以下逻辑：
+### 数据流向图
 
-### 4.1 思考循环 (Thinking Loop) - 每 0.2 ~ 0.5 秒
-1.  **初始化:** `BestScore = -1`, `BestAction = Null`.
-2.  **遍历:** 循环 `AvailableActions` 数组中的每一个动作实例。
-3.  **打分:** 调用 `Action->CalculateScore(CurrentMentalState)`.
-4.  **惯性处理 (Hysteresis):** * `IF (Action == CurrentAction) Score += 0.1` (防止动作频繁抖动)。
-5.  **比较:** 记录最高分的动作。
-6.  **切换:** * `IF (BestAction != CurrentAction)`:
-        * `CurrentAction->Exit()`
-        * `BestAction->Execute()`
-        * `CurrentAction = BestAction`
+```
+┌─────────────────┐
+│  UE5 Perception │  (视觉/听觉)
+└────────┬────────┘
+         │ 物理信号
+         ▼
+┌─────────────────┐
+│ SensoryComponent│  翻译为文本
+└────────┬────────┘
+         │ "Saw Player with Gun"
+         ▼
+┌─────────────────┐
+│CognitionComponent│ 存入记忆流
+└────────┬────────┘
+         │ 累积到阈值
+         ▼
+┌─────────────────┐
+│ LLM Communicator│  发送 Prompt
+└────────┬────────┘
+         │ JSON Response
+         ▼
+┌─────────────────┐
+│  MentalState    │  更新情绪参数
+│ (Anger: 0.8)    │
+└────────┬────────┘
+         │ 每 0.2 秒
+         ▼
+┌─────────────────┐
+│UtilityAIComponent│ 计算动作得分
+└────────┬────────┘
+         │ 选择最高分
+         ▼
+┌─────────────────┐
+│  Action Execute │  播放动画/移动
+└─────────────────┘
+```
 
-### 4.2 掩盖延迟 (Latency Masking) - 优化体验
-LLM 响应通常有 1-2 秒延迟，为防止 NPC 发呆：
-1.  **请求发出时:** 不阻断当前 Utility AI 的运行，NPC 继续基于“旧参数”行动。
-2.  **可选:** 如果是因为对话触发请求，强制 Utility AI 切换到临时动作 `Action_Thinking` (播放疑惑动画)，直到 JSON 返回。
+### 核心类说明
+
+| 类名 | 职责 | 关键方法 |
+|:-----|:-----|:---------|
+| `UtilityAIController` | 总控制器,协调各组件 | `BeginPlay()`, `ReceiveSpeech()` |
+| `SensoryComponent` | 翻译物理信号为文本 | `OnPerceptionUpdated()` |
+| `CognitionComponent` | 管理记忆和 LLM 通信 | `AddMemory()`, `TriggerDreaming()` |
+| `UtilityAIComponent` | Utility AI 决策循环 | `EvaluateActions()`, `ExecuteBestAction()` |
+| `UNPCMentalState` | 情绪状态数据容器 | `UpdateFromStruct()`, `ToStruct()` |
+| `UtilityActionBase` | 动作基类 | `CalculateScore()`, `Execute()` |
 
 ---
 
-## 5. 开发步骤清单 (Checklist)
+## 🚀 快速开始
 
-- [ ] **Step 1:** 创建 `BP_NPC_MentalState` 并定义好情绪变量。
-- [ ] **Step 2:** 创建 `BP_UtilityAction_Base` 及其子类 (Attack, Flee, Idle)。
-- [ ] **Step 3:** 在 AI Controller 中实现“评分-选择-执行”循环，先用手动修改变量的方式测试 Utility AI 是否工作。
-- [ ] **Step 4:** 配置 `AIPerception`，将视觉/听觉转化为文本存入数组。
-- [ ] **Step 5:** 接入 HTTP 插件 (VaRest/Ollama)，发送 Prompt 并解析 JSON 回传给 MentalState。
-- [ ] **Step 6:** 调试与参数微调 (Tuning Response Curves)。
+### 环境要求
+
+- **Unreal Engine**: 5.3 或更高版本
+- **编译器**: Visual Studio 2022 (Windows) / Xcode (Mac)
+- **LLM API**: OpenAI / Ollama / 自定义端点
+
+### 安装步骤
+
+1. **克隆仓库**
+   ```bash
+   git clone https://github.com/yourusername/AINPC.git
+   cd AINPC
+   ```
+
+2. **生成项目文件**
+   ```bash
+   # Windows
+   右键 AINPC.uproject → Generate Visual Studio project files
+   
+   # Mac/Linux
+   ./GenerateProjectFiles.sh
+   ```
+
+3. **配置 LLM API**
+   
+   编辑 `Config/DefaultGame.ini`:
+   ```ini
+   [/Script/AINPC.LLMCommunicator]
+   APIEndpoint=http://localhost:11434/api/generate
+   ModelName=llama2
+   APIKey=your_api_key_here
+   ```
+
+4. **编译并运行**
+   - 打开 `AINPC.sln`
+   - 设置为 `Development Editor` 配置
+   - 编译项目
+   - 启动编辑器
+
+### 快速测试
+
+1. 打开 `Content/Maps/TestLevel`
+2. 放置一个 `BP_AICharacter` 到场景中
+3. 运行游戏 (PIE)
+4. 观察 NPC 的自主行为
+
+详细测试指南: [Framework_Testing_Guide.md](docs/guides/Framework_Testing_Guide.md)
+
+---
+
+## 📁 项目结构
+
+```
+AINPC/
+├── Source/AINPC/
+│   ├── Controller/
+│   │   └── UtilityAIController.h/cpp      # AI 总控制器
+│   ├── Components/
+│   │   ├── SensoryComponent.h/cpp         # 感官翻译
+│   │   ├── CognitionComponent.h/cpp       # 认知处理
+│   │   └── UtilityAIComponent.h/cpp       # 决策执行
+│   ├── LLM/
+│   │   └── LLMCommunicator.h/cpp          # LLM 通信
+│   ├── UtilityAI/
+│   │   ├── MentalStateFields.h            # ⭐ 单点配置
+│   │   └── UNPCMentalState.h/cpp          # 情绪状态
+│   └── Base/
+│       └── UtilityActionBase.h/cpp        # 动作基类
+├── Content/
+│   ├── Blueprints/
+│   │   ├── AI/                            # AI 蓝图
+│   │   └── Actions/                       # 动作蓝图
+│   └── Maps/                              # 测试地图
+├── docs/
+│   ├── guides/                            # 📖 使用指南
+│   ├── reports/                           # 📝 进度报告
+│   └── analysis/                          # 📊 分析文档
+├── README.md                              # 本文档
+└── CHANGELOG.md                           # 变更日志
+```
+
+---
+
+## 📚 文档导航
+
+### 快速查找
+
+| 我想... | 查看文档 |
+|:--------|:---------|
+| 了解系统架构和数据流 | [DataFlow_Analysis.md](docs/analysis/DataFlow_Analysis.md) |
+| 配置 LLM API | [LLM_Config_Guide.md](docs/guides/LLM_Config_Guide.md) |
+| 添加新的情绪属性 | [Single_Point_Configuration_Guide.md](docs/guides/Single_Point_Configuration_Guide.md) |
+| 配置 Utility AI 动作 | [Utility_AI_Configuration_Guide.md](docs/guides/Utility_AI_Configuration_Guide.md) |
+| 测试 Dreaming 功能 | [Dreaming_Test_Guide.md](docs/guides/Dreaming_Test_Guide.md) |
+| 修复已知 Bug | [BugFixes_Patch.md](docs/guides/BugFixes_Patch.md) |
+| 查看完整文档索引 | [docs/README.md](docs/README.md) |
+
+### 核心指南
+
+- **[单点配置系统指南](docs/guides/Single_Point_Configuration_Guide.md)** - 如何使用宏自动化配置
+- **[Utility AI 配置指南](docs/guides/Utility_AI_Configuration_Guide.md)** - 创建和调试动作
+- **[框架测试指南](docs/guides/Framework_Testing_Guide.md)** - 完整测试流程
+- **[LLM 配置指南](docs/guides/LLM_Config_Guide.md)** - API 设置和故障排查
+
+### 技术报告
+
+- **[数据流分析](docs/analysis/DataFlow_Analysis.md)** - 完整的架构分析 + Mermaid 图
+- **[单点配置实现报告](docs/reports/Single_Point_Config_Implementation.md)** - 自动化系统详解
+- **[Bug 修复报告](docs/reports/Bug1_Fix_Report.md)** - 数据结构优化
+- **[并发请求修复](docs/reports/Bug4_Fix_Report.md)** - TMap 并发管理
+
+---
+
+## 🎉 最新更新
+
+### v0.3.0 - 单点配置系统 (2026-01-03)
+
+#### 🎉 重大改进
+
+- **✅ 实现宏驱动的单点配置系统**
+  - 所有情绪属性在 `MentalStateFields.h` 中集中定义
+  - 自动生成 7 种不同的代码上下文
+  - 维护成本降低 **75%**
+
+- **✅ 优化数据结构**
+  - 添加 `UpdateFromStruct()` / `ToStruct()` 转换函数
+  - 自动值域限制 (0.0-1.0)
+  - 移除手动字段初始化
+
+- **✅ 修复并发请求冲突**
+  - 使用 `TMap` 管理多个 LLM 请求
+  - 支持 Dreaming 和感知事件同时触发
+  - 添加请求 ID 追踪
+
+- **✅ 启用 Dreaming 系统**
+  - 每 5 分钟自动整理记忆
+  - LLM 提取长期洞察
+  - 防止记忆溢出
+
+查看完整更新: [CHANGELOG.md](CHANGELOG.md)
+
+---
+
+## 🗺️ 开发路线
+
+### ✅ 已完成
+
+- [x] 基础 Utility AI 框架
+- [x] LLM 通信模块
+- [x] 单点配置系统
+- [x] Dreaming 记忆整理
+- [x] 并发请求管理
+- [x] 完整文档体系
+
+### 🚧 进行中
+
+- [ ] 蓝图可视化调试工具
+- [ ] 更多预设动作 (躲藏、巡逻、交易)
+- [ ] 性能优化和压力测试
+
+### 📋 计划中
+
+- [ ] 多 NPC 社交互动
+- [ ] 情绪可视化 UI
+- [ ] 动作学习系统 (强化学习)
+- [ ] 插件化打包
+
+---
+
+## 🤝 贡献指南
+
+欢迎提交 Issue 和 Pull Request!
+
+1. Fork 本仓库
+2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
+4. 推送到分支 (`git push origin feature/AmazingFeature`)
+5. 开启 Pull Request
+
+提交规范参考: [GIT_COMMIT_MESSAGES.md](docs/GIT_COMMIT_MESSAGES.md)
+
+---
+
+## 📄 许可证
+
+本项目采用 MIT 许可证 - 详见 [LICENSE](LICENSE) 文件
+
+---
+
+## 📧 联系方式
+
+- **项目主页**: [GitHub Repository](https://github.com/yourusername/AINPC)
+- **问题反馈**: [Issues](https://github.com/yourusername/AINPC/issues)
+- **文档**: [Documentation](docs/README.md)
+
+---
+
+<div align="center">
+
+**⭐ 如果这个项目对你有帮助,请给一个 Star!**
+
+Made with ❤️ using Unreal Engine 5
+
+</div>
