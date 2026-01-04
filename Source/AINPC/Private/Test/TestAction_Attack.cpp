@@ -20,6 +20,8 @@ void UTestAction_Attack::Enter_Implementation(AAIController* Controller)
 	{
 		ExecutionTime = World->GetTimeSeconds();
 	}
+	
+	// 重置完成标志，允许重新执行
 	bIsComplete = false;
 	
 	UE_LOG(LogTemp, Warning, TEXT("═══════════════════════════════════════"));

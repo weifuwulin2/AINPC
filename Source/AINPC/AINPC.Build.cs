@@ -23,7 +23,8 @@ public class AINPC : ModuleRules
 			// 新增的模块：
 			"HTTP", 
 			"Json", 
-			"JsonUtilities"
+			"JsonUtilities",
+			"NavigationSystem"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });

@@ -308,32 +308,14 @@ AINPC/
 
 ### 🚧 进行中
 
-- [ ] 蓝图可视化调试工具
-- [ ] 更多预设动作 (躲藏、巡逻、交易)
-- [ ] 性能优化和压力测试
+- [ ] action测试
 
 ### 📋 计划中
 
 - [ ] 多 NPC 社交互动
 - [ ] 情绪可视化 UI
-- [ ] 动作学习系统 (强化学习)
-- [ ] 插件化打包
 
----
 
-## 🤝 贡献指南
-
-欢迎提交 Issue 和 Pull Request!
-
-1. Fork 本仓库
-2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
-4. 推送到分支 (`git push origin feature/AmazingFeature`)
-5. 开启 Pull Request
-
-提交规范参考: [GIT_COMMIT_MESSAGES.md](docs/GIT_COMMIT_MESSAGES.md)
-
----
 
 ## 📄 许可证
 
@@ -343,8 +325,8 @@ AINPC/
 
 ## 📧 联系方式
 
-- **项目主页**: [GitHub Repository](https://github.com/yourusername/AINPC)
-- **问题反馈**: [Issues](https://github.com/yourusername/AINPC/issues)
+- **项目主页**: [GitHub Repository](https://github.com/weifuwulin2/AINPC)
+- **问题反馈**: [Issues](https://github.com/weifuwulin2/AINPC/issues)
 - **文档**: [Documentation](docs/README.md)
 
 ---

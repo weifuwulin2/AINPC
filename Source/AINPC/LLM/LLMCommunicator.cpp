@@ -11,38 +11,15 @@ void ULLMCommunicator::Init(const FString& InApiKey, const FString& InUrl)
 {
     ApiKey = InApiKey;
     ApiUrl = InUrl;
-    
-    // 🔍 调试日志
-    UE_LOG(LogTemp, Warning, TEXT("=== LLMCommunicator::Init ==="));
-    UE_LOG(LogTemp, Warning, TEXT("[LLM Init] ApiKey: %s"), ApiKey.IsEmpty() ? TEXT("<EMPTY>") : TEXT("<SET>"));
-    UE_LOG(LogTemp, Warning, TEXT("[LLM Init] ApiUrl: %s"), ApiUrl.IsEmpty() ? TEXT("<EMPTY>") : *ApiUrl);
-    UE_LOG(LogTemp, Warning, TEXT("============================"));
 }
 
 void ULLMCommunicator::SendRequest(const FString& UserInput, FOnLLMResponse OnComplete)
 {
-    // 🔍 调试：检查 URL 状态
-    UE_LOG(LogTemp, Warning, TEXT("[LLM SendRequest] About to send request"));
-    UE_LOG(LogTemp, Warning, TEXT("[LLM SendRequest] ApiUrl: %s"), ApiUrl.IsEmpty() ? TEXT("<EMPTY>") : *ApiUrl);
-    UE_LOG(LogTemp, Warning, TEXT("[LLM SendRequest] ApiKey: %s"), ApiKey.IsEmpty() ? TEXT("<EMPTY>") : TEXT("<SET>"));
-    
-    // ⚠️ 安全检查：URL 不能为空
-    if (ApiUrl.IsEmpty())
-    {
-        UE_LOG(LogTemp, Error, TEXT("[LLM] FATAL: ApiUrl is empty! Cannot send request."));
-        UE_LOG(LogTemp, Error, TEXT("[LLM] Did you call Init() with a valid URL?"));
-        FMentalState EmptyState;
-        OnComplete.ExecuteIfBound(false, EmptyState);
-        return;
-    }
-    
     // 1. Create the HTTP Request first
     FHttpRequestRef Request = FHttpModule::Get().CreateRequest();
     Request->SetURL(ApiUrl);
     Request->SetVerb("POST");
     Request->SetHeader("Content-Type", "application/json");
-    
-    UE_LOG(LogTemp, Log, TEXT("[LLM] Request URL set to: %s"), *ApiUrl);
     
     // Safety check for API Key
     if (ApiKey.IsEmpty())
@@ -115,14 +92,20 @@ void ULLMCommunicator::SendRequest(const FString& UserInput, FOnLLMResponse OnCo
 
     Request->SetContentAsString(RequestBody);
 
+    // Detailed logging: Print full request information
+    UE_LOG(LogTemp, Warning, TEXT("========================================"));
+    UE_LOG(LogTemp, Warning, TEXT("[LLM] >>> Sending Request"));
+    UE_LOG(LogTemp, Log, TEXT("[LLM] URL: %s"), *ApiUrl);
+    UE_LOG(LogTemp, Log, TEXT("[LLM] User Input: %s"), *UserInput);
+    UE_LOG(LogTemp, Verbose, TEXT("[LLM] Full Request Body:\n%s"), *RequestBody);
+    UE_LOG(LogTemp, Warning, TEXT("========================================"));
+
     // ✅ 4. Store callback in TMap (instead of overwriting CurrentCallback)
     PendingCallbacks.Add(Request, OnComplete);
 
     // 5. Bind Callback & Send
     Request->OnProcessRequestComplete().BindUObject(this, &ULLMCommunicator::OnResponseReceived);
     Request->ProcessRequest();
-
-    //UE_LOG(LogTemp, Log, TEXT("[LLM] Request Sent (ID: %p): %s"), Request.Get(), *UserInput);
 }
 
 void ULLMCommunicator::OnResponseReceived(FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful)
@@ -141,25 +124,35 @@ void ULLMCommunicator::OnResponseReceived(FHttpRequestPtr Request, FHttpResponse
     FOnLLMResponse Callback = *CallbackPtr;
     PendingCallbacks.Remove(Request);
     
-    UE_LOG(LogTemp, Log, TEXT("[LLM] Processing response for request %p"), Request.Get());
+    // Detailed logging: Start processing response
+    UE_LOG(LogTemp, Warning, TEXT("========================================"));
+    UE_LOG(LogTemp, Warning, TEXT("[LLM] <<< Response Received"));
 
     // --- Network & Protocol Validation ---
     if (!bWasSuccessful || !Response.IsValid())
     {
-        UE_LOG(LogTemp, Error, TEXT("[LLM] Network Connection Failed."));
+        UE_LOG(LogTemp, Error, TEXT("[LLM] ERROR: Network Connection Failed."));
+        UE_LOG(LogTemp, Warning, TEXT("========================================"));
         Callback.ExecuteIfBound(false, ResultState);
         return;
     }
 
-    if (Response->GetResponseCode() != 200)
+    int32 ResponseCode = Response->GetResponseCode();
+    FString ResponseString = Response->GetContentAsString();
+    
+    UE_LOG(LogTemp, Log, TEXT("[LLM] Response Code: %d"), ResponseCode);
+    UE_LOG(LogTemp, Verbose, TEXT("[LLM] Full Response:\n%s"), *ResponseString);
+    
+    if (ResponseCode != 200)
     {
-        UE_LOG(LogTemp, Error, TEXT("[LLM] API Error Code: %d. Response: %s"), Response->GetResponseCode(), *Response->GetContentAsString());
+        UE_LOG(LogTemp, Error, TEXT("[LLM] ERROR: API Error Code: %d"), ResponseCode);
+        UE_LOG(LogTemp, Error, TEXT("[LLM] Error Response: %s"), *ResponseString);
+        UE_LOG(LogTemp, Warning, TEXT("========================================"));
         Callback.ExecuteIfBound(false, ResultState);
         return;
     }
 
     // --- Outer JSON Parsing (The API Envelope) ---
-    FString ResponseString = Response->GetContentAsString();
     TSharedPtr<FJsonObject> JsonResponse;
     TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(ResponseString);
 
@@ -178,68 +171,43 @@ void ULLMCommunicator::OnResponseReceived(FHttpRequestPtr Request, FHttpResponse
         TSharedPtr<FJsonObject> MessageObj = FirstChoice->GetObjectField("message");
         FString InnerContentString = MessageObj->GetStringField("content");
 
-        // 🔍 调试：查看 LLM 实际返回的内容
-        UE_LOG(LogTemp, Warning, TEXT("=== LLM Raw Response ==="));
-        UE_LOG(LogTemp, Warning, TEXT("%s"), *InnerContentString);
-        UE_LOG(LogTemp, Warning, TEXT("======================="));
-
         // Cleanup Markdown if present (e.g. ```json ... ```)
         InnerContentString = InnerContentString.Replace(TEXT("```json"), TEXT("")).Replace(TEXT("```"), TEXT("")).TrimStartAndEnd();
 
-        // --- Inner JSON Parsing (The Actual Data) ---
-        // 方法 1: 尝试使用 FJsonObjectConverter (推荐)
-        bool bConverterSuccess = FJsonObjectConverter::JsonObjectStringToUStruct(InnerContentString, &ResultState, 0, 0);
+        // 🔍 详细日志：打印 LLM 返回的内容
+        UE_LOG(LogTemp, Log, TEXT("[LLM] Content from LLM:\n%s"), *InnerContentString);
+
+        // --- Manual JSON Parsing (More Reliable) ---
+        TSharedPtr<FJsonObject> InnerJsonObject;
+        TSharedRef<TJsonReader<>> InnerReader = TJsonReaderFactory<>::Create(InnerContentString);
         
-        // 验证解析结果：如果 Anger 和 Fear 都是 0，但 JSON 中不是 0，说明解析失败
-        bool bNeedsManualParsing = false;
-        if (bConverterSuccess)
+        if (FJsonSerializer::Deserialize(InnerReader, InnerJsonObject) && InnerJsonObject.IsValid())
         {
-            // 检查是否所有关键字段都是 0（这通常不正常）
-            if (ResultState.Anger == 0.0f && ResultState.Fear == 0.0f && InnerContentString.Contains(TEXT("\"Anger\":")))
-            {
-                UE_LOG(LogTemp, Warning, TEXT("[LLM] JsonObjectConverter returned 0 for Anger/Fear, will try manual parsing"));
-                bNeedsManualParsing = true;
-            }
-            else
-            {
-                // SUCCESS!
-                UE_LOG(LogTemp, Log, TEXT("[LLM] JsonObjectConverter success! Anger=%.2f, Fear=%.2f, Confidence=%.2f"), 
-                    ResultState.Anger, ResultState.Fear, ResultState.Confidence);
-                Callback.ExecuteIfBound(true, ResultState);
-                return; // 提前返回，不执行手动解析
-            }
+            // 手动提取每个字段，使用宏自动生成
+            #define EXTRACT_FIELD(Name, DefaultValue, DisplayName, Description) \
+                ResultState.Name = InnerJsonObject->HasField(TEXT(#Name)) \
+                    ? InnerJsonObject->GetNumberField(TEXT(#Name)) \
+                    : DefaultValue;
+            
+            MENTAL_STATE_FIELDS(EXTRACT_FIELD)
+            
+            #undef EXTRACT_FIELD
+            
+            // SUCCESS!
+            UE_LOG(LogTemp, Warning, TEXT("[LLM] SUCCESS! Parsed MentalState:"));
+            UE_LOG(LogTemp, Log, TEXT("  Anger=%.2f, Fear=%.2f, Confidence=%.2f"), 
+                   ResultState.Anger, ResultState.Fear, ResultState.Confidence);
+            UE_LOG(LogTemp, Log, TEXT("  SocialBattery=%.2f, Hunger=%.2f"), 
+                   ResultState.SocialBattery, ResultState.Hunger);
+            UE_LOG(LogTemp, Warning, TEXT("========================================"));
+            Callback.ExecuteIfBound(true, ResultState);
         }
-        
-        // 方法 2: 手动解析 JSON (备用方案或 Converter 失败时使用)
-        if (!bConverterSuccess || bNeedsManualParsing)
+        else
         {
-            UE_LOG(LogTemp, Warning, TEXT("[LLM] Using manual JSON parsing..."));
-            
-            TSharedPtr<FJsonObject> InnerJsonObject;
-            TSharedRef<TJsonReader<>> InnerReader = TJsonReaderFactory<>::Create(InnerContentString);
-            
-            if (FJsonSerializer::Deserialize(InnerReader, InnerJsonObject) && InnerJsonObject.IsValid())
-            {
-                // 手动提取每个字段
-                ResultState.Anger = InnerJsonObject->GetNumberField(TEXT("Anger"));
-                ResultState.Fear = InnerJsonObject->GetNumberField(TEXT("Fear"));
-                ResultState.Confidence = InnerJsonObject->GetNumberField(TEXT("Confidence"));
-                
-                // 可选：提取其他字段
-                if (InnerJsonObject->HasField(TEXT("SocialBattery")))
-                    ResultState.SocialBattery = InnerJsonObject->GetNumberField(TEXT("SocialBattery"));
-                if (InnerJsonObject->HasField(TEXT("Hunger")))
-                    ResultState.Hunger = InnerJsonObject->GetNumberField(TEXT("Hunger"));
-                
-                UE_LOG(LogTemp, Log, TEXT("[LLM] Manual parsing success! Anger=%.2f, Fear=%.2f, Confidence=%.2f"), 
-                    ResultState.Anger, ResultState.Fear, ResultState.Confidence);
-                Callback.ExecuteIfBound(true, ResultState);
-            }
-            else
-            {
-                UE_LOG(LogTemp, Error, TEXT("[LLM] Both parsing methods failed. Content was: %s"), *InnerContentString);
-                Callback.ExecuteIfBound(false, ResultState);
-            }
+            UE_LOG(LogTemp, Error, TEXT("[LLM] ERROR: Failed to parse inner JSON!"));
+            UE_LOG(LogTemp, Error, TEXT("[LLM] Content was: %s"), *InnerContentString);
+            UE_LOG(LogTemp, Warning, TEXT("========================================"));
+            Callback.ExecuteIfBound(false, ResultState);
         }
     }
     else

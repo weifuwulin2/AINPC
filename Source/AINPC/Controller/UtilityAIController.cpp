@@ -7,6 +7,7 @@
 #include "UtilityAI/UNPCMentalState.h" 
 
 // 感知相关头文件
+#include "Engine/DamageEvents.h"
 #include "LLM/LLMCommunicator.h"
 #include "Perception/AIPerceptionComponent.h"
 #include "Perception/AISenseConfig_Sight.h"

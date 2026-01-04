@@ -25,16 +25,11 @@ void UUtilityActionBase::InitFromConfig(const FUtilityActionConfig& Config)
 
 float UUtilityActionBase::CalculateScore(UNPCMentalState* MentalState, AAIController* Controller)
 {
-    // 🔍 调试：显示 Action 信息
-    UE_LOG(LogTemp, Warning, TEXT("[CalculateScore] Action=%s, Considerations=%d, BaseWeight=%.2f"),
-        *ActionName, Considerations.Num(), BaseWeight);
-
     // 0. 安全检查
     if (!Controller) return 0.0f;
     
-    // 如果没有任何 Consideration，直接返回 BaseWeight
-    // 这对于 Idle 等不需要条件的动作很重要
-    if (Considerations.Num() == 0)
+    // ✅ 如果没有 Considerations，直接返回 BaseWeight（这是合理的默认行为）
+    if (Considerations.Num() == 0) 
     {
         return BaseWeight;
     }
@@ -44,16 +39,9 @@ float UUtilityActionBase::CalculateScore(UNPCMentalState* MentalState, AAIContro
     if (UWorld* World = Controller->GetWorld())
     {
         CurrentTime = World->GetTimeSeconds();
-        float TimeSinceLastExecution = CurrentTime - LastExecutedTime;
-        
-        // 🔍 调试日志
-        UE_LOG(LogTemp, Warning, TEXT("[CalculateScore] %s: CooldownTime=%.2f, TimeSince=%.2f, LastExecuted=%.2f"),
-            *ActionName, CooldownTime, TimeSinceLastExecution, LastExecutedTime);
-        
         // 如果还在冷却期内，直接返回 0 分
-        if (TimeSinceLastExecution < CooldownTime)
+        if (CurrentTime - LastExecutedTime < CooldownTime)
         {
-            UE_LOG(LogTemp, Warning, TEXT("[CalculateScore] %s is on cooldown!"), *ActionName);
             return 0.0f; 
         }
     }
@@ -61,8 +49,17 @@ float UUtilityActionBase::CalculateScore(UNPCMentalState* MentalState, AAIContro
     // 2. 多因子计算 (Multi-Factor Scoring)
     float FinalScore = BaseWeight;
 
-    for (const FUtilityConsideration& Factor : Considerations)
+    // 🔍 调试：打印初始分数
+    static bool bEnableDetailedLog = true; // 设为 true 来启用详细日志
+    if (bEnableDetailedLog)
     {
+        UE_LOG(LogTemp, Warning, TEXT("    [%s] Starting calculation: BaseWeight=%.2f"), *ActionName, BaseWeight);
+    }
+
+    for (int32 i = 0; i < Considerations.Num(); ++i)
+    {
+        const FUtilityConsideration& Factor = Considerations[i];
+        
         // A. 获取原始数据 (0~1 或 实际值)
         float RawValue = GetConsiderationValue(Factor.InputType, MentalState, Controller);
 
@@ -72,19 +69,38 @@ float UUtilityActionBase::CalculateScore(UNPCMentalState* MentalState, AAIContro
                             ? Factor.ResponseCurve->GetFloatValue(RawValue) 
                             : FMath::Clamp(RawValue, 0.0f, 1.0f);
 
-        // 🔍 调试日志
-        UE_LOG(LogTemp, Warning, TEXT("[Action] Consideration: RawValue=%.2f, FactorScore=%.2f, HasCurve=%s"),
-            RawValue, FactorScore, Factor.ResponseCurve ? TEXT("Yes") : TEXT("No"));
+        // 🔍 调试：打印每个因子的计算过程
+        if (bEnableDetailedLog)
+        {
+            UE_LOG(LogTemp, Warning, TEXT("      Factor[%d]: RawValue=%.3f, FactorScore=%.3f, HasCurve=%s"), 
+                   i, RawValue, FactorScore, Factor.ResponseCurve ? TEXT("Yes") : TEXT("No"));
+        }
 
         // C. 乘法累积 (核心：任何一个因子为0，总分为0)
+        float OldScore = FinalScore;
         FinalScore *= FactorScore;
+
+        // 🔍 调试：打印乘法结果
+        if (bEnableDetailedLog)
+        {
+            UE_LOG(LogTemp, Warning, TEXT("      %.3f * %.3f = %.3f"), OldScore, FactorScore, FinalScore);
+        }
 
         // 优化：如果分数已经归零，直接退出，节省性能
         if (FinalScore <= UE_KINDA_SMALL_NUMBER) 
         {
-            UE_LOG(LogTemp, Warning, TEXT("[Action] Score became 0, early exit"));
+            if (bEnableDetailedLog)
+            {
+                UE_LOG(LogTemp, Warning, TEXT("      ⚠️ Score became 0! Stopping calculation."));
+            }
             return 0.0f;
         }
+    }
+
+    // 🔍 调试：打印最终分数
+    if (bEnableDetailedLog)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("    [%s] Final Score: %.3f"), *ActionName, FinalScore);
     }
 
     // 3. 惯性奖励 (Inertia / Momentum)
