@@ -26,4 +26,22 @@ public:
 private:
 	float ExecutionTime;
 	int32 IdleCounter;
+	
+	// 随机移动速度
+	UPROPERTY(EditAnywhere, Category = "Idle")
+	float WanderSpeed = 200.0f;
+	
+	// 移动范围
+	UPROPERTY(EditAnywhere, Category = "Idle")
+	float WanderRadius = 500.0f;
+	
+	// 改变方向的时间间隔
+	UPROPERTY(EditAnywhere, Category = "Idle")
+	float DirectionChangeInterval = 3.0f;
+	
+	// 下次改变方向的时间
+	float NextDirectionChangeTime;
+	
+	// 当前目标位置
+	FVector CurrentTargetLocation;
 };

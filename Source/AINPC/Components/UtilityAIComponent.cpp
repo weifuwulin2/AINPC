@@ -76,6 +76,17 @@ void UUtilityAIComponent::EvaluateAndDecide()
     {
         UE_LOG(LogTemp, Warning, TEXT("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"));
         UE_LOG(LogTemp, Warning, TEXT("[UtilityAI] Evaluating Actions (Count: %d)"), AvailableActions.Num());
+        
+        // 显示当前正在执行的 Action
+        if (CurrentAction)
+        {
+            UE_LOG(LogTemp, Log, TEXT("[UtilityAI] Currently Running: %s"), *CurrentAction->ActionName);
+        }
+        else
+        {
+            UE_LOG(LogTemp, Log, TEXT("[UtilityAI] Currently Running: None"));
+        }
+        
         if (State)
         {
             UE_LOG(LogTemp, Log, TEXT("[UtilityAI] MentalState: Anger=%.2f, Fear=%.2f, Confidence=%.2f"), 

@@ -34,4 +34,23 @@ private:
 	
 	// 是否完成
 	bool bIsComplete;
+	
+	// 攻击范围
+	UPROPERTY(EditAnywhere, Category = "Attack")
+	float AttackRange = 200.0f;
+	
+	// 伤害值
+	UPROPERTY(EditAnywhere, Category = "Attack")
+	float Damage = 10.0f;
+	
+	// 攻击冷却时间
+	UPROPERTY(EditAnywhere, Category = "Attack")
+	float AttackCooldown = 1.0f;
+	
+	// 上次攻击时间
+	float LastAttackTime;
+	
+	// 移动速度
+	UPROPERTY(EditAnywhere, Category = "Attack")
+	float MoveSpeed = 400.0f;
 };

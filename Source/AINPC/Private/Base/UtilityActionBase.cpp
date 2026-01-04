@@ -63,11 +63,47 @@ float UUtilityActionBase::CalculateScore(UNPCMentalState* MentalState, AAIContro
         // A. 获取原始数据 (0~1 或 实际值)
         float RawValue = GetConsiderationValue(Factor.InputType, MentalState, Controller);
 
-        // B. 曲线映射
-        // 如果有曲线，用曲线查表；如果没有，直接用原始值截断到 0~1
-        float FactorScore = (Factor.ResponseCurve) 
-                            ? Factor.ResponseCurve->GetFloatValue(RawValue) 
-                            : FMath::Clamp(RawValue, 0.0f, 1.0f);
+        // B. 根据 ConsiderationType 选择计算方式
+        float FactorScore = 0.0f;
+        
+        if (Factor.ConsiderationType == EConsiderationType::EmotionWeight)
+        {
+            // 情绪权重模式：FactorScore = RawValue * Weight
+            FactorScore = RawValue * Factor.Weight;
+            
+            if (bEnableDetailedLog)
+            {
+                UE_LOG(LogTemp, Warning, TEXT("      [Emotion] %.3f * Weight(%.2f) = %.3f"), 
+                       RawValue, Factor.Weight, FactorScore);
+            }
+        }
+        else // EConsiderationType::EnvironmentCurve
+        {
+            if (Factor.ResponseCurve)
+            {
+                // 环境曲线模式：FactorScore = Curve(RawValue)
+                FactorScore = Factor.ResponseCurve->GetFloatValue(RawValue);
+                
+                if (bEnableDetailedLog)
+                {
+                    UE_LOG(LogTemp, Warning, TEXT("      [Environment] Curve(%.3f) = %.3f"), RawValue, FactorScore);
+                    
+                    float MinTime, MaxTime;
+                    Factor.ResponseCurve->GetTimeRange(MinTime, MaxTime);
+                    UE_LOG(LogTemp, Warning, TEXT("      Curve range: [%.3f, %.3f]"), MinTime, MaxTime);
+                }
+            }
+            else
+            {
+                // 没有曲线，使用截断值
+                FactorScore = FMath::Clamp(RawValue, 0.0f, 1.0f);
+                
+                if (bEnableDetailedLog)
+                {
+                    UE_LOG(LogTemp, Warning, TEXT("      [Environment] No curve, clamped: %.3f"), FactorScore);
+                }
+            }
+        }
 
         // 🔍 调试：打印每个因子的计算过程
         if (bEnableDetailedLog)

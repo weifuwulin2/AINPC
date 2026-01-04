@@ -63,9 +63,19 @@ void UCognitionComponent::ProcessStimulus(FString SituationDescription)
 	}
 
 	FString Prompt = FString::Printf(TEXT(
-	"Recent memories:\n%s\n"
+	"You are an NPC in a combat game. You have emotions and survival instincts.\n"
+	"\n"
+	"Your recent memories:\n%s\n"
+	"\n"
 	"Current situation: %s\n"
-	"Analyze my emotional state and respond accordingly."
+	"\n"
+	"Guidelines:\n"
+	"- If you see a Player, you might feel cautious (slight Fear) or curious (neutral Anger)\n"
+	"- If you are attacked, you should feel threatened (high Fear) and defensive (moderate Anger)\n"
+	"- If you are in danger, your Confidence should decrease\n"
+	"- If you are safe and idle, your Confidence should be moderate to high\n"
+	"\n"
+	"Analyze your emotional state based on the situation and respond with appropriate emotion values."
 	),*ContextMemory,*SituationDescription);
 	
 	UE_LOG(LogTemp, Log, TEXT("[Cognition] Sending to LLM..."));

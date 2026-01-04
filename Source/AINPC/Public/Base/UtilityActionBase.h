@@ -39,17 +39,39 @@ enum class EUtilityInputType : uint8
 	IsTargetPlayer   // 环境：目标是否是玩家
 };
 
+// 考量类型：情绪权重 vs 环境曲线
+UENUM(BlueprintType)
+enum class EConsiderationType : uint8
+{
+	EmotionWeight,    // 情绪权重：直接使用 LLM 值 * Weight
+	EnvironmentCurve  // 环境曲线：使用 ResponseCurve 映射
+};
+
 USTRUCT(BlueprintType)
 struct FUtilityConsideration
 {
     GENERATED_BODY()
 
+    // 考量类型：情绪还是环境？
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Consideration")
+    EConsiderationType ConsiderationType = EConsiderationType::EmotionWeight;
+
     // 输入源：我们要考量什么？
-    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Consideration")
     EUtilityInputType InputType;
 
-    // 反应曲线：数值如何映射为分数？(0~1)
-    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    // === 情绪权重模式 ===
+    // 仅在 ConsiderationType = EmotionWeight 时使用
+    // 计算：FactorScore = RawValue * Weight
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Emotion Weight", 
+              meta = (EditCondition = "ConsiderationType == EConsiderationType::EmotionWeight", ClampMin = "0.0", ClampMax = "10.0"))
+    float Weight = 1.0f;
+
+    // === 环境曲线模式 ===
+    // 仅在 ConsiderationType = EnvironmentCurve 时使用
+    // 计算：FactorScore = Curve(RawValue)
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Environment Curve",
+              meta = (EditCondition = "ConsiderationType == EConsiderationType::EnvironmentCurve"))
     UCurveFloat* ResponseCurve;
 };
 

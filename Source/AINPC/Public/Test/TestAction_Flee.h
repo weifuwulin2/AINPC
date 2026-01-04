@@ -31,4 +31,12 @@ private:
 	
 	// 是否完成
 	bool bIsComplete;
+	
+	// 逃跑速度
+	UPROPERTY(EditAnywhere, Category = "Flee")
+	float FleeSpeed = 600.0f;
+	
+	// 安全距离
+	UPROPERTY(EditAnywhere, Category = "Flee")
+	float SafeDistance = 1000.0f;
 };
