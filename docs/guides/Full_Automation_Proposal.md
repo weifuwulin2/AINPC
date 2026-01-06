@@ -1,14 +1,15 @@
-# ✅ 完全自动化架构 - 实现方案
+# ✅ 完全自动化架构 - 实现方案 / Full Automation Architecture - Implementation Proposal
 
-## 🎯 目标
+## 🎯 目标 / Goal
 
 **只需在 `MentalStateFields.h` 中定义属性名，其他全部自动生成！**
+**Only define attribute names in `MentalStateFields.h`, everything else is auto-generated!**
 
 ---
 
-## 📊 当前问题
+## 📊 当前问题 / Current Problem
 
-### 需要手动修改的地方 (3个)
+### 需要手动修改的地方 (3个) / Places Requiring Manual Modification (3)
 
 1. **MentalStateFields.h** - 定义属性
 2. **EUtilityInputType** - 添加枚举值 ❌
@@ -16,16 +17,16 @@
 
 ---
 
-## ✅ 解决方案
+## ✅ 解决方案 / Solution
 
-### 方案A: 使用宏自动生成枚举 (推荐)
+### 方案A: 使用宏自动生成枚举 (推荐) / Solution A: Auto-generate Enums with Macros (Recommended)
 
-**优点:**
+**优点 / Advantages:**
 - 完全自动化
 - 编译时检查
 - 类型安全
 
-**实现:**
+**实现 / Implementation:**
 
 ```cpp
 // UtilityActionBase.h
@@ -50,7 +51,7 @@ enum class EUtilityInputType : uint8
 };
 ```
 
-**GetConsiderationValue() 也自动生成:**
+**GetConsiderationValue() 也自动生成 / GetConsiderationValue() is also auto-generated:**
 
 ```cpp
 float UUtilityActionBase::GetConsiderationValue(EUtilityInputType InputType, UNPCMentalState* State, AAIController* Controller)
@@ -83,18 +84,18 @@ float UUtilityActionBase::GetConsiderationValue(EUtilityInputType InputType, UNP
 
 ---
 
-### 方案B: 使用字符串映射 (更灵活)
+### 方案B: 使用字符串映射 (更灵活) / Solution B: Use String Mapping (More Flexible)
 
-**优点:**
+**优点 / Advantages:**
 - 完全动态
 - 可以运行时添加
 - 不需要枚举
 
-**缺点:**
+**缺点 / Disadvantages:**
 - 失去类型安全
 - 性能略低
 
-**实现:**
+**实现 / Implementation:**
 
 ```cpp
 // 不使用枚举，直接用字符串
@@ -123,32 +124,32 @@ float GetValue(const FString& InputName, UNPCMentalState* State)
 
 ---
 
-## 🎯 我的建议
+## 🎯 我的建议 / My Recommendation
 
-### 使用方案A (宏自动生成)
+### 使用方案A (宏自动生成) / Use Solution A (Macro Auto-generation)
 
-**原因:**
+**原因 / Reasons:**
 1. 保持类型安全
 2. 性能最优
 3. 编译时检查
 4. 与现有代码兼容
 
-**实现时间:** ~20分钟
+**实现时间 / Implementation Time:** ~20分钟 / ~20 minutes
 
 ---
 
-## 📝 实现后的效果
+## 📝 实现后的效果 / Effect After Implementation
 
-### 添加新属性 "Boredom"
+### 添加新属性 "Boredom" / Adding New Attribute "Boredom"
 
-**步骤1:** 只需修改 `MentalStateFields.h`
+**步骤1 / Step 1:** 只需修改 `MentalStateFields.h` / Only modify `MentalStateFields.h`
 ```cpp
 FIELD(Boredom, 0.0f, "Boredom", "无聊值")
 ```
 
-**步骤2:** 重新编译
+**步骤2 / Step 2:** 重新编译 / Recompile
 
-**自动更新:**
+**自动更新 / Auto-updated:**
 - ✅ `FMentalState` 有 `Boredom` 字段
 - ✅ `UNPCMentalState` 有 `Boredom` 属性
 - ✅ `EUtilityInputType` 有 `Boredom` 枚举值 ← **新增**
@@ -157,11 +158,11 @@ FIELD(Boredom, 0.0f, "Boredom", "无聊值")
 - ✅ 转换函数处理 `Boredom`
 - ✅ LLM Prompt 包含 `Boredom`
 
-**完全自动化！** 🎉
+**完全自动化！/ Fully Automated!** 🎉
 
 ---
 
-## 🤔 你的选择
+## 🤔 你的选择 / Your Choice
 
 1. **实现方案A** - 完全自动化 (推荐)
 2. **保持现状** - 手动添加枚举和case (简单但需要维护)
@@ -169,7 +170,7 @@ FIELD(Boredom, 0.0f, "Boredom", "无聊值")
 
 ---
 
-## 📊 对比
+## 📊 对比 / Comparison
 
 | 特性 | 当前 | 方案A | 方案B |
 |------|------|-------|-------|

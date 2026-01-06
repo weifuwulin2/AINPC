@@ -13,7 +13,7 @@
 
 ---
 
-## 📖 目录
+## 📖 目录 / Table of Contents
 
 - [项目简介](#-项目简介)
 - [核心特性](#-核心特性)
@@ -26,14 +26,15 @@
 
 ---
 
-## 🎯 项目简介
+## 🎯 项目简介 / Project Introduction
 
 **AINPC** 是一个创新的 AI NPC 系统,旨在解决传统 LLM Agent 响应慢、动作僵硬的问题。通过**双层解耦设计**,实现了智能决策与实时响应的完美结合:
+**AINPC** is an innovative AI NPC system designed to solve the problems of slow response and rigid actions in traditional LLM Agents. Through a **dual-layer decoupled design**, it achieves a perfect combination of intelligent decision-making and real-time response:
 
 - **🧠 认知层 (Cognitive Layer)**: 使用 LLM 处理复杂的非结构化数据(对话、环境感知),输出结构化的情绪参数
 - **💪 行动层 (Action Layer)**: 使用 Utility AI 系统基于情绪参数实时计算最优动作,保证**毫秒级响应**
 
-### 核心优势
+### 核心优势 / Core Advantages
 
 | 传统 LLM Agent | AINPC 混合架构 |
 |:--------------|:--------------|
@@ -44,7 +45,7 @@
 
 ---
 
-## ✨ 核心特性
+## ✨ 核心特性 / Core Features
 
 ### 🔧 单点配置系统 (Single-Point Configuration)
 
@@ -58,7 +59,7 @@
     FIELD(Confidence, 0.5f, "自信", "影响对抗策略")
 ```
 
-**自动生成**:
+**自动生成 / Auto-generated**:
 - ✅ `FMentalState` 结构体字段
 - ✅ `UNPCMentalState` 类属性 (含完整 UPROPERTY 元数据)
 - ✅ 构造函数初始化代码
@@ -67,9 +68,10 @@
 - ✅ LLM Prompt 字段列表
 - ✅ Utility AI 的 `GetConsiderationValue()` switch cases
 
-**维护成本**: 添加新属性仅需修改 **2 个文件** (原需 8 个)
+**维护成本 / Maintenance Cost**: 添加新属性仅需修改 **2 个文件** (原需 8 个)
+Adding new attributes only requires modifying **2 files** (previously 8)
 
-### 🧩 模块化组件架构
+### 🧩 模块化组件架构 / Modular Component Architecture
 
 ```
 UtilityAIController (总控)
@@ -79,7 +81,7 @@ UtilityAIController (总控)
 └── MentalState          # 共享情绪状态
 ```
 
-### 🌙 Dreaming 系统
+### 🌙 Dreaming 系统 / Dreaming System
 
 定期整理记忆,提取长期洞察:
 - 每 5 分钟自动触发 (可配置)
@@ -87,7 +89,7 @@ UtilityAIController (总控)
 - 提取关键信息存入长期记忆
 - 避免记忆队列溢出
 
-### 🔄 并发请求管理
+### 🔄 并发请求管理 / Concurrent Request Management
 
 使用 `TMap` 管理多个并发 LLM 请求:
 - ✅ Dreaming 和感知事件可同时触发
@@ -96,9 +98,9 @@ UtilityAIController (总控)
 
 ---
 
-## 🏗️ 系统架构
+## 🏗️ 系统架构 / System Architecture
 
-### 数据流向图
+### 数据流向图 / Data Flow Diagram
 
 ```
 ┌─────────────────┐
@@ -137,7 +139,7 @@ UtilityAIController (总控)
 └─────────────────┘
 ```
 
-### 核心类说明
+### 核心类说明 / Core Classes
 
 | 类名 | 职责 | 关键方法 |
 |:-----|:-----|:---------|
@@ -150,15 +152,15 @@ UtilityAIController (总控)
 
 ---
 
-## 🚀 快速开始
+## 🚀 快速开始 / Quick Start
 
-### 环境要求
+### 环境要求 / Requirements
 
 - **Unreal Engine**: 5.3 或更高版本
 - **编译器**: Visual Studio 2022 (Windows) / Xcode (Mac)
 - **LLM API**: OpenAI / Ollama / 自定义端点
 
-### 安装步骤
+### 安装步骤 / Installation Steps
 
 1. **克隆仓库**
    ```bash
@@ -191,7 +193,7 @@ UtilityAIController (总控)
    - 编译项目
    - 启动编辑器
 
-### 快速测试
+### 快速测试 / Quick Test
 
 1. 打开 `Content/Maps/TestLevel`
 2. 放置一个 `BP_AICharacter` 到场景中
@@ -202,7 +204,7 @@ UtilityAIController (总控)
 
 ---
 
-## 📁 项目结构
+## 📁 项目结构 / Project Structure
 
 ```
 AINPC/
@@ -235,9 +237,9 @@ AINPC/
 
 ---
 
-## 📚 文档导航
+## 📚 文档导航 / Documentation
 
-### 快速查找
+### 快速查找 / Quick Reference
 
 | 我想... | 查看文档 |
 |:--------|:---------|
@@ -249,14 +251,14 @@ AINPC/
 | 修复已知 Bug | [BugFixes_Patch.md](docs/guides/BugFixes_Patch.md) |
 | 查看完整文档索引 | [docs/README.md](docs/README.md) |
 
-### 核心指南
+### 核心指南 / Core Guides
 
 - **[单点配置系统指南](docs/guides/Single_Point_Configuration_Guide.md)** - 如何使用宏自动化配置
 - **[Utility AI 配置指南](docs/guides/Utility_AI_Configuration_Guide.md)** - 创建和调试动作
 - **[框架测试指南](docs/guides/Framework_Testing_Guide.md)** - 完整测试流程
 - **[LLM 配置指南](docs/guides/LLM_Config_Guide.md)** - API 设置和故障排查
 
-### 技术报告
+### 技术报告 / Technical Reports
 
 - **[数据流分析](docs/analysis/DataFlow_Analysis.md)** - 完整的架构分析 + Mermaid 图
 - **[单点配置实现报告](docs/reports/Single_Point_Config_Implementation.md)** - 自动化系统详解
@@ -265,11 +267,11 @@ AINPC/
 
 ---
 
-## 🎉 最新更新
+## 🎉 最新更新 / Latest Updates
 
 ### v0.3.0 - 单点配置系统 (2026-01-03)
 
-#### 🎉 重大改进
+#### 🎉 重大改进 / Major Improvements
 
 - **✅ 实现宏驱动的单点配置系统**
   - 所有情绪属性在 `MentalStateFields.h` 中集中定义
@@ -295,9 +297,9 @@ AINPC/
 
 ---
 
-## 🗺️ 开发路线
+## 🗺️ 开发路线 / Roadmap
 
-### ✅ 已完成
+### ✅ 已完成 / Completed
 
 - [x] 基础 Utility AI 框架
 - [x] LLM 通信模块
@@ -306,24 +308,24 @@ AINPC/
 - [x] 并发请求管理
 - [x] 完整文档体系
 
-### 🚧 进行中
+### 🚧 进行中 / In Progress
 
 - [ ] action测试
 
-### 📋 计划中
+### 📋 计划中 / Planned
 
 - [ ] 多 NPC 社交互动
 - [ ] 情绪可视化 UI
 
 
 
-## 📄 许可证
+## 📄 许可证 / License
 
 本项目采用 MIT 许可证 - 详见 [LICENSE](LICENSE) 文件
 
 ---
 
-## 📧 联系方式
+## 📧 联系方式 / Contact
 
 - **项目主页**: [GitHub Repository](https://github.com/weifuwulin2/AINPC)
 - **问题反馈**: [Issues](https://github.com/weifuwulin2/AINPC/issues)

@@ -1,15 +1,16 @@
-# 🧪 框架测试指南
+# 🧪 框架测试指南 / Framework Testing Guide
 
-**目标:** 使用虚假 Action 测试整个 LLM + Utility AI 框架  
-**测试范围:** 感知 → LLM → 情绪更新 → Utility AI → 动作执行
+**目标 / Goal:** 使用虚假 Action 测试整个 LLM + Utility AI 框架 / Test the entire LLM + Utility AI framework using mock Actions  
+**测试范围 / Test Scope:** 感知 → LLM → 情绪更新 → Utility AI → 动作执行 / Perception → LLM → Emotion Update → Utility AI → Action Execution
 
 ---
 
-## 📋 测试准备
+## 📋 测试准备 / Test Preparation
 
-### 1. 已创建的测试 Action
+### 1. 已创建的测试 Action / Created Test Actions
 
 我已经为你创建了 3 个测试用的 Action 类：
+I have created 3 test Action classes for you:
 
 ```
 Source/AINPC/Public/Test/
@@ -25,46 +26,46 @@ Source/AINPC/Private/Test/
 
 ---
 
-## 🎯 测试 Action 说明
+## 🎯 测试 Action 说明 / Test Action Descriptions
 
-### TestAction_Attack (攻击)
+### TestAction_Attack (攻击 / Attack)
 ```cpp
-特点:
-- 执行时间: 2秒
-- 日志级别: Warning (黄色)
-- 用途: 测试高 Anger 时的行为
+特点 / Features:
+- 执行时间 / Execution Time: 2秒 / 2 seconds
+- 日志级别 / Log Level: Warning (黄色 / Yellow)
+- 用途 / Purpose: 测试高 Anger 时的行为 / Test behavior when Anger is high
 
-预期触发条件:
+预期触发条件 / Expected Trigger Conditions:
 - Anger > 0.5
 - Confidence > 0.3
 ```
 
-### TestAction_Flee (逃跑)
+### TestAction_Flee (逃跑 / Flee)
 ```cpp
-特点:
-- 执行时间: 1.5秒
-- 日志级别: Error (红色，突出显示)
-- 用途: 测试高 Fear 时的紧急行为
+特点 / Features:
+- 执行时间 / Execution Time: 1.5秒 / 1.5 seconds
+- 日志级别 / Log Level: Error (红色，突出显示 / Red, highlighted)
+- 用途 / Purpose: 测试高 Fear 时的紧急行为 / Test emergency behavior when Fear is high
 
-预期触发条件:
+预期触发条件 / Expected Trigger Conditions:
 - Fear > 0.7
 - SelfHealth < 0.3 (需要你实现)
 ```
 
-### TestAction_Idle (待机)
+### TestAction_Idle (待机 / Idle)
 ```cpp
-特点:
-- 永不完成（除非被打断）
-- 日志级别: Display (白色)
-- 用途: 作为默认动作
+特点 / Features:
+- 永不完成（除非被打断）/ Never completes (unless interrupted)
+- 日志级别 / Log Level: Display (白色 / White)
+- 用途 / Purpose: 作为默认动作 / Serves as default action
 
-预期触发条件:
+预期触发条件 / Expected Trigger Conditions:
 - 所有其他动作分数都很低时
 ```
 
 ---
 
-## 📝 步骤1: 编译项目
+## 📝 步骤1: 编译项目 / Step 1: Compile Project
 
 ### 添加到项目
 
@@ -87,7 +88,7 @@ Source/AINPC/Private/Test/
 
 ---
 
-## 📝 步骤2: 创建 DataTable
+## 📝 步骤2: 创建 DataTable / Step 2: Create DataTable
 
 ### 2.1 创建 DataTable 资源
 
@@ -172,7 +173,7 @@ InertiaBonus: 0.0
 
 ---
 
-## 📝 步骤3: 配置 AI Controller
+## 📝 步骤3: 配置 AI Controller / Step 3: Configure AI Controller
 
 ### 3.1 在蓝图中设置 DataTable
 
@@ -182,7 +183,7 @@ InertiaBonus: 0.0
 
 ---
 
-## 📝 步骤4: 运行测试
+## 📝 步骤4: 运行测试 / Step 4: Run Tests
 
 ### 4.1 启动游戏
 
@@ -213,7 +214,7 @@ InertiaBonus: 0.0
 
 ---
 
-## 📝 步骤5: 触发感知事件
+## 📝 步骤5: 触发感知事件 / Step 5: Trigger Perception Events
 
 ### 5.1 手动触发（蓝图）
 
@@ -288,9 +289,9 @@ Call: OnStimulusDetected
 
 ---
 
-## 🧪 测试场景
+## 🧪 测试场景 / Test Scenarios
 
-### 场景1: 测试愤怒 → 攻击
+### 场景1: 测试愤怒 → 攻击 / Scenario 1: Test Anger → Attack
 
 **触发:**
 ```
@@ -317,7 +318,7 @@ Idle 分数 = 0.8
 
 ---
 
-### 场景2: 测试恐惧 → 逃跑
+### 场景2: 测试恐惧 → 逃跑 / Scenario 2: Test Fear → Flee
 
 **触发:**
 ```
@@ -344,7 +345,7 @@ Idle 分数 = 0.8
 
 ---
 
-### 场景3: 测试中性 → 待机
+### 场景3: 测试中性 → 待机 / Scenario 3: Test Neutral → Idle
 
 **触发:**
 ```
@@ -371,7 +372,7 @@ Idle 分数 = 0.8
 
 ---
 
-### 场景4: 测试 Dreaming
+### 场景4: 测试 Dreaming / Scenario 4: Test Dreaming
 
 **等待 5 分钟（或修改定时器为30秒）**
 
@@ -387,7 +388,7 @@ Idle 分数 = 0.8
 
 ---
 
-## ✅ 验证清单
+## ✅ 验证清单 / Verification Checklist
 
 ### 编译阶段
 - [ ] 项目编译成功
@@ -421,7 +422,7 @@ Idle 分数 = 0.8
 
 ---
 
-## 🐛 常见问题
+## 🐛 常见问题 / Common Issues
 
 ### 问题1: Action 类找不到
 
@@ -475,7 +476,7 @@ AI 一直执行 Idle
 
 ---
 
-## 📊 性能监控
+## 📊 性能监控 / Performance Monitoring
 
 ### 添加性能日志
 
@@ -499,9 +500,10 @@ UE_LOG(LogTemp, Verbose, TEXT("[Performance] Utility AI evaluation: %.2fms"), El
 
 ---
 
-## 🎉 测试成功标志
+## 🎉 测试成功标志 / Test Success Indicators
 
 当你看到以下完整流程时，说明框架工作正常：
+When you see the following complete flow, it means the framework is working correctly:
 
 ```
 1. ✅ 感知事件触发
@@ -516,7 +518,7 @@ UE_LOG(LogTemp, Verbose, TEXT("[Performance] Utility AI evaluation: %.2fms"), El
 
 ---
 
-## 📁 相关文件
+## 📁 相关文件 / Related Files
 
 - `TestAction_*.h/cpp` - 测试Action类
 - `DT_TestActions` - DataTable配置
@@ -525,6 +527,6 @@ UE_LOG(LogTemp, Verbose, TEXT("[Performance] Utility AI evaluation: %.2fms"), El
 
 ---
 
-**祝测试顺利！** 🚀
+**祝测试顺利！/ Good luck with testing!** 🚀
 
-有问题随时问我！
+有问题随时问我！/ Feel free to ask if you have any questions!

@@ -8,10 +8,12 @@
 #include "UNPCMentalState.generated.h"
 
 // 前置声明：FMentalState 定义在 LLMCommunicator.h
+// Forward declaration: FMentalState is defined in LLMCommunicator.h
 struct FMentalState;
 
 /**
  * NPC 精神状态 (自动生成所有字段)
+ * NPC Mental State (all fields auto-generated)
  */
 UCLASS()
 class AINPC_API UNPCMentalState : public UObject
@@ -23,9 +25,11 @@ public:
 	
 	// =========================================================
 	// 情绪维度 (自动生成)
+	// Emotion Dimensions (auto-generated)
 	// =========================================================
 	
 	// ✅ 使用宏自动生成所有字段
+	// ✅ Use macro to auto-generate all fields
 	#define DECLARE_PROPERTY(Name, DefaultValue, DisplayName, Description) \
 		UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mental State", \
 		          meta = (ClampMin = "0.0", ClampMax = "1.0", DisplayName = DisplayName, ToolTip = Description)) \
@@ -37,26 +41,31 @@ public:
 	
 	// =========================================================
 	// 辅助函数
+	// Helper Functions
 	// =========================================================
 	
 	// 辅助函数：重置状态
+	// Helper function: Reset state
 	UFUNCTION(BlueprintCallable, Category = "Mental State")
 	void ResetState();
 
 	// =========================================================
 	// 数据结构转换函数 (Data Conversion)
+	// Data Structure Conversion Functions
 	// =========================================================
 	
 	/**
 	 * 从 FMentalState 结构体更新当前对象
-	 * @param NewState - LLM返回的结构体数据
+	 * Update current object from FMentalState struct
+	 * @param NewState - LLM返回的结构体数据 / Struct data returned by LLM
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Mental State")
 	void UpdateFromStruct(const FMentalState& NewState);
 	
 	/**
 	 * 将当前对象转换为 FMentalState 结构体
-	 * @return FMentalState 结构体
+	 * Convert current object to FMentalState struct
+	 * @return FMentalState 结构体 / FMentalState struct
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Mental State")
 	FMentalState ToStruct() const;
