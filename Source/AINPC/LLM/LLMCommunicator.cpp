@@ -195,10 +195,27 @@ void ULLMCommunicator::OnResponseReceived(FHttpRequestPtr Request, FHttpResponse
             
             // SUCCESS!
             UE_LOG(LogTemp, Warning, TEXT("[LLM] SUCCESS! Parsed MentalState:"));
-            UE_LOG(LogTemp, Log, TEXT("  Anger=%.2f, Fear=%.2f, Confidence=%.2f"), 
-                   ResultState.Anger, ResultState.Fear, ResultState.Confidence);
-            UE_LOG(LogTemp, Log, TEXT("  SocialBattery=%.2f, Hunger=%.2f"), 
-                   ResultState.SocialBattery, ResultState.Hunger);
+            
+            // 生理层 (Physiological)
+            UE_LOG(LogTemp, Log, TEXT("  [Physiological] Hunger=%.2f, Energy=%.2f"), 
+                   ResultState.Hunger, ResultState.Energy);
+            
+            // 安全层 (Safety)
+            UE_LOG(LogTemp, Log, TEXT("  [Safety] Perceived_Threat=%.2f, Resource_Anxiety=%.2f"), 
+                   ResultState.Perceived_Threat, ResultState.Resource_Anxiety);
+            
+            // 社交层 (Love/Belonging)
+            UE_LOG(LogTemp, Log, TEXT("  [Social] Loneliness=%.2f, Trust=%.2f"), 
+                   ResultState.Loneliness, ResultState.Trust);
+            
+            // 尊严层 (Esteem)
+            UE_LOG(LogTemp, Log, TEXT("  [Esteem] Anger=%.2f, Social_Status=%.2f"), 
+                   ResultState.Anger, ResultState.Social_Status);
+            
+            // 自我实现层 (Self-Actualization)
+            UE_LOG(LogTemp, Log, TEXT("  [Self-Actualization] Duty_Urgency=%.2f, Curiosity=%.2f"), 
+                   ResultState.Duty_Urgency, ResultState.Curiosity);
+            
             UE_LOG(LogTemp, Warning, TEXT("========================================"));
             Callback.ExecuteIfBound(true, ResultState);
         }

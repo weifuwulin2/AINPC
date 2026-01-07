@@ -12,6 +12,7 @@ class UAISenseConfig_Hearing;
 class USensoryComponent;
 class UCognitionComponent;
 class UUtilityAIComponent;
+class UPersonalityComponent;
 class UNPCMentalState;
 struct FMentalState; // 假设这是你的结构体
 
@@ -42,6 +43,11 @@ public:
     // 决策组件 (负责 Utility 算分和执行)
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI Components")
     UUtilityAIComponent* UtilityComp;
+
+    // 性格组件 (负责 OCEAN 性格和马斯洛权重)
+    // Personality Component (manages OCEAN personality and Maslow weights)
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI Components")
+    UPersonalityComponent* PersonalityComp;
 
     // =========================================================
     // 2. 感知配置 (Config)

@@ -1,6 +1,7 @@
 #include "Base/UtilityActionBase.h"
 #include "GameFramework/Pawn.h"
 #include "Kismet/GameplayStatics.h"
+#include "Components/PersonalityComponent.h"
 
 
 
@@ -13,7 +14,7 @@ UUtilityActionBase::UUtilityActionBase()
 void UUtilityActionBase::InitFromConfig(const FUtilityActionConfig& Config)
 {
     Considerations = Config.Considerations;
-    BaseWeight = Config.Weight;
+    BaseReward = Config.BaseReward;
     CooldownTime = Config.CooldownTime;
     InertiaBonus = Config.InertiaBonus; // 接收配置的惯性值
 
@@ -28,10 +29,10 @@ float UUtilityActionBase::CalculateScore(UNPCMentalState* MentalState, AAIContro
     // 0. 安全检查
     if (!Controller) return 0.0f;
     
-    // ✅ 如果没有 Considerations，直接返回 BaseWeight（这是合理的默认行为）
+    // ✅ 如果没有 Considerations，直接返回 BaseReward
     if (Considerations.Num() == 0) 
     {
-        return BaseWeight;
+        return BaseReward;
     }
 
     // 1. 冷却检查 (Cooldown)
@@ -46,14 +47,25 @@ float UUtilityActionBase::CalculateScore(UNPCMentalState* MentalState, AAIContro
         }
     }
 
-    // 2. 多因子计算 (Multi-Factor Scoring)
-    float FinalScore = BaseWeight;
+    // 2. 获取 PersonalityComponent (用于查询权重)
+    UPersonalityComponent* PersonalityComp = nullptr;
+    if (APawn* BotPawn = Controller->GetPawn())
+    {
+        PersonalityComp = BotPawn->FindComponentByClass<UPersonalityComponent>();
+    }
+
+    // 3. 两阶段计算 (Two-Phase Calculation)
+    // 第一阶段：动机求和 Σ(Weight × Input)
+    // 第二阶段：必要条件乘积 ∏(Context)
+    
+    float MotivationSum = 0.0f;      // 动机总和（加法）
+    float ContextProduct = 1.0f;     // 必要条件乘积（乘法）
 
     // 🔍 调试：打印初始分数
     static bool bEnableDetailedLog = true; // 设为 true 来启用详细日志
     if (bEnableDetailedLog)
     {
-        UE_LOG(LogTemp, Warning, TEXT("    [%s] Starting calculation: BaseWeight=%.2f"), *ActionName, BaseWeight);
+        UE_LOG(LogTemp, Warning, TEXT("    [%s] Starting calculation: BaseReward=%.2f"), *ActionName, BaseReward);
     }
 
     for (int32 i = 0; i < Considerations.Num(); ++i)
@@ -63,80 +75,75 @@ float UUtilityActionBase::CalculateScore(UNPCMentalState* MentalState, AAIContro
         // A. 获取原始数据 (0~1 或 实际值)
         float RawValue = GetConsiderationValue(Factor.InputType, MentalState, Controller);
 
-        // B. 根据 ConsiderationType 选择计算方式
-        float FactorScore = 0.0f;
-        
-        if (Factor.ConsiderationType == EConsiderationType::EmotionWeight)
+        if (Factor.ConsiderationType == EConsiderationType::Motivation)
         {
-            // 情绪权重模式：FactorScore = RawValue * Weight
-            FactorScore = RawValue * Factor.Weight;
+            // === 动机类型：加法求和 ===
+            
+            // B. 获取性格权重 (从 PersonalityComponent)
+            float PersonalityWeight = 1.0f;  // 默认权重
+            
+            if (PersonalityComp)
+            {
+                FString VariableName = GetVariableNameFromInputType(Factor.InputType);
+                PersonalityWeight = PersonalityComp->GetWeightForVariable(VariableName);
+            }
+
+            // C. 计算动机得分并累加
+            float MotivationScore = RawValue * PersonalityWeight;
+            MotivationSum += MotivationScore;
             
             if (bEnableDetailedLog)
             {
-                UE_LOG(LogTemp, Warning, TEXT("      [Emotion] %.3f * Weight(%.2f) = %.3f"), 
-                       RawValue, Factor.Weight, FactorScore);
+                UE_LOG(LogTemp, Warning, TEXT("      [Motivation %d] %s: Raw=%.3f × Weight=%.3f = %.3f (Sum=%.3f)"), 
+                       i, *GetVariableNameFromInputType(Factor.InputType), 
+                       RawValue, PersonalityWeight, MotivationScore, MotivationSum);
             }
         }
-        else // EConsiderationType::EnvironmentCurve
+        else // EConsiderationType::Context
         {
-            if (Factor.ResponseCurve)
-            {
-                // 环境曲线模式：FactorScore = Curve(RawValue)
-                FactorScore = Factor.ResponseCurve->GetFloatValue(RawValue);
-                
-                if (bEnableDetailedLog)
-                {
-                    UE_LOG(LogTemp, Warning, TEXT("      [Environment] Curve(%.3f) = %.3f"), RawValue, FactorScore);
-                    
-                    float MinTime, MaxTime;
-                    Factor.ResponseCurve->GetTimeRange(MinTime, MaxTime);
-                    UE_LOG(LogTemp, Warning, TEXT("      Curve range: [%.3f, %.3f]"), MinTime, MaxTime);
-                }
-            }
-            else
-            {
-                // 没有曲线，使用截断值
-                FactorScore = FMath::Clamp(RawValue, 0.0f, 1.0f);
-                
-                if (bEnableDetailedLog)
-                {
-                    UE_LOG(LogTemp, Warning, TEXT("      [Environment] No curve, clamped: %.3f"), FactorScore);
-                }
-            }
-        }
-
-        // 🔍 调试：打印每个因子的计算过程
-        if (bEnableDetailedLog)
-        {
-            UE_LOG(LogTemp, Warning, TEXT("      Factor[%d]: RawValue=%.3f, FactorScore=%.3f, HasCurve=%s"), 
-                   i, RawValue, FactorScore, Factor.ResponseCurve ? TEXT("Yes") : TEXT("No"));
-        }
-
-        // C. 乘法累积 (核心：任何一个因子为0，总分为0)
-        float OldScore = FinalScore;
-        FinalScore *= FactorScore;
-
-        // 🔍 调试：打印乘法结果
-        if (bEnableDetailedLog)
-        {
-            UE_LOG(LogTemp, Warning, TEXT("      %.3f * %.3f = %.3f"), OldScore, FactorScore, FinalScore);
-        }
-
-        // 优化：如果分数已经归零，直接退出，节省性能
-        if (FinalScore <= UE_KINDA_SMALL_NUMBER) 
-        {
+            // === 必要条件类型：乘法 ===
+            
+            // Context 直接使用原始值（0~1），不需要权重
+            float OldProduct = ContextProduct;
+            ContextProduct *= RawValue;
+            
             if (bEnableDetailedLog)
             {
-                UE_LOG(LogTemp, Warning, TEXT("      ⚠️ Score became 0! Stopping calculation."));
+                UE_LOG(LogTemp, Warning, TEXT("      [Context %d] %s: %.3f × %.3f = %.3f"), 
+                       i, *GetVariableNameFromInputType(Factor.InputType), 
+                       OldProduct, RawValue, ContextProduct);
             }
-            return 0.0f;
+
+            // 优化：如果必要条件已经为0，直接返回0
+            if (ContextProduct <= UE_KINDA_SMALL_NUMBER)
+            {
+                if (bEnableDetailedLog)
+                {
+                    UE_LOG(LogTemp, Warning, TEXT("      ⚠️ Context became 0! Action is impossible."));
+                }
+                return 0.0f;
+            }
         }
     }
+
+    // 4. 最终得分计算 / Final Score Calculation
+    // 公式 / Formula:
+    // Score = BaseReward × (Σ Motivations) × (∏ Contexts)
+    //       = 动作奖励 × 动机总和 × 必要条件乘积
+    //       = ActionReward × MentalState × Personality × Contexts
+    //
+    // 例如 / Example:
+    // Eat 动作: BaseReward=3.0 (吃饭很管饱)
+    //   Motivation: Hunger(0.8) × HungerWeight(1.2) = 0.96
+    //   Context: HasFood(1.0)
+    //   Score = 3.0 × 0.96 × 1.0 = 2.88
+    float FinalScore = BaseReward * MotivationSum * ContextProduct;
 
     // 🔍 调试：打印最终分数
     if (bEnableDetailedLog)
     {
-        UE_LOG(LogTemp, Warning, TEXT("    [%s] Final Score: %.3f"), *ActionName, FinalScore);
+        UE_LOG(LogTemp, Warning, TEXT("    [%s] Final Score: BaseReward(%.2f) × MotivationSum(%.2f) × ContextProduct(%.2f) = %.3f"), 
+               *ActionName, BaseReward, MotivationSum, ContextProduct, FinalScore);
     }
 
     // 3. 惯性奖励 (Inertia / Momentum)
@@ -168,14 +175,39 @@ float UUtilityActionBase::GetConsiderationValue(EUtilityInputType InputType, UNP
 
     switch (InputType)
     {
-        // ✅ 使用宏自动生成所有 MentalState 字段的 case 分支
-        #define HANDLE_MENTAL_STATE_FIELD(Name, DefaultValue, DisplayName, Description) \
-            case EUtilityInputType::Name: \
-                return State ? State->Name : 0.0f;
+        // === 马斯洛需求层次 (手动映射) ===
+        // Maslow's Hierarchy (Manual Mapping)
+        // 注意：枚举值是驼峰命名，但字段名可能有下划线
         
-        MENTAL_STATE_FIELDS(HANDLE_MENTAL_STATE_FIELD)
+        // 生理层 (Physiological)
+        case EUtilityInputType::Hunger:
+            return State ? State->Hunger : 0.0f;
+        case EUtilityInputType::Energy:
+            return State ? State->Energy : 0.0f;
         
-        #undef HANDLE_MENTAL_STATE_FIELD
+        // 安全层 (Safety)
+        case EUtilityInputType::PerceivedThreat:
+            return State ? State->Perceived_Threat : 0.0f;
+        case EUtilityInputType::ResourceAnxiety:
+            return State ? State->Resource_Anxiety : 0.0f;
+        
+        // 社交层 (Love/Belonging)
+        case EUtilityInputType::Loneliness:
+            return State ? State->Loneliness : 0.0f;
+        case EUtilityInputType::Trust:
+            return State ? State->Trust : 0.0f;
+        
+        // 尊严层 (Esteem)
+        case EUtilityInputType::Anger:
+            return State ? State->Anger : 0.0f;
+        case EUtilityInputType::SocialStatus:
+            return State ? State->Social_Status : 0.0f;
+        
+        // 自我实现层 (Self-Actualization)
+        case EUtilityInputType::DutyUrgency:
+            return State ? State->Duty_Urgency : 0.0f;
+        case EUtilityInputType::Curiosity:
+            return State ? State->Curiosity : 0.0f;
 
         // --- 自身状态 (Self Status) ---
         case EUtilityInputType::SelfHealth:
@@ -220,5 +252,37 @@ float UUtilityActionBase::GetConsiderationValue(EUtilityInputType InputType, UNP
 
         default:
             return 0.0f;
+    }
+}
+
+FString UUtilityActionBase::GetVariableNameFromInputType(EUtilityInputType InputType) const
+{
+    // 将枚举值转换为字符串，用于查询 PersonalityComponent
+    // Convert enum value to string for PersonalityComponent lookup
+    switch (InputType)
+    {
+        // 马斯洛需求层次 (Maslow's Hierarchy)
+        case EUtilityInputType::Hunger:            return TEXT("Hunger");
+        case EUtilityInputType::Energy:            return TEXT("Energy");
+        case EUtilityInputType::PerceivedThreat:   return TEXT("Perceived_Threat");
+        case EUtilityInputType::ResourceAnxiety:   return TEXT("Resource_Anxiety");
+        case EUtilityInputType::Loneliness:        return TEXT("Loneliness");
+        case EUtilityInputType::Trust:             return TEXT("Trust");
+        case EUtilityInputType::Anger:             return TEXT("Anger");
+        case EUtilityInputType::SocialStatus:      return TEXT("Social_Status");
+        case EUtilityInputType::DutyUrgency:       return TEXT("Duty_Urgency");
+        case EUtilityInputType::Curiosity:         return TEXT("Curiosity");
+        
+        // 环境变量 (Environment variables) - 使用默认权重 1.0
+        case EUtilityInputType::SelfHealth:
+        case EUtilityInputType::TargetHealth:
+        case EUtilityInputType::DistanceToTarget:
+        case EUtilityInputType::AmmoCount:
+        case EUtilityInputType::HasCover:
+        case EUtilityInputType::IsTargetPlayer:
+            return TEXT("Environment");  // 环境变量不需要性格权重
+        
+        default:
+            return TEXT("Unknown");
     }
 }

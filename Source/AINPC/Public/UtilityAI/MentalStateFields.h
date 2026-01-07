@@ -9,24 +9,41 @@
 #pragma once
 
 /**
- * 定义所有情绪状态字段
+ * 定义所有马斯洛需求层次字段 / Define all Maslow's Hierarchy fields
  * 
- * 使用方法:
- * 1. 添加新字段: FIELD(NewEmotion, 0.0f, "New Emotion", "Description")
+ * 基于马斯洛需求层次理论的 10 个核心变量
+ * 10 core variables based on Maslow's Hierarchy of Needs
+ * 
+ * 管辖权划分 / Jurisdiction Division:
+ * - [ENGINE] = 游戏引擎独裁 (Engine exclusive control)
+ * - [LLM]    = LLM 独裁 (LLM exclusive control)
+ * - [HYBRID] = 混合管辖 (Hybrid - both Engine and LLM)
+ * 
+ * 详见: docs/design/Maslow_Variables_Jurisdiction.md
+ * 
+ * 使用方法 / Usage:
+ * 1. 添加新字段: FIELD(NewField, 0.0f, "New Field", "Description")
  * 2. 删除字段: 直接删除对应的 FIELD 行
  * 3. 修改默认值: 改变第二个参数
  * 
- * 注意: 修改后需要重新编译项目
+ * 注意: 修改后需要重新编译项目 / Note: Recompile project after modification
  */
 #define MENTAL_STATE_FIELDS(FIELD) \
-	FIELD(Anger,         0.0f, "Anger",          "愤怒值，影响攻击欲望") \
-	FIELD(Fear,          0.0f, "Fear",           "恐惧值，影响逃跑欲望") \
-	FIELD(Confidence,    0.5f, "Confidence",     "自信值，影响战斗策略") \
-	FIELD(SocialBattery, 0.8f, "Social Battery", "社交电量，影响对话欲望") \
-	FIELD(Hunger,        0.0f, "Hunger",         "饥饿值，影响觅食行为")
-	// 添加新字段示例:
-	// FIELD(Boredom,    0.0f, "Boredom",        "无聊值，影响探索欲望") \
-	// FIELD(Curiosity,  0.5f, "Curiosity",      "好奇心，影响调查行为")
+	/* ========== 生理层 (Physiological) - ENGINE 独裁 ========== */ \
+	FIELD(Hunger,            0.0f, "Hunger",            "[ENGINE] 饥饿感 - 随时间增长，吃东西减少") \
+	FIELD(Energy,            1.0f, "Energy",            "[ENGINE] 精力 - 活动消耗，休息恢复") \
+	/* ========== 安全层 (Safety) - HYBRID 混合管辖 ========== */ \
+	FIELD(Perceived_Threat,  0.0f, "Perceived Threat",  "[HYBRID] 感知威胁 - Engine检测敌人 + LLM分析语言威胁") \
+	FIELD(Resource_Anxiety,  0.0f, "Resource Anxiety",  "[HYBRID] 资源焦虑 - Engine检测背包 + LLM分析传闻") \
+	/* ========== 社交层 (Love/Belonging) - HYBRID + LLM ========== */ \
+	FIELD(Loneliness,        0.0f, "Loneliness",        "[HYBRID] 孤独感 - Engine计时器 + LLM检测被冷落") \
+	FIELD(Trust,             0.5f, "Trust",             "[LLM] 信任度 - LLM分析诚实、背叛、帮助") \
+	/* ========== 尊严层 (Esteem) - LLM 独裁 ========== */ \
+	FIELD(Anger,             0.0f, "Anger",             "[LLM] 愤怒 - LLM分析侮辱、挑衅、道歉") \
+	FIELD(Social_Status,     0.5f, "Social Status",     "[LLM] 地位需求 - LLM分析尊重、轻视") \
+	/* ========== 自我实现层 (Self-Actualization) - HYBRID + LLM ========== */ \
+	FIELD(Duty_Urgency,      0.0f, "Duty Urgency",      "[HYBRID] 责任紧迫感 - Engine检查时间 + LLM分析命令") \
+	FIELD(Curiosity,         0.5f, "Curiosity",         "[LLM] 好奇心 - LLM分析秘密、奇怪事物")
 
 /**
  * 使用说明:

@@ -4,6 +4,7 @@
 #include "Components/SensoryComponent.h"
 #include "Components/CognitionComponent.h"
 #include "Components/UtilityAIComponent.h"
+#include "Components/PersonalityComponent.h"
 #include "UtilityAI/UNPCMentalState.h" 
 
 // 感知相关头文件
@@ -21,6 +22,7 @@ AUtilityAIController::AUtilityAIController()
     SensoryComp = CreateDefaultSubobject<USensoryComponent>(TEXT("SensoryComponent"));
     CognitionComp = CreateDefaultSubobject<UCognitionComponent>(TEXT("CognitionComponent"));
     UtilityComp = CreateDefaultSubobject<UUtilityAIComponent>(TEXT("UtilityComponent"));
+    PersonalityComp = CreateDefaultSubobject<UPersonalityComponent>(TEXT("PersonalityComponent"));
 
     // =========================================================
     // 2. 创建并配置感知组件 (Perception)
@@ -164,8 +166,9 @@ void AUtilityAIController::OnMindUpdated(const FMentalState& NewState)
         MentalState->UpdateFromStruct(NewState);
         
         // 打印所有关键情绪字段
-        UE_LOG(LogTemp, Log, TEXT("[Controller] Mental State Updated: Anger=%.2f, Fear=%.2f, Confidence=%.2f"), 
+        /*UE_LOG(LogTemp, Log, TEXT("[Controller] Mental State Updated: Anger=%.2f, Fear=%.2f, Confidence=%.2f"), 
                MentalState->Anger, MentalState->Fear, MentalState->Confidence);
+               */
         
         // UtilityComponent 不需要通知，它会在自己的 Tick 里自动读这个 MentalState
     }

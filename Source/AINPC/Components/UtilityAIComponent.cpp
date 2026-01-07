@@ -89,8 +89,8 @@ void UUtilityAIComponent::EvaluateAndDecide()
         
         if (State)
         {
-            UE_LOG(LogTemp, Log, TEXT("[UtilityAI] MentalState: Anger=%.2f, Fear=%.2f, Confidence=%.2f"), 
-                   State->Anger, State->Fear, State->Confidence);
+            /*UE_LOG(LogTemp, Log, TEXT("[UtilityAI] MentalState: Anger=%.2f, Fear=%.2f, Confidence=%.2f"), 
+                   State->Anger, State->Fear, State->Confidence);*/
         }
         else
         {
@@ -106,9 +106,9 @@ void UUtilityAIComponent::EvaluateAndDecide()
 
         // 🔍 调试：打印每个 Action 的分数
         if (bShouldLog)
-        {
+        {/*
             UE_LOG(LogTemp, Log, TEXT("  [%s] Score: %.3f (BaseWeight: %.2f, Considerations: %d)"), 
-                   *Action->ActionName, Score, Action->BaseWeight, Action->Considerations.Num());
+                   *Action->ActionName, Score, Action->BaseWeight, Action->Considerations.Num());*/
         }
 
         // 惯性奖励 (Momentum)

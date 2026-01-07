@@ -21,30 +21,47 @@ class UNPCMentalState;
 UENUM(BlueprintType)
 enum class EUtilityInputType : uint8
 {
-	// === 情绪与生理属性 (来自 MentalState) ===
-	// ⚠️ 注意：添加新属性时，需要在这里手动添加枚举值
-	// 但 GetConsiderationValue() 中的 switch case 会自动生成
-	Anger,
-	Fear,
-	Confidence,
-	SocialBattery,
+	// === 马斯洛需求层次 (来自 MentalState) ===
+	// Maslow's Hierarchy of Needs (from MentalState)
+	// 注意：枚举值使用驼峰命名（无下划线），但对应的字段名可能有下划线
+	
+	// 生理层 (Physiological)
 	Hunger,
+	Energy,
+	
+	// 安全层 (Safety)
+	PerceivedThreat,      // 对应 Perceived_Threat
+	ResourceAnxiety,      // 对应 Resource_Anxiety
+	
+	// 社交层 (Love/Belonging)
+	Loneliness,
+	Trust,
+	
+	// 尊严层 (Esteem)
+	Anger,
+	SocialStatus,         // 对应 Social_Status
+	
+	// 自我实现层 (Self-Actualization)
+	DutyUrgency,          // 对应 Duty_Urgency
+	Curiosity,
 	
 	// === 环境感知字段 (不在 MentalState 中) ===
-	SelfHealth,      // 生理：自身血量百分比
-	TargetHealth,    // 环境：目标血量百分比
-	DistanceToTarget,// 环境：与目标的距离 (归一化)
-	AmmoCount,       // 环境：弹药量百分比
-	HasCover,        // 环境：附近是否有掩体 (0 或 1)
-	IsTargetPlayer   // 环境：目标是否是玩家
+	// Environmental Perception Fields (not in MentalState)
+	SelfHealth,           // 生理：自身血量百分比
+	TargetHealth,         // 环境：目标血量百分比
+	DistanceToTarget,     // 环境：与目标的距离 (归一化)
+	AmmoCount,            // 环境：弹药量百分比
+	HasCover,             // 环境：附近是否有掩体 (0 或 1)
+	IsTargetPlayer        // 环境：目标是否是玩家
 };
 
-// 考量类型：情绪权重 vs 环境曲线
+// 考量类型：动机 vs 必要条件
+// Consideration Type: Motivation vs Context
 UENUM(BlueprintType)
 enum class EConsiderationType : uint8
 {
-	EmotionWeight,    // 情绪权重：直接使用 LLM 值 * Weight
-	EnvironmentCurve  // 环境曲线：使用 ResponseCurve 映射
+	Motivation,  // 动机：使用加法求和 Σ(Weight × Input)
+	Context      // 必要条件：使用乘法 ∏(Context)
 };
 
 USTRUCT(BlueprintType)
@@ -52,27 +69,25 @@ struct FUtilityConsideration
 {
     GENERATED_BODY()
 
-    // 考量类型：情绪还是环境？
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Consideration")
-    EConsiderationType ConsiderationType = EConsiderationType::EmotionWeight;
+    // 考量类型：动机还是必要条件？
+    // Consideration Type: Motivation or Context?
+    // 
+    // Motivation: 加法求和，表示"想做这件事的动机强度"
+    // Context: 乘法，表示"能否做这件事的必要条件"
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Consideration",
+              meta = (DisplayName = "Consideration Type",
+                      ToolTip = "Motivation=动机(加法), Context=必要条件(乘法)"))
+    EConsiderationType ConsiderationType = EConsiderationType::Motivation;
 
-    // 输入源：我们要考量什么？
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Consideration")
+    // 输入源：我们要考量什么变量？
+    // Input Source: Which variable should we consider?
+    // 
+    // 权重由 PersonalityComponent 提供（仅对 Motivation 有效）
+    // Weights are provided by PersonalityComponent (only for Motivation)
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Consideration",
+              meta = (DisplayName = "Variable to Consider",
+                      ToolTip = "选择要考量的马斯洛变量或环境变量 / Select Maslow or environment variable to consider"))
     EUtilityInputType InputType;
-
-    // === 情绪权重模式 ===
-    // 仅在 ConsiderationType = EmotionWeight 时使用
-    // 计算：FactorScore = RawValue * Weight
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Emotion Weight", 
-              meta = (EditCondition = "ConsiderationType == EConsiderationType::EmotionWeight", ClampMin = "0.0", ClampMax = "10.0"))
-    float Weight = 1.0f;
-
-    // === 环境曲线模式 ===
-    // 仅在 ConsiderationType = EnvironmentCurve 时使用
-    // 计算：FactorScore = Curve(RawValue)
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Environment Curve",
-              meta = (EditCondition = "ConsiderationType == EConsiderationType::EnvironmentCurve"))
-    UCurveFloat* ResponseCurve;
 };
 
 USTRUCT(BlueprintType)
@@ -88,9 +103,13 @@ struct FUtilityActionConfig : public FTableRowBase
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
     TArray<FUtilityConsideration> Considerations; 
 
-    // 基础权重：全局优先级修正
-    UPROPERTY(EditAnywhere, BlueprintReadOnly)
-    float Weight = 1.0f;
+    // 基础奖励：这个动作本身的价值
+    // Base Reward: The intrinsic value of this action
+    // 例如：吃饭的饱腹感、攻击的伤害、逃跑的安全感
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, 
+              meta = (DisplayName = "Base Reward",
+                      ToolTip = "这个动作的基础奖励值 / Base reward value of this action"))
+    float BaseReward = 1.0f;
 
     // 冷却时间 (秒)
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
@@ -118,7 +137,7 @@ public:
     TArray<FUtilityConsideration> Considerations;
 
     UPROPERTY(Transient)
-    float BaseWeight = 1.0f;
+    float BaseReward = 1.0f;
 
     UPROPERTY(Transient)
     float CooldownTime = 0.0f;
@@ -147,6 +166,10 @@ public:
 protected:
     // 辅助函数：统一获取输入值
     float GetConsiderationValue(EUtilityInputType InputType, UNPCMentalState* State, AAIController* Controller);
+
+    // 辅助函数：将枚举值转换为变量名字符串
+    // Helper function: Convert enum value to variable name string
+    FString GetVariableNameFromInputType(EUtilityInputType InputType) const;
 
 
 public:
