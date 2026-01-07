@@ -8,6 +8,8 @@
 #include "UtilityAI/MentalStateFields.h"  // ✅ 引入字段配置
 #include "LLMCommunicator.generated.h"
 
+class USentimentMapper;
+
 // 1. The Data Structure (自动生成)
 USTRUCT(BlueprintType)
 struct FMentalState
@@ -56,4 +58,9 @@ private:
 	// Key: HTTP请求指针, Value: 对应的回调函数
 	TMap<FHttpRequestPtr, FOnLLMResponse> PendingCallbacks;
 	TMap<FHttpRequestPtr, FOnLLMResponseRaw> PendingRawCallbacks;
+
+	// 语义映射器 / Sentiment Mapper
+	// 将 LLM 输出的标签转换为数值
+	UPROPERTY()
+	USentimentMapper* SentimentMapper;
 };

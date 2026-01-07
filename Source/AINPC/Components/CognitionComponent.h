@@ -6,7 +6,11 @@
 #include "MemoryComponent.h"
 #include "Components/ActorComponent.h"
 #include "CognitionComponent.generated.h"
+
 class ULLMCommunicator;
+class USentimentMapper;
+class UMentalStateInterpolator;
+
 // 定义广播委托：当大脑想明白后，通知订阅者（Controller）
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMentalStateChanged, const FMentalState&, NewState);
 
@@ -19,6 +23,7 @@ public:
 	UCognitionComponent();
 
 	virtual void BeginPlay() override;
+	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
 	// --- 外部接口 ---
     
@@ -40,6 +45,16 @@ protected:
 
 	UPROPERTY()
 	UMemoryComponent* MemoryComp;
+
+	// 语义映射器 / Sentiment Mapper
+	// 将 LLM 输出的标签转换为数值
+	UPROPERTY()
+	USentimentMapper* SentimentMapper;
+
+	// 心理状态插值器 / Mental State Interpolator
+	// 平滑过渡情绪变化
+	UPROPERTY()
+	UMentalStateInterpolator* Interpolator;
 
 	// 内部回调：处理 LLMCommunicator 返回的原始结果
 	void OnLLMReply(bool bSuccess, const FMentalState& NewState);

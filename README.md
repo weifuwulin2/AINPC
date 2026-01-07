@@ -269,6 +269,111 @@ AINPC/
 
 ## 🎉 最新更新 / Latest Updates
 
+### v0.4.0 - OCEAN + Maslow + 语义映射系统 (2026-01-08)
+
+#### 🎉 重大改进 / Major Improvements
+
+##### 1. OCEAN 性格 + 马斯洛需求层次系统
+
+- **✅ OCEAN Big Five 性格模型**
+  - 5 个性格特质: Openness, Conscientiousness, Extraversion, Agreeableness, Neuroticism
+  - 从 DataTable 加载性格配置
+  - 预设性格模板: BraveWarrior, CautiousGuard, FriendlyMerchant, ReclusiveScholar
+
+- **✅ 马斯洛需求层次**
+  - 10 个科学化的需求变量替代旧情绪系统
+  - 5 个层次: 生理、安全、社交、尊严、自我实现
+  - 动态权重计算: OCEAN → Maslow 转换矩阵
+
+- **✅ 管辖权划分**
+  - Engine 独占: Hunger, Energy (物理、时间驱动)
+  - LLM 独占: Trust, Anger, Social_Status, Curiosity (语义、心理)
+  - 混合管理: Perceived_Threat, Resource_Anxiety, Loneliness, Duty_Urgency
+
+##### 2. Utility AI 双阶段算法重构
+
+- **✅ Motivation (动机) - 加法**
+  - 多个动机可以累加
+  - 公式: `Σ(MentalState × Personality)`
+
+- **✅ Context (条件) - 乘法**
+  - 必要条件使用乘法 (任何为 0 = 不可行)
+  - 公式: `∏(Contexts)`
+
+- **✅ 新评分公式**
+  ```
+  Score = BaseReward × (Σ Motivations) × (∏ Contexts)
+        = 动作奖励 × (心理状态 × 性格权重) × 必要条件
+  ```
+
+##### 3. BaseReward 语义重构
+
+- **✅ 更清晰的命名**
+  - `BaseWeight` → `BaseReward`
+  - 代表动作的内在价值 ("这饭管饱吗?")
+
+- **✅ 三维度计算**
+  - MentalState (LLM): "我现在多饿?"
+  - Personality (OCEAN): "我有多爱吃?"
+  - BaseReward (Config): "这饭管饱吗?"
+
+##### 4. 语义映射 + 平滑插值系统
+
+- **✅ LLM 输出语义标签**
+  - 不再输出数值 (0.0-1.0)
+  - 使用自然语言标签: "Furious", "Trusting", "Starving"
+  - 5点量表法: None, Slight, Moderate, Strong, Extreme
+
+- **✅ SentimentMapper**
+  - 自动转换标签为数值
+  - 支持自然语言标签 (Annoyed, Angry, Furious, Enraged)
+  - 容错率高,稳定性强
+
+- **✅ 平滑插值系统**
+  - 情绪变化不再生硬跳变
+  - 可配置插值速度 (愤怒快 5.0, 信任慢 0.5)
+  - 随机扰动增加个性化
+  - 每帧平滑过渡: `0.1 → 0.18 → 0.28 → ... → 0.9`
+
+#### 🔧 技术改进 / Technical Improvements
+
+- **PersonalityComponent 架构修正**
+  - 从 Character 移至 AIController
+  - 与其他 AI 组件统一管理
+
+- **LLM Prompt 优化**
+  - JSON 格式化
+  - 管辖权规则说明
+  - 标签选择指令
+
+- **枚举命名修复**
+  - C++ 兼容的驼峰命名
+  - 手动映射到下划线字段名
+
+#### 📊 性能影响 / Performance Impact
+
+- PersonalityComponent 权重计算: 一次性 (BeginPlay)
+- 插值计算: ~0.01ms per NPC per frame
+- 总影响: < 0.1ms per NPC
+
+#### 📝 新增文档 / New Documentation
+
+**设计文档:**
+- `OCEAN_Maslow_System.md` - 完整系统设计
+- `UtilityAI_TwoPhase_Algorithm.md` - 双阶段算法
+- `BaseReward_Calculation_Formula.md` - 评分公式详解
+- `Semantic_Mapping_System.md` - 语义映射系统
+- `Maslow_Variables_Jurisdiction.md` - 管辖权划分
+
+**实现指南:**
+- `PersonalityComponent_Integration_Guide.md` - 性格组件集成
+- `PersonalityTable_Configuration_Guide.md` - DataTable 配置
+- `Semantic_Mapping_Integration_Summary.md` - 语义映射集成
+- `Testing_Guide.md` - 综合测试指南
+- `Quick_Start_Guide.md` - 5分钟快速开始
+
+---
+
 ### v0.3.0 - 单点配置系统 (2026-01-03)
 
 #### 🎉 重大改进 / Major Improvements

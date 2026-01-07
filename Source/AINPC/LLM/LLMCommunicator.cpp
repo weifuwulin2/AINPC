@@ -6,11 +6,17 @@
 #include "Serialization/JsonSerializer.h"
 #include "JsonObjectConverter.h"
 #include "Policies/CondensedJsonPrintPolicy.h"
+#include "UtilityAI/SentimentMapping.h"
 
 void ULLMCommunicator::Init(const FString& InApiKey, const FString& InUrl)
 {
     ApiKey = InApiKey;
     ApiUrl = InUrl;
+    
+    // 初始化语义映射器 / Initialize Sentiment Mapper
+    SentimentMapper = NewObject<USentimentMapper>(this);
+    SentimentMapper->Initialize();
+    UE_LOG(LogTemp, Log, TEXT("[LLMCommunicator] SentimentMapper initialized"));
 }
 
 void ULLMCommunicator::SendRequest(const FString& UserInput, FOnLLMResponse OnComplete)
@@ -183,11 +189,43 @@ void ULLMCommunicator::OnResponseReceived(FHttpRequestPtr Request, FHttpResponse
         
         if (FJsonSerializer::Deserialize(InnerReader, InnerJsonObject) && InnerJsonObject.IsValid())
         {
-            // 手动提取每个字段，使用宏自动生成
+            // 手动提取每个字段，支持标签和数值两种格式
+            // Manually extract each field, supporting both tags and numerical values
             #define EXTRACT_FIELD(Name, DefaultValue, DisplayName, Description) \
-                ResultState.Name = InnerJsonObject->HasField(TEXT(#Name)) \
-                    ? InnerJsonObject->GetNumberField(TEXT(#Name)) \
-                    : DefaultValue;
+                if (InnerJsonObject->HasField(TEXT(#Name))) \
+                { \
+                    TSharedPtr<FJsonValue> FieldValue = InnerJsonObject->TryGetField(TEXT(#Name)); \
+                    if (FieldValue->Type == EJson::String) \
+                    { \
+                        /* LLM 返回标签 (新格式) */ \
+                        FString Tag = FieldValue->AsString(); \
+                        if (SentimentMapper) \
+                        { \
+                            float MappedValue = SentimentMapper->TagToValue(Tag); \
+                            ResultState.Name = (MappedValue >= 0.0f) ? MappedValue : DefaultValue; \
+                            UE_LOG(LogTemp, Verbose, TEXT("[LLM] %s: Tag '%s' -> %.2f"), TEXT(#Name), *Tag, ResultState.Name); \
+                        } \
+                        else \
+                        { \
+                            UE_LOG(LogTemp, Warning, TEXT("[LLM] SentimentMapper not initialized!")); \
+                            ResultState.Name = DefaultValue; \
+                        } \
+                    } \
+                    else if (FieldValue->Type == EJson::Number) \
+                    { \
+                        /* LLM 返回数值 (旧格式，兼容) */ \
+                        ResultState.Name = FieldValue->AsNumber(); \
+                        UE_LOG(LogTemp, Verbose, TEXT("[LLM] %s: Number %.2f"), TEXT(#Name), ResultState.Name); \
+                    } \
+                    else \
+                    { \
+                        ResultState.Name = DefaultValue; \
+                    } \
+                } \
+                else \
+                { \
+                    ResultState.Name = DefaultValue; \
+                }
             
             MENTAL_STATE_FIELDS(EXTRACT_FIELD)
             

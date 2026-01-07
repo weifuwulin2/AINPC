@@ -1,11 +1,15 @@
 #include "CognitionComponent.h"
 
+#include "Controller/UtilityAIController.h"
 #include "LLM/LLMCommunicator.h"
+#include "UtilityAI/SentimentMapping.h"
+#include "UtilityAI/MentalStateInterpolation.h"
 
 UCognitionComponent::UCognitionComponent()
 {
-	// 大脑不需要每帧 Tick，它只在事件驱动下工作
-	PrimaryComponentTick.bCanEverTick = false;
+	// 大脑需要每帧 Tick 来更新插值
+	// Brain needs to Tick every frame to update interpolation
+	PrimaryComponentTick.bCanEverTick = true;
 
 	MemoryComp = CreateDefaultSubobject<UMemoryComponent>(TEXT("Memory"));
 }
@@ -41,7 +45,65 @@ void UCognitionComponent::BeginPlay()
     
 	UE_LOG(LogTemp, Log, TEXT("[Cognition] Brain Initialized via Config."));
 
+	// 4. 初始化语义映射器 / Initialize Sentiment Mapper
+	SentimentMapper = NewObject<USentimentMapper>(this);
+	SentimentMapper->Initialize();  // 使用默认映射
+	UE_LOG(LogTemp, Log, TEXT("[Cognition] SentimentMapper initialized"));
+
+	// 5. 初始化插值器 / Initialize Interpolator
+	Interpolator = NewObject<UMentalStateInterpolator>(this);
 	
+	// 配置不同情绪的插值速度 / Configure interpolation speeds
+	FMentalStateInterpConfig FastConfig;
+	FastConfig.InterpSpeed = 5.0f;  // 快速变化
+	FastConfig.SnapThreshold = 0.01f;
+	FastConfig.bEnableRandomPerturbation = true;
+	FastConfig.PerturbationRange = 0.05f;
+	
+	FMentalStateInterpConfig MediumConfig;
+	MediumConfig.InterpSpeed = 2.0f;  // 中速变化
+	MediumConfig.SnapThreshold = 0.01f;
+	MediumConfig.bEnableRandomPerturbation = true;
+	MediumConfig.PerturbationRange = 0.05f;
+	
+	FMentalStateInterpConfig SlowConfig;
+	SlowConfig.InterpSpeed = 0.5f;  // 慢速变化
+	SlowConfig.SnapThreshold = 0.01f;
+	SlowConfig.bEnableRandomPerturbation = true;
+	SlowConfig.PerturbationRange = 0.03f;
+	
+	// 应用配置 / Apply configurations
+	Interpolator->SetInterpConfig("Anger", FastConfig);           // 愤怒：快速 (5.0)
+	Interpolator->SetInterpConfig("Perceived_Threat", FastConfig); // 威胁：快速
+	
+	Interpolator->SetInterpConfig("Hunger", MediumConfig);         // 饥饿：中速 (2.0)
+	Interpolator->SetInterpConfig("Energy", MediumConfig);         // 精力：中速
+	Interpolator->SetInterpConfig("Loneliness", MediumConfig);     // 孤独：中速
+	
+	Interpolator->SetInterpConfig("Trust", SlowConfig);            // 信任：慢速 (0.5)
+	Interpolator->SetInterpConfig("Social_Status", SlowConfig);    // 社会地位：慢速
+	Interpolator->SetInterpConfig("Curiosity", SlowConfig);        // 好奇心：慢速
+	
+	UE_LOG(LogTemp, Log, TEXT("[Cognition] Interpolator initialized with custom speeds"));
+}
+
+void UCognitionComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+{
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+	// 获取 MentalState（从 Controller）
+	// Get MentalState (from Controller)
+	AAIController* AIController = Cast<AAIController>(GetOwner());
+	if (AIController)
+	{
+		AUtilityAIController* UtilityController = Cast<AUtilityAIController>(AIController);
+		if (UtilityController && UtilityController->MentalState && Interpolator)
+		{
+			// 每帧更新插值
+			// Update interpolation every frame
+			Interpolator->UpdateInterpolation(UtilityController->MentalState, DeltaTime);
+		}
+	}
 }
 
 void UCognitionComponent::ProcessStimulus(FString SituationDescription)
@@ -123,36 +185,56 @@ void UCognitionComponent::ProcessStimulus(FString SituationDescription)
 		"Duty_Urgency (Hybrid):\n"
 		"- Increase if: Urgent orders given, emergency declared, \"immediately\" mentioned\n"
 		"\n"
+		"=== SENTIMENT INTENSITY TAGS ===\n"
+		"IMPORTANT: Do NOT output numerical values (0.0-1.0). Use TAGS instead.\n"
+		"\n"
+		"Choose from these STANDARD INTENSITY TAGS:\n"
+		"[None, Slight, Moderate, Strong, Extreme]\n"
+		"\n"
+		"Mapping:\n"
+		"- None/Neutral: 无感 (no feeling)\n"
+		"- Slight/Low: 轻微 (slight)\n"
+		"- Moderate/Medium: 中等 (moderate)\n"
+		"- Strong/High: 强烈 (strong)\n"
+		"- Extreme/Max: 极端 (extreme)\n"
+		"\n"
+		"You can also use NATURAL LANGUAGE TAGS for specific emotions:\n"
+		"- Anger: Annoyed, Angry, Furious, Enraged\n"
+		"- Trust: Suspicious, Trusting, Devoted\n"
+		"- Hunger: Satisfied, Peckish, Hungry, Starving\n"
+		"- Threat: Safe, Cautious, Threatened, Terrified\n"
+		"\n"
 		"=== OUTPUT FORMAT ===\n"
 		"Respond with ONLY a valid JSON object. No markdown, no explanation, no extra text.\n"
+		"Use TAGS, NOT numbers!\n"
 		"\n"
 		"{\n"
-		"  \"Hunger\": 0.0,\n"
-		"  \"Energy\": 0.0,\n"
-		"  \"Perceived_Threat\": 0.0,\n"
-		"  \"Resource_Anxiety\": 0.0,\n"
-		"  \"Loneliness\": 0.0,\n"
-		"  \"Trust\": 0.5,\n"
-		"  \"Anger\": 0.0,\n"
-		"  \"Social_Status\": 0.5,\n"
-		"  \"Duty_Urgency\": 0.0,\n"
-		"  \"Curiosity\": 0.5\n"
+		"  \"Hunger\": \"None\",\n"
+		"  \"Energy\": \"None\",\n"
+		"  \"Perceived_Threat\": \"None\",\n"
+		"  \"Resource_Anxiety\": \"None\",\n"
+		"  \"Loneliness\": \"None\",\n"
+		"  \"Trust\": \"Moderate\",\n"
+		"  \"Anger\": \"None\",\n"
+		"  \"Social_Status\": \"Moderate\",\n"
+		"  \"Duty_Urgency\": \"None\",\n"
+		"  \"Curiosity\": \"Moderate\"\n"
 		"}\n"
 		"\n"
 		"=== EXAMPLES ===\n"
 		"Situation: \"Player says: You're an idiot!\"\n"
-		"Output: {\"Hunger\":0.0,\"Energy\":0.0,\"Perceived_Threat\":0.1,\"Resource_Anxiety\":0.0,\"Loneliness\":0.0,\"Trust\":0.3,\"Anger\":0.8,\"Social_Status\":0.7,\"Duty_Urgency\":0.0,\"Curiosity\":0.0}\n"
-		"Reason: Insulted → High Anger, Trust decreases, Social_Status increases (wants to prove self)\n"
+		"Output: {\"Hunger\":\"None\",\"Energy\":\"None\",\"Perceived_Threat\":\"Slight\",\"Resource_Anxiety\":\"None\",\"Loneliness\":\"None\",\"Trust\":\"Slight\",\"Anger\":\"Furious\",\"Social_Status\":\"Strong\",\"Duty_Urgency\":\"None\",\"Curiosity\":\"None\"}\n"
+		"Reason: Insulted → Furious (high anger), Trust decreases to Slight, Social_Status Strong (wants to prove self)\n"
 		"\n"
 		"Situation: \"Player says: I'll kill you!\"\n"
-		"Output: {\"Hunger\":0.0,\"Energy\":0.0,\"Perceived_Threat\":0.9,\"Resource_Anxiety\":0.0,\"Loneliness\":0.0,\"Trust\":0.1,\"Anger\":0.6,\"Social_Status\":0.5,\"Duty_Urgency\":0.0,\"Curiosity\":0.0}\n"
-		"Reason: Verbal threat → Very high Perceived_Threat, Low Trust, Moderate Anger\n"
+		"Output: {\"Hunger\":\"None\",\"Energy\":\"None\",\"Perceived_Threat\":\"Terrified\",\"Resource_Anxiety\":\"None\",\"Loneliness\":\"None\",\"Trust\":\"Suspicious\",\"Anger\":\"Angry\",\"Social_Status\":\"Moderate\",\"Duty_Urgency\":\"None\",\"Curiosity\":\"None\"}\n"
+		"Reason: Verbal threat → Terrified (very high threat), Suspicious (low trust), Angry (moderate anger)\n"
 		"\n"
 		"Situation: \"Player helps NPC complete a task\"\n"
-		"Output: {\"Hunger\":0.0,\"Energy\":0.0,\"Perceived_Threat\":0.0,\"Resource_Anxiety\":0.0,\"Loneliness\":0.0,\"Trust\":0.8,\"Anger\":0.0,\"Social_Status\":0.3,\"Duty_Urgency\":0.0,\"Curiosity\":0.0}\n"
-		"Reason: Player helped → High Trust, Low Social_Status need (satisfied)\n"
+		"Output: {\"Hunger\":\"None\",\"Energy\":\"None\",\"Perceived_Threat\":\"Safe\",\"Resource_Anxiety\":\"None\",\"Loneliness\":\"None\",\"Trust\":\"Trusting\",\"Anger\":\"None\",\"Social_Status\":\"Slight\",\"Duty_Urgency\":\"None\",\"Curiosity\":\"None\"}\n"
+		"Reason: Player helped → Trusting (high trust), Safe (no threat), Slight Social_Status (satisfied)\n"
 		"\n"
-		"Now analyze the current situation and output JSON:\n"
+		"Now analyze the current situation and output JSON with TAGS:\n"
 	), *ContextMemory, *SituationDescription);
 	
 	UE_LOG(LogTemp, Log, TEXT("[Cognition] Sending to LLM..."));
@@ -168,9 +250,36 @@ void UCognitionComponent::OnLLMReply(bool bSuccess, const FMentalState& NewState
 {
 	if (bSuccess)
 	{
-		// 思考成功，广播结果给 Controller (或其他监听者)
-		OnMentalStateChanged.Broadcast(NewState);
-		UE_LOG(LogTemp, Log, TEXT("[Cognition] Mental State Broadcasted. Anger: %.2f"), NewState.Anger);
+		// 不要直接广播，而是使用 Interpolator 设置目标值
+		// Don't broadcast directly, use Interpolator to set target values
+		
+		if (Interpolator)
+		{
+			// 使用宏自动为所有字段设置目标值
+			// Use macro to automatically set target values for all fields
+			#define SET_TARGET_VALUE(Name, DefaultValue, DisplayName, Description) \
+				Interpolator->SetTargetValue(TEXT(#Name), NewState.Name);
+			
+			MENTAL_STATE_FIELDS(SET_TARGET_VALUE)
+			
+			#undef SET_TARGET_VALUE
+			
+			UE_LOG(LogTemp, Log, TEXT("[Cognition] Target values set from LLM"));
+			UE_LOG(LogTemp, Log, TEXT("  Anger target: %.2f, Trust target: %.2f"), 
+			       NewState.Anger, NewState.Trust);
+			
+			// 注意：实际的 MentalState 更新在 TickComponent 中通过插值完成
+			// Note: Actual MentalState update happens in TickComponent via interpolation
+			
+			// 仍然广播事件，但现在是"目标值已设置"的通知
+			// Still broadcast event, but now it's a "target values set" notification
+			OnMentalStateChanged.Broadcast(NewState);
+		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[Cognition] Interpolator not initialized! Broadcasting directly."));
+			OnMentalStateChanged.Broadcast(NewState);
+		}
 	}
 	else
 	{
