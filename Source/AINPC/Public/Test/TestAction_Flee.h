@@ -39,4 +39,10 @@ private:
 	// 安全距离
 	UPROPERTY(EditAnywhere, Category = "Flee")
 	float SafeDistance = 1000.0f;
+	
+	// 当前威胁目标 / Current threat target
+	AActor* CurrentThreat = nullptr;
+	
+	// 上次移动时间 / Last move time
+	float LastMoveTime = 0.0f;
 };

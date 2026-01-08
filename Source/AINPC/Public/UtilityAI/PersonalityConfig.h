@@ -62,6 +62,28 @@ struct FPersonalityConfig : public FTableRowBase
 	                  ToolTip = "情绪不稳定、焦虑、敏感 / Emotional instability, anxiety, sensitivity"))
 	float Neuroticism = 0.5f;
 
+	// ========== 角色定义 (Role Definition) ==========
+	
+	// 角色描述 / Role Description
+	// 定义此 NPC 的身份和基本行为倾向，用于 LLM 上下文
+	// Defines this NPC's identity and basic behavioral tendencies for LLM context
+	// Example: "You are a hostile zombie that attacks humans on sight"
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Role Definition",
+	          meta = (DisplayName = "Role Description (角色描述)", 
+	                  ToolTip = "NPC 的身份和基本行为倾向 / NPC's identity and basic behavioral tendencies",
+	                  MultiLine = true))
+	FString RoleDescription = TEXT("You are a neutral NPC");
+	
+	// 行为准则 / Behavioral Guidelines
+	// 定义此 NPC 的具体行为规则和反应模式
+	// Defines this NPC's specific behavioral rules and reaction patterns
+	// Example: "Attack any human on sight. Flee if health is below 30%."
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Role Definition",
+	          meta = (DisplayName = "Behavioral Guidelines (行为准则)", 
+	                  ToolTip = "NPC 的具体行为规则和反应模式 / NPC's specific behavioral rules and reaction patterns",
+	                  MultiLine = true))
+	FString BehavioralGuidelines = TEXT("");
+
 	// 构造函数：默认为"平衡型"人格
 	// Constructor: Default to "balanced" personality
 	FPersonalityConfig()

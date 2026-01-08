@@ -7,6 +7,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "NavigationSystem.h"
+#include "EngineUtils.h"
 
 UTestAction_Flee::UTestAction_Flee()
 {
@@ -22,8 +23,10 @@ void UTestAction_Flee::Enter_Implementation(AAIController* Controller)
 	if (UWorld* World = Controller ? Controller->GetWorld() : nullptr)
 	{
 		ExecutionTime = World->GetTimeSeconds();
+		LastMoveTime = World->GetTimeSeconds();
 	}
 	bIsComplete = false;
+	CurrentThreat = nullptr;
 	
 	UE_LOG(LogTemp, Error, TEXT("═══════════════════════════════════════"));
 	UE_LOG(LogTemp, Error, TEXT("[TEST] Flee Action ENTERED (EMERGENCY!)"));

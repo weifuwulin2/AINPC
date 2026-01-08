@@ -2,6 +2,8 @@
 // 性格组件实现 / Personality Component Implementation
 
 #include "Components/PersonalityComponent.h"
+#include "Controller/UtilityAIController.h"
+#include "Components/CognitionComponent.h"
 
 UPersonalityComponent::UPersonalityComponent()
 {
@@ -46,7 +48,28 @@ void UPersonalityComponent::BeginPlay()
 	// Calculate Maslow weights
 	RecalculateWeights();
 
-	// 4. 调试输出
+	// 4. 将角色描述传递给 CognitionComponent
+	// Pass role description to CognitionComponent
+	AAIController* AIController = Cast<AAIController>(GetOwner());
+	if (AIController)
+	{
+		AUtilityAIController* UtilityController = Cast<AUtilityAIController>(AIController);
+		if (UtilityController && UtilityController->CognitionComp)
+		{
+			UtilityController->CognitionComp->RoleDescription = Personality.RoleDescription;
+			
+			// 如果有行为准则，也一起传递
+			// If there are behavioral guidelines, pass them too
+			if (!Personality.BehavioralGuidelines.IsEmpty())
+			{
+				UtilityController->CognitionComp->BehavioralGuidelines = Personality.BehavioralGuidelines;
+			}
+			
+			UE_LOG(LogTemp, Log, TEXT("[PersonalityComponent] Role description set: %s"), *Personality.RoleDescription);
+		}
+	}
+
+	// 5. 调试输出
 	// Debug output
 	DebugPrintPersonality();
 }

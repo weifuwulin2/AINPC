@@ -231,6 +231,32 @@ void ULLMCommunicator::OnResponseReceived(FHttpRequestPtr Request, FHttpResponse
             
             #undef EXTRACT_FIELD
             
+            // 提取 Emotion 字段 (字符串类型)
+            // Extract Emotion field (string type)
+            if (InnerJsonObject->HasField(TEXT("Emotion")))
+            {
+                ResultState.Emotion = InnerJsonObject->GetStringField(TEXT("Emotion"));
+                UE_LOG(LogTemp, Log, TEXT("  [Emotion] %s"), *ResultState.Emotion);
+            }
+            else
+            {
+                ResultState.Emotion = TEXT("Neutral");
+                UE_LOG(LogTemp, Warning, TEXT("  [Emotion] Not provided by LLM, defaulting to 'Neutral'"));
+            }
+            
+            // 提取 Speech 字段 (字符串类型)
+            // Extract Speech field (string type)
+            if (InnerJsonObject->HasField(TEXT("Speech")))
+            {
+                ResultState.Speech = InnerJsonObject->GetStringField(TEXT("Speech"));
+                UE_LOG(LogTemp, Log, TEXT("  [Speech] \"%s\""), *ResultState.Speech);
+            }
+            else
+            {
+                ResultState.Speech = TEXT("");
+                UE_LOG(LogTemp, Verbose, TEXT("  [Speech] Not provided by LLM"));
+            }
+            
             // SUCCESS!
             UE_LOG(LogTemp, Warning, TEXT("[LLM] SUCCESS! Parsed MentalState:"));
             

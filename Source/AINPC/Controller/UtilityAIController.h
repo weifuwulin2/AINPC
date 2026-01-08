@@ -13,6 +13,7 @@ class USensoryComponent;
 class UCognitionComponent;
 class UUtilityAIComponent;
 class UPersonalityComponent;
+class UEmotionDisplayComponent;
 class UNPCMentalState;
 struct FMentalState; // 假设这是你的结构体
 
@@ -48,6 +49,11 @@ public:
     // Personality Component (manages OCEAN personality and Maslow weights)
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI Components")
     UPersonalityComponent* PersonalityComp;
+    
+    // 情绪显示组件 (负责显示 emoji 和对话泡泡)
+    // Emotion Display Component (manages emoji and speech bubble display)
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI Components")
+    UEmotionDisplayComponent* EmotionDisplayComp;
 
     // =========================================================
     // 2. 感知配置 (Config)

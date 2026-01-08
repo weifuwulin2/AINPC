@@ -38,6 +38,20 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void StartDreaming();
 	
+	// 角色描述 / Role Description
+	// 定义此 NPC 的身份和基本行为倾向，用于 LLM 上下文
+	// Defines this NPC's identity and basic behavioral tendencies for LLM context
+	// Example: "You are a hostile zombie that attacks humans on sight"
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI | Cognition")
+	FString RoleDescription = TEXT("You are a neutral NPC");
+	
+	// 行为准则 / Behavioral Guidelines
+	// 定义此 NPC 的具体行为规则和反应模式
+	// Defines this NPC's specific behavioral rules and reaction patterns
+	// Example: "Attack any human on sight. Flee if health is below 30%."
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI | Cognition")
+	FString BehavioralGuidelines = TEXT("");
+	
 protected:
 	// 内部持有的 LLM 服务
 	UPROPERTY()
