@@ -244,6 +244,7 @@ AINPC/
 | 我想... | 查看文档 |
 |:--------|:---------|
 | 了解系统架构和数据流 | [DataFlow_Analysis.md](docs/analysis/DataFlow_Analysis.md) |
+| 理解Personality→OCEAN→Maslow→LLM的完整转换链路 | [Personality_OCEAN_Maslow_LLM_Pipeline.md](docs/design/Personality_OCEAN_Maslow_LLM_Pipeline.md) ⭐ |
 | 配置 LLM API | [LLM_Config_Guide.md](docs/guides/LLM_Config_Guide.md) |
 | 添加新的情绪属性 | [Single_Point_Configuration_Guide.md](docs/guides/Single_Point_Configuration_Guide.md) |
 | 配置 Utility AI 动作 | [Utility_AI_Configuration_Guide.md](docs/guides/Utility_AI_Configuration_Guide.md) |
@@ -364,6 +365,7 @@ AINPC/
 - `BaseReward_Calculation_Formula.md` - 评分公式详解
 - `Semantic_Mapping_System.md` - 语义映射系统
 - `Maslow_Variables_Jurisdiction.md` - 管辖权划分
+- `Personality_OCEAN_Maslow_LLM_Pipeline.md` - **⭐ Personality → OCEAN → Maslow → LLM 完整数据流**
 
 **实现指南:**
 - `PersonalityComponent_Integration_Guide.md` - 性格组件集成

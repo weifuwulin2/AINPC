@@ -428,3 +428,68 @@ Flee: BaseWeight = 2.0 (提高优先级)
 ---
 
 **配置愉快！** 🚀
+
+---
+
+## 🛠️ DataTable Configuration Workflow / 数据表配置流程
+
+To configure the AI system using DataTables, follow these steps:
+要使用数据表配置 AI 系统，请遵循以下步骤：
+
+### 1. Create Curve Assets (创建曲线资产)
+
+The Utility AI uses UE's native `CurveFloat` assets.
+Utility AI 使用 UE 原生的 `CurveFloat` 资产。
+
+1.  Right-click in Content Browser -> **Miscellaneous** -> **Curve** -> **CurveFloat**.
+2.  Name it logically (e.g., `Curve_Linear_0to1`, `Curve_Threshold_0.5`).
+3.  Double-click to edit. Add keys (Right-click -> Add Key).
+    *   **X-Axis**: Input Value (Normalized 0.0 to 1.0).
+    *   **Y-Axis**: Utility Score (Normalized 0.0 to 1.0).
+4.  **Important**: Ensure the X range covers 0 to 1.
+
+### 2. Configure Action DataTable (配置动作表)
+
+*   **Table Name**: e.g., `DT_UtilityActions`
+*   **Row Structure**: `FUtilityActionConfig`
+
+| Field | Description | Example |
+|-------|-------------|---------|
+| **ActionClass** | The C++ or BP class of the action | `BP_TestAction_Attack` |
+| **BaseReward** | The base score of this action | `1.5` |
+| **InertiaBonus** | Bonus points if already executing | `0.1` |
+| **CooldownTime** | Time in seconds before re-use | `1.0` |
+| **Considerations** | Array of factors | *(See below)* |
+
+**Adding a Consideration:**
+1.  Add an element to the `Considerations` array.
+2.  **InputType**: Select the attribute (e.g., `Anger`, `DistanceToTarget`).
+3.  **ResponseCurve**: Drag & drop your created `CurveFloat` asset here.
+
+### 3. Configure Personality DataTable (配置个性表)
+
+*   **Table Name**: e.g., `DT_Personalities`
+*   **Row Structure**: `FPersonalityConfig`
+
+| Field | Description | Example |
+|-------|-------------|---------|
+| **RoleDescription** | Who the NPC is (System Prompt) | "You are a brave knight..." |
+| **BehavioralGuidelines** | How they act (Logic Mapping) | "1. Protect the weak..." |
+| **Openness** | Personality Trait (0.0 - 1.0) | `0.8` |
+| **Conscientiousness** | Personality Trait (0.0 - 1.0) | `0.3` |
+| **Extraversion** | Personality Trait (0.0 - 1.0) | `0.9` |
+| **Agreeableness** | Personality Trait (0.0 - 1.0) | `0.1` |
+| **Neuroticism** | Personality Trait (0.0 - 1.0) | `0.5` |
+
+### 4. Assigning to NPC (分配给 NPC)
+
+In your NPC Character Blueprint (e.g., `BP_Zombie`):
+1.  Select the **PersonalityComponent**.
+2.  Find **"Personality Preset"** or **"Personalities Data Table"**.
+3.  Select the Row Name (e.g., `Zombie`).
+4.  Select the **UtilityAIComponent**.
+5.  Find **"Actions Data Table"**.
+6.  Select the Actions Table (the component will load ALL actions from this table).
+
+---
+

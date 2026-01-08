@@ -48,61 +48,95 @@ void UTestAction_Flee::Execute_Implementation(AAIController* Controller)
 {
 	Super::Execute_Implementation(Controller);
 	
-	if (!Controller)
-	{
-		return;
-	}
-	
+	if (!Controller) return;
 	UWorld* World = Controller->GetWorld();
-	if (!World)
-	{
-		return;
-	}
-	
+	if (!World) return;
 	APawn* ControlledPawn = Controller->GetPawn();
-	if (!ControlledPawn)
-	{
-		return;
-	}
+	if (!ControlledPawn) return;
 	
-	// 获取玩家角色
-	APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(World, 0);
-	if (!PlayerPawn)
+	// --- 1. 威胁搜索逻辑 ---
+	if (!CurrentThreat || !IsValid(CurrentThreat))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[Flee] No player found!"));
+		float MinDistance = FLT_MAX;
+		AActor* BestThreat = nullptr;
+
+		// 策略：只把带有 "Enemy" 标签的角色或者玩家当作威胁
+		// Strategy: Only treat actors with "Enemy" tag or Player as threat
+		
+		// Pass 1: 搜索 "Enemy"
+		for (TActorIterator<ACharacter> It(World); It; ++It)
+		{
+			ACharacter* Candidate = *It;
+			if (Candidate == ControlledPawn) continue;
+			if (Candidate->IsPendingKillPending()) continue;
+			
+			// 必须有 Enemy 标签
+			if (!Candidate->ActorHasTag("Enemy")) continue;
+
+			float Dist = FVector::Dist(ControlledPawn->GetActorLocation(), Candidate->GetActorLocation());
+			if (Dist < MinDistance)
+			{
+				MinDistance = Dist;
+				BestThreat = Candidate;
+			}
+		}
+
+		if (BestThreat)
+		{
+			CurrentThreat = BestThreat;
+			UE_LOG(LogTemp, Warning, TEXT("[Flee] Found threat (Tag:Enemy): %s (Dist: %.1f)"), *CurrentThreat->GetName(), MinDistance);
+		}
+		else
+		{
+			// Pass 2: 如果没有 Enemy，默认远离玩家 (Player 0)
+			CurrentThreat = UGameplayStatics::GetPlayerPawn(World, 0);
+			if (CurrentThreat == ControlledPawn) CurrentThreat = nullptr;
+		}
+	}
+
+	if (!CurrentThreat)
+	{
+		if (fmod(World->GetTimeSeconds(), 2.0f) < World->GetDeltaSeconds())
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[Flee] No 'Enemy' tag found and Player is safe/self. Relaxing..."));
+		}
 		return;
 	}
 	
 	float CurrentTime = World->GetTimeSeconds();
 	float ElapsedTime = CurrentTime - ExecutionTime;
 	
-	// 计算到玩家的距离
+	// --- 2. 逃跑逻辑 ---
 	FVector PawnLocation = ControlledPawn->GetActorLocation();
-	FVector PlayerLocation = PlayerPawn->GetActorLocation();
-	FVector ToPlayer = PlayerLocation - PawnLocation;
-	float DistanceToPlayer = ToPlayer.Size();
+	FVector ThreatLocation = CurrentThreat->GetActorLocation();
+	FVector ToThreat = ThreatLocation - PawnLocation;
+	float DistanceToThreat = ToThreat.Size();
 	
-	// 如果还没到达安全距离，继续逃跑
-	if (DistanceToPlayer < SafeDistance)
+	// 无论距离多远，只要 Action 还在运行，就继续保持远离状态
+	
+	// 频率限制：每 0.25s 更新一次移动目标，防止鬼畜
+	if (CurrentTime - LastMoveTime > 0.25f)
 	{
-		// 计算逃跑方向（玩家的反方向）
-		FVector FleeDirection = -ToPlayer.GetSafeNormal();
+		LastMoveTime = CurrentTime;
+
+		// 计算逃跑方向（威胁源的反方向）
+		FVector FleeDirection = -ToThreat.GetSafeNormal();
 		
-		// 计算目标位置
-		FVector FleeTarget = PawnLocation + FleeDirection * SafeDistance;
+		// 目标：往远处跑
+		float RunDist = (DistanceToThreat > SafeDistance) ? 500.0f : SafeDistance;
+		FVector FleeTarget = PawnLocation + FleeDirection * RunDist;
 		
-		// 使用导航系统找到可到达的位置
+		// 寻路
 		UNavigationSystemV1* NavSys = UNavigationSystemV1::GetCurrent(World);
 		if (NavSys)
 		{
 			FNavLocation NavLocation;
-			if (NavSys->ProjectPointToNavigation(FleeTarget, NavLocation, FVector(500.0f, 500.0f, 500.0f)))
+			if (NavSys->ProjectPointToNavigation(FleeTarget, NavLocation, FVector(RunDist, RunDist, 500.0f)))
 			{
 				Controller->MoveToLocation(NavLocation.Location, 50.0f);
 			}
 			else
 			{
-				// 如果找不到导航点，直接移动到目标位置
 				Controller->MoveToLocation(FleeTarget, 50.0f);
 			}
 		}
@@ -110,29 +144,15 @@ void UTestAction_Flee::Execute_Implementation(AAIController* Controller)
 		{
 			Controller->MoveToLocation(FleeTarget, 50.0f);
 		}
-		
-		if (FMath::Fmod(ElapsedTime, 0.5f) < World->GetDeltaSeconds())
-		{
-			UE_LOG(LogTemp, Warning, TEXT("[Flee] Running away... Distance: %.1f / %.1f"), DistanceToPlayer, SafeDistance);
-		}
-	}
-	else
-	{
-		// 已经到达安全距离
-		Controller->StopMovement();
-		
-		if (FMath::Fmod(ElapsedTime, 1.0f) < World->GetDeltaSeconds())
-		{
-			UE_LOG(LogTemp, Log, TEXT("[Flee] Safe distance reached! Distance: %.1f"), DistanceToPlayer);
-		}
 	}
 	
-	// 执行一段时间后完成
-	if (ElapsedTime >= MaxExecutionTime)
+	if (FMath::Fmod(ElapsedTime, 1.0f) < World->GetDeltaSeconds())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[Flee] Escaped successfully after %.1fs"), ElapsedTime);
-		bIsComplete = true;
+		UE_LOG(LogTemp, Warning, TEXT("[Flee] Running from %s (Dist: %.0f)..."), 
+			*CurrentThreat->GetName(), DistanceToThreat);
 	}
+
+	// 永不完成，直到 Utility AI 切换
 }
 
 void UTestAction_Flee::Exit_Implementation(AAIController* Controller)
