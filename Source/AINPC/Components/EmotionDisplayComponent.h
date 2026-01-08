@@ -166,6 +166,17 @@ protected:
 	UPROPERTY()
 	UWidgetComponent* SpeechBubbleWidgetComponent;
 	
+	// ========== 纹理缓存 (Texture Cache) ==========
+	
+	/**
+	 * 纹理缓存 / Texture Cache
+	 * 
+	 * 缓存已加载的纹理，避免重复加载
+	 * Cache loaded textures to avoid repeated loading
+	 */
+	UPROPERTY()
+	TMap<FString, UTexture2D*> TextureCache;
+	
 	// ========== 定时器 (Timers) ==========
 	
 	/**

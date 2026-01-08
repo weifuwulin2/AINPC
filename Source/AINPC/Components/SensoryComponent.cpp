@@ -3,6 +3,8 @@
 #include "AIController.h"
 #include "Perception/AIPerceptionComponent.h"
 #include "GameFramework/Character.h"
+#include "Controller/UtilityAIController.h"
+#include "Components/PersonalityComponent.h"
 
 USensoryComponent::USensoryComponent()
 {
@@ -86,8 +88,40 @@ void USensoryComponent::ReceiveSpeech(AActor* Speaker, FString Message)
 
 FString USensoryComponent::FormatDescription(FString Verb, AActor* Target, FString ExtraInfo)
 {
-    FString TargetName = Target ? Target->GetName() : "Unknown";
-    if (Target && Target->ActorHasTag("Player")) TargetName = "Player";
+    FString TargetName = "Unknown";
+    
+    if (Target)
+    {
+        // 步骤 1: 尝试获取 PersonalityID（NPC）
+        // Step 1: Try to get PersonalityID (NPC)
+        if (APawn* TargetPawn = Cast<APawn>(Target))
+        {
+            if (AController* TargetController = TargetPawn->GetController())
+            {
+                if (AUtilityAIController* UtilityController = Cast<AUtilityAIController>(TargetController))
+                {
+                    if (UtilityController->PersonalityComp && !UtilityController->PersonalityComp->PersonalityID.IsNone())
+                    {
+                        TargetName = UtilityController->PersonalityComp->PersonalityID.ToString();
+                    }
+                }
+            }
+        }
+        
+        // 步骤 2: 如果没有 PersonalityID，检查 Tag（玩家）
+        // Step 2: If no PersonalityID, check Tag (Player)
+        if (TargetName == "Unknown" && Target->ActorHasTag("Player"))
+        {
+            TargetName = "Player";
+        }
+        
+        // 步骤 3: 如果都没有，使用 Actor 名称
+        // Step 3: If neither, use Actor name
+        if (TargetName == "Unknown")
+        {
+            TargetName = Target->GetName();
+        }
+    }
     
     if (ExtraInfo.IsEmpty())
         return FString::Printf(TEXT("I %s %s"), *Verb, *TargetName);

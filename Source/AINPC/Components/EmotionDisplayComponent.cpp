@@ -23,59 +23,72 @@ void UEmotionDisplayComponent::BeginPlay()
 {
 	Super::BeginPlay();
 	
-	// 创建 Widget 组件
-	// Create Widget Components
-	CreateWidgetComponents();
+	UE_LOG(LogTemp, Warning, TEXT("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"));
+	UE_LOG(LogTemp, Warning, TEXT("[EmotionDisplay] BeginPlay called"));
 	
-	// 绑定到 CognitionComponent 的事件
-	// Bind to CognitionComponent Events
-	BindToCognitionEvents();
-	
-	// 测试：2秒后显示一个测试 emoji
-	// Test: Show a test emoji after 2 seconds
+	// 延迟创建 Widget 组件，确保 Pawn 已经被 Possess
+	// Delay Widget creation to ensure Pawn is possessed
 	if (GetWorld())
 	{
-		FTimerHandle TestTimerHandle;
+		FTimerHandle DelayHandle;
 		GetWorld()->GetTimerManager().SetTimer(
-			TestTimerHandle,
+			DelayHandle,
 			[this]()
 			{
-				UE_LOG(LogTemp, Warning, TEXT("[EmotionDisplay] TEST: Showing Happy emoji"));
-				ShowEmotion(TEXT("Happy"));
+				UE_LOG(LogTemp, Warning, TEXT("[EmotionDisplay] Delayed initialization starting..."));
+				CreateWidgetComponents();
+				BindToCognitionEvents();
 			},
-			2.0f,
+			0.1f,  // 延迟 0.1 秒
 			false
 		);
+		
+		UE_LOG(LogTemp, Warning, TEXT("[EmotionDisplay] Scheduled delayed initialization"));
 	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("[EmotionDisplay] GetWorld() returned nullptr!"));
+	}
+	
+	UE_LOG(LogTemp, Warning, TEXT("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"));
 }
 
 
 void UEmotionDisplayComponent::CreateWidgetComponents()
 {
+	UE_LOG(LogTemp, Warning, TEXT("[EmotionDisplay] CreateWidgetComponents called"));
+	
 	// Owner 是 AI Controller，需要获取它控制的 Pawn
 	// Owner is AI Controller, need to get the controlled Pawn
 	AAIController* AIController = Cast<AAIController>(GetOwner());
 	if (!AIController)
 	{
-		UE_LOG(LogTemp, Error, TEXT("[EmotionDisplay] Owner is not an AIController!"));
+		UE_LOG(LogTemp, Error, TEXT("[EmotionDisplay] ❌ Owner is not an AIController! Owner: %s"), 
+		       GetOwner() ? *GetOwner()->GetName() : TEXT("NULL"));
 		return;
 	}
+	
+	UE_LOG(LogTemp, Log, TEXT("[EmotionDisplay] ✅ AIController found: %s"), *AIController->GetName());
 	
 	APawn* ControlledPawn = AIController->GetPawn();
 	if (!ControlledPawn)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[EmotionDisplay] No Pawn controlled yet, will retry later"));
+		UE_LOG(LogTemp, Error, TEXT("[EmotionDisplay] ❌ No Pawn controlled yet by %s"), *AIController->GetName());
 		return;
 	}
+	
+	UE_LOG(LogTemp, Log, TEXT("[EmotionDisplay] ✅ Controlled Pawn found: %s"), *ControlledPawn->GetName());
 	
 	// 获取 Pawn 的根组件
 	// Get Pawn's root component
 	USceneComponent* RootComp = ControlledPawn->GetRootComponent();
 	if (!RootComp)
 	{
-		UE_LOG(LogTemp, Error, TEXT("[EmotionDisplay] Pawn has no root component!"));
+		UE_LOG(LogTemp, Error, TEXT("[EmotionDisplay] ❌ Pawn has no root component!"));
 		return;
 	}
+	
+	UE_LOG(LogTemp, Log, TEXT("[EmotionDisplay] ✅ Root component found: %s"), *RootComp->GetName());
 	
 	// 创建 Emoji Widget 组件（附加到 Pawn，不是 Controller）
 	// Create Emoji Widget Component (attach to Pawn, not Controller)
@@ -86,15 +99,25 @@ void UEmotionDisplayComponent::CreateWidgetComponents()
 		EmojiWidgetComponent->AttachToComponent(RootComp, FAttachmentTransformRules::KeepRelativeTransform);
 		EmojiWidgetComponent->SetRelativeLocation(FVector(0.0f, 0.0f, HeightOffset));
 		EmojiWidgetComponent->SetWidgetSpace(EWidgetSpace::Screen);
-		EmojiWidgetComponent->SetDrawSize(FVector2D(100.0f, 100.0f));
+		EmojiWidgetComponent->SetDrawSize(FVector2D(32.0f, 32.0f));  // 改为 32x32
 		EmojiWidgetComponent->SetVisibility(false); // 初始隐藏 / Initially hidden
 		
 		if (EmojiWidgetClass)
 		{
 			EmojiWidgetComponent->SetWidgetClass(EmojiWidgetClass);
+			UE_LOG(LogTemp, Warning, TEXT("[EmotionDisplay] ✅ Emoji Widget Component created with class: %s"), 
+			       *EmojiWidgetClass->GetName());
+		}
+		else
+		{
+			UE_LOG(LogTemp, Error, TEXT("[EmotionDisplay] ❌ EmojiWidgetClass is not set!"));
 		}
 		
-		UE_LOG(LogTemp, Log, TEXT("[EmotionDisplay] Emoji Widget Component created and attached to Pawn: %s"), *ControlledPawn->GetName());
+		UE_LOG(LogTemp, Warning, TEXT("[EmotionDisplay] ✅ Emoji Widget attached to Pawn: %s"), *ControlledPawn->GetName());
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("[EmotionDisplay] ❌ Failed to create EmojiWidgetComponent!"));
 	}
 	
 	// 创建对话泡泡 Widget 组件（附加到 Pawn）
@@ -106,49 +129,96 @@ void UEmotionDisplayComponent::CreateWidgetComponents()
 		SpeechBubbleWidgetComponent->AttachToComponent(RootComp, FAttachmentTransformRules::KeepRelativeTransform);
 		SpeechBubbleWidgetComponent->SetRelativeLocation(FVector(0.0f, 0.0f, HeightOffset + 50.0f)); // 比 emoji 高一点
 		SpeechBubbleWidgetComponent->SetWidgetSpace(EWidgetSpace::Screen);
-		SpeechBubbleWidgetComponent->SetDrawSize(FVector2D(300.0f, 100.0f));
+		SpeechBubbleWidgetComponent->SetDrawSize(FVector2D(200.0f, 60.0f));  // 改为 200x60
 		SpeechBubbleWidgetComponent->SetVisibility(false); // 初始隐藏 / Initially hidden
 		
 		if (SpeechBubbleWidgetClass)
 		{
 			SpeechBubbleWidgetComponent->SetWidgetClass(SpeechBubbleWidgetClass);
+			UE_LOG(LogTemp, Warning, TEXT("[EmotionDisplay] ✅ Speech Bubble Widget Component created with class: %s"), 
+			       *SpeechBubbleWidgetClass->GetName());
+		}
+		else
+		{
+			UE_LOG(LogTemp, Error, TEXT("[EmotionDisplay] ❌ SpeechBubbleWidgetClass is not set!"));
 		}
 		
-		UE_LOG(LogTemp, Log, TEXT("[EmotionDisplay] Speech Bubble Widget Component created and attached to Pawn: %s"), *ControlledPawn->GetName());
+		UE_LOG(LogTemp, Warning, TEXT("[EmotionDisplay] ✅ Speech Bubble Widget attached to Pawn: %s"), *ControlledPawn->GetName());
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("[EmotionDisplay] ❌ Failed to create SpeechBubbleWidgetComponent!"));
 	}
 }
 
 void UEmotionDisplayComponent::BindToCognitionEvents()
 {
+	UE_LOG(LogTemp, Warning, TEXT("[EmotionDisplay] BindToCognitionEvents called"));
+	
 	// 获取 AI Controller
 	// Get AI Controller
 	AAIController* AIController = Cast<AAIController>(GetOwner());
-	if (!AIController) return;
+	if (!AIController)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[EmotionDisplay] ❌ Owner is not an AIController!"));
+		return;
+	}
+	
+	UE_LOG(LogTemp, Log, TEXT("[EmotionDisplay] ✅ AIController found: %s"), *AIController->GetName());
 	
 	AUtilityAIController* UtilityController = Cast<AUtilityAIController>(AIController);
-	if (!UtilityController || !UtilityController->CognitionComp) return;
+	if (!UtilityController)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[EmotionDisplay] ❌ AIController is not a UtilityAIController!"));
+		return;
+	}
+	
+	UE_LOG(LogTemp, Log, TEXT("[EmotionDisplay] ✅ UtilityAIController found: %s"), *UtilityController->GetName());
+	
+	if (!UtilityController->CognitionComp)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[EmotionDisplay] ❌ CognitionComp is null!"));
+		return;
+	}
+	
+	UE_LOG(LogTemp, Log, TEXT("[EmotionDisplay] ✅ CognitionComp found"));
 	
 	// 绑定到 OnMentalStateChanged 事件
 	// Bind to OnMentalStateChanged event
 	UtilityController->CognitionComp->OnMentalStateChanged.AddDynamic(this, &UEmotionDisplayComponent::OnEmotionChanged);
 	
-	UE_LOG(LogTemp, Log, TEXT("[EmotionDisplay] Bound to CognitionComponent events"));
+	UE_LOG(LogTemp, Warning, TEXT("[EmotionDisplay] ✅ Successfully bound to CognitionComponent events"));
 }
 
 void UEmotionDisplayComponent::OnEmotionChanged(const FMentalState& NewState)
 {
+	// 防抖动：只在情绪真正改变时才显示
+	// Debounce: Only show when emotion actually changes
+	static FString LastEmotion = TEXT("");
+	static FString LastSpeech = TEXT("");
+	
 	// 当情绪变化时，显示对应的 emoji
 	// When emotion changes, display corresponding emoji
 	if (!NewState.Emotion.IsEmpty() && NewState.Emotion != TEXT("Neutral"))
 	{
-		ShowEmotion(NewState.Emotion);
+		// 只在情绪改变时才更新显示
+		if (NewState.Emotion != LastEmotion)
+		{
+			LastEmotion = NewState.Emotion;
+			ShowEmotion(NewState.Emotion);
+		}
 	}
 	
 	// 显示 LLM 生成的对话内容
 	// Display LLM-generated speech content
 	if (!NewState.Speech.IsEmpty())
 	{
-		ShowSpeechBubble(NewState.Speech);
+		// 只在对话改变时才更新显示
+		if (NewState.Speech != LastSpeech)
+		{
+			LastSpeech = NewState.Speech;
+			ShowSpeechBubble(NewState.Speech);
+		}
 	}
 }
 
@@ -382,6 +452,17 @@ FString UEmotionDisplayComponent::GetMessageForEmotion(const FString& Emotion) c
 
 UTexture2D* UEmotionDisplayComponent::GetEmojiTextureForEmotion(const FString& Emotion) const
 {
+	// 先检查缓存
+	// Check cache first
+	if (TextureCache.Contains(Emotion))
+	{
+		UTexture2D* CachedTexture = TextureCache[Emotion];
+		if (CachedTexture)
+		{
+			return CachedTexture;
+		}
+	}
+	
 	// 检查 DataAsset 是否设置
 	// Check if DataAsset is set
 	if (!EmojiConfigAsset)
@@ -396,6 +477,10 @@ UTexture2D* UEmotionDisplayComponent::GetEmojiTextureForEmotion(const FString& E
 	
 	if (Texture)
 	{
+		// 缓存纹理
+		// Cache the texture
+		const_cast<UEmotionDisplayComponent*>(this)->TextureCache.Add(Emotion, Texture);
+		UE_LOG(LogTemp, Log, TEXT("[EmotionDisplay] Cached texture for emotion: %s"), *Emotion);
 		return Texture;
 	}
 	
@@ -405,6 +490,9 @@ UTexture2D* UEmotionDisplayComponent::GetEmojiTextureForEmotion(const FString& E
 	if (DefaultTexture)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("[EmotionDisplay] No texture for emotion '%s', using default"), *Emotion);
+		// 也缓存默认纹理
+		// Also cache default texture
+		const_cast<UEmotionDisplayComponent*>(this)->TextureCache.Add(Emotion, DefaultTexture);
 		return DefaultTexture;
 	}
 	

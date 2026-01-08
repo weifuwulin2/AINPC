@@ -1,6 +1,7 @@
 #include "Components/UtilityAIComponent.h"
 #include "Controller/UtilityAIController.h"
 #include "UtilityAI/UNPCMentalState.h"
+#include "Components/PersonalityComponent.h"
 
 UUtilityAIComponent::UUtilityAIComponent()
 {
@@ -66,6 +67,13 @@ void UUtilityAIComponent::EvaluateAndDecide()
     UUtilityActionBase* BestAction = nullptr;
     float BestScore = -1.0f;
     UNPCMentalState* State = OwnerController->MentalState;
+    
+    // 获取 PersonalityID 用于日志
+    FString PersonalityID = "Unknown";
+    if (OwnerController && OwnerController->PersonalityComp)
+    {
+        PersonalityID = OwnerController->PersonalityComp->PersonalityID.ToString();
+    }
 
     // 🔍 调试：打印当前 MentalState
     static float LastLogTime = 0.0f;
@@ -75,26 +83,26 @@ void UUtilityAIComponent::EvaluateAndDecide()
     if (bShouldLog)
     {
         UE_LOG(LogTemp, Warning, TEXT("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"));
-        UE_LOG(LogTemp, Warning, TEXT("[UtilityAI] Evaluating Actions (Count: %d)"), AvailableActions.Num());
+        UE_LOG(LogTemp, Warning, TEXT("[UtilityAI|%s] Evaluating Actions (Count: %d)"), *PersonalityID, AvailableActions.Num());
         
         // 显示当前正在执行的 Action
         if (CurrentAction)
         {
-            UE_LOG(LogTemp, Log, TEXT("[UtilityAI] Currently Running: %s"), *CurrentAction->ActionName);
+            UE_LOG(LogTemp, Log, TEXT("[UtilityAI|%s] Currently Running: %s"), *PersonalityID, *CurrentAction->ActionName);
         }
         else
         {
-            UE_LOG(LogTemp, Log, TEXT("[UtilityAI] Currently Running: None"));
+            UE_LOG(LogTemp, Log, TEXT("[UtilityAI|%s] Currently Running: None"), *PersonalityID);
         }
         
         if (State)
         {
-            /*UE_LOG(LogTemp, Log, TEXT("[UtilityAI] MentalState: Anger=%.2f, Fear=%.2f, Confidence=%.2f"), 
-                   State->Anger, State->Fear, State->Confidence);*/
+            /*UE_LOG(LogTemp, Log, TEXT("[UtilityAI|%s] MentalState: Anger=%.2f, Fear=%.2f, Confidence=%.2f"), 
+                   *PersonalityID, State->Anger, State->Fear, State->Confidence);*/
         }
         else
         {
-            UE_LOG(LogTemp, Error, TEXT("[UtilityAI] ⚠️ MentalState is NULL!"));
+            UE_LOG(LogTemp, Error, TEXT("[UtilityAI|%s] ⚠️ MentalState is NULL!"), *PersonalityID);
         }
     }
 
@@ -107,8 +115,8 @@ void UUtilityAIComponent::EvaluateAndDecide()
         // 🔍 调试：打印每个 Action 的分数
         if (bShouldLog)
         {/*
-            UE_LOG(LogTemp, Log, TEXT("  [%s] Score: %.3f (BaseWeight: %.2f, Considerations: %d)"), 
-                   *Action->ActionName, Score, Action->BaseWeight, Action->Considerations.Num());*/
+            UE_LOG(LogTemp, Log, TEXT("  [%s|%s] Score: %.3f (BaseWeight: %.2f, Considerations: %d)"), 
+                   *PersonalityID, *Action->ActionName, Score, Action->BaseWeight, Action->Considerations.Num());*/
         }
 
         // 惯性奖励 (Momentum)
@@ -119,8 +127,8 @@ void UUtilityAIComponent::EvaluateAndDecide()
             
             if (bShouldLog)
             {
-                UE_LOG(LogTemp, Log, TEXT("    ↳ Inertia Bonus: +%.2f (%.3f -> %.3f)"), 
-                       Action->InertiaBonus, OldScore, Score);
+                UE_LOG(LogTemp, Log, TEXT("    ↳ [%s] Inertia Bonus: +%.2f (%.3f -> %.3f)"), 
+                       *PersonalityID, Action->InertiaBonus, OldScore, Score);
             }
         }
 
@@ -135,12 +143,12 @@ void UUtilityAIComponent::EvaluateAndDecide()
     {
         if (BestAction)
         {
-            UE_LOG(LogTemp, Warning, TEXT("[UtilityAI] 🏆 Best Action: %s (Score: %.3f)"), 
-                   *BestAction->ActionName, BestScore);
+            UE_LOG(LogTemp, Warning, TEXT("[UtilityAI|%s] 🏆 Best Action: %s (Score: %.3f)"), 
+                   *PersonalityID, *BestAction->ActionName, BestScore);
         }
         else
         {
-            UE_LOG(LogTemp, Error, TEXT("[UtilityAI] ⚠️ No valid action found!"));
+            UE_LOG(LogTemp, Error, TEXT("[UtilityAI|%s] ⚠️ No valid action found!"), *PersonalityID);
         }
         UE_LOG(LogTemp, Warning, TEXT("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"));
         LastLogTime = CurrentTime;
@@ -163,6 +171,6 @@ void UUtilityAIComponent::EvaluateAndDecide()
         CurrentAction->MarkExecutionTime(GetWorld()->GetTimeSeconds());
 
         // 打印切换日志
-        UE_LOG(LogTemp, Warning, TEXT("[UtilityAI] ✅ Switch Action: %s (Score: %.2f)"), *CurrentAction->ActionName, BestScore);
+        UE_LOG(LogTemp, Warning, TEXT("[UtilityAI|%s] ✅ Switch Action: %s (Score: %.2f)"), *PersonalityID, *CurrentAction->ActionName, BestScore);
     }
 }

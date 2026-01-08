@@ -112,6 +112,18 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Personality")
 	float GetWeightForVariable(const FString& VariableName) const;
+	void UsePersonalityTemplate(const FString& TemplateName);
+
+	/**
+	 * 设置性格 ID 并重新加载配置 / Set Personality ID and reload configuration
+	 * 
+	 * 这是运行时设置性格的推荐方法，会自动重新加载配置
+	 * This is the recommended way to set personality at runtime, will auto-reload configuration
+	 * 
+	 * @param NewPersonalityID - 新的性格 ID / New personality ID (e.g., "Zombie", "Merchant")
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Personality")
+	void SetPersonalityByID(FName NewPersonalityID);
 
 	/**
 	 * 重新计算马斯洛权重 / Recalculate Maslow weights
@@ -121,18 +133,6 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Personality")
 	void RecalculateWeights();
-
-	/**
-	 * 使用预设人格模板 / Use preset personality template
-	 * 
-	 * @param TemplateName - 模板名称 / Template name
-	 *   - "BraveWarrior" (勇敢的战士)
-	 *   - "CautiousGuard" (谨慎的守卫)
-	 *   - "FriendlyMerchant" (友好的商人)
-	 *   - "ReclusiveScholar" (孤僻的学者)
-	 */
-	UFUNCTION(BlueprintCallable, Category = "Personality")
-	void UsePersonalityTemplate(const FString& TemplateName);
 
 	/**
 	 * 调试输出：打印当前性格和权重 / Debug output: Print current personality and weights

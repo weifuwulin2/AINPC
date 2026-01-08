@@ -74,19 +74,90 @@ void UPersonalityComponent::BeginPlay()
 	DebugPrintPersonality();
 }
 
+void UPersonalityComponent::SetPersonalityByID(FName NewPersonalityID)
+{
+	UE_LOG(LogTemp, Warning, TEXT("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"));
+	UE_LOG(LogTemp, Warning, TEXT("[PersonalityComponent] SetPersonalityByID called"));
+	UE_LOG(LogTemp, Warning, TEXT("  Old PersonalityID: %s"), *PersonalityID.ToString());
+	UE_LOG(LogTemp, Warning, TEXT("  New PersonalityID: %s"), *NewPersonalityID.ToString());
+	
+	// 设置新的 PersonalityID
+	// Set new PersonalityID
+	PersonalityID = NewPersonalityID;
+	
+	// 重新加载配置
+	// Reload configuration
+	RecalculateWeights();
+	
+	UE_LOG(LogTemp, Warning, TEXT("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"));
+}
+
 void UPersonalityComponent::RecalculateWeights()
 {
+	UE_LOG(LogTemp, Warning, TEXT("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"));
+	UE_LOG(LogTemp, Warning, TEXT("[PersonalityComponent] RecalculateWeights called"));
+	UE_LOG(LogTemp, Warning, TEXT("  PersonalityID: %s"), *PersonalityID.ToString());
+	UE_LOG(LogTemp, Warning, TEXT("  PersonalityTable: %s"), PersonalityTable ? TEXT("Valid") : TEXT("NULL"));
+	
 	if (!PsychologyModel)
 	{
 		UE_LOG(LogTemp, Error, TEXT("[PersonalityComponent] PsychologyModel is null! Cannot calculate weights."));
+		UE_LOG(LogTemp, Warning, TEXT("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"));
 		return;
+	}
+
+	// 如果有 PersonalityTable，尝试重新加载配置
+	// If PersonalityTable exists, try to reload configuration
+	if (PersonalityTable && !PersonalityID.IsNone())
+	{
+		FPersonalityConfig* PersonalityRow = PersonalityTable->FindRow<FPersonalityConfig>(PersonalityID, TEXT("RecalculateWeights"));
+		
+		if (PersonalityRow)
+		{
+			Personality = *PersonalityRow;
+			UE_LOG(LogTemp, Warning, TEXT("  ✅ Reloaded personality from table: %s"), *PersonalityID.ToString());
+			UE_LOG(LogTemp, Log, TEXT("     OCEAN: O=%.2f, C=%.2f, E=%.2f, A=%.2f, N=%.2f"), 
+			       Personality.Openness, Personality.Conscientiousness, 
+			       Personality.Extraversion, Personality.Agreeableness, Personality.Neuroticism);
+			UE_LOG(LogTemp, Log, TEXT("     RoleDescription: %s"), *Personality.RoleDescription);
+		}
+		else
+		{
+			UE_LOG(LogTemp, Error, TEXT("  ❌ PersonalityID '%s' not found in table!"), *PersonalityID.ToString());
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("  ⚠️ No PersonalityTable or PersonalityID is None, using current Personality struct"));
 	}
 
 	// 调用心理学模型的核心函数
 	// Call the core function of psychology model
 	MaslowWeights = PsychologyModel->RecalculateWeights(Personality);
 
-	UE_LOG(LogTemp, Log, TEXT("[PersonalityComponent] Maslow weights recalculated successfully."));
+	// 同步 RoleDescription 到 CognitionComponent
+	// Sync RoleDescription to CognitionComponent
+	AAIController* AIController = Cast<AAIController>(GetOwner());
+	if (AIController)
+	{
+		AUtilityAIController* UtilityController = Cast<AUtilityAIController>(AIController);
+		if (UtilityController && UtilityController->CognitionComp)
+		{
+			UtilityController->CognitionComp->RoleDescription = Personality.RoleDescription;
+			
+			// 如果有行为准则，也一起传递
+			// If there are behavioral guidelines, pass them too
+			if (!Personality.BehavioralGuidelines.IsEmpty())
+			{
+				UtilityController->CognitionComp->BehavioralGuidelines = Personality.BehavioralGuidelines;
+			}
+			
+			UE_LOG(LogTemp, Warning, TEXT("  ✅ Updated RoleDescription: %s"), *Personality.RoleDescription);
+		}
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("  ✅ Maslow weights recalculated successfully"));
+	UE_LOG(LogTemp, Warning, TEXT("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"));
 }
 
 float UPersonalityComponent::GetWeightForVariable(const FString& VariableName) const
