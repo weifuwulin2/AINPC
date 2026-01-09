@@ -59,6 +59,10 @@ public:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI Components")
     UEmotionDisplayComponent* EmotionDisplayComp;
 
+    // 新陈代谢组件 / Metabolism Component
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI Components")
+    UMetabolismComponent* MetabolismComp;
+
     // =========================================================
     // 2. 感知配置 (Config)
     // =========================================================

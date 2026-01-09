@@ -6,6 +6,7 @@
 #include "Components/UtilityAIComponent.h"
 #include "Components/PersonalityComponent.h"
 #include "Components/EmotionDisplayComponent.h"
+#include "Components/MetabolismComponent.h"
 #include "UtilityAI/UNPCMentalState.h" 
 
 // 感知相关头文件
@@ -26,6 +27,7 @@ AUtilityAIController::AUtilityAIController()
     UtilityComp = CreateDefaultSubobject<UUtilityAIComponent>(TEXT("UtilityComponent"));
     PersonalityComp = CreateDefaultSubobject<UPersonalityComponent>(TEXT("PersonalityComponent"));
     EmotionDisplayComp = CreateDefaultSubobject<UEmotionDisplayComponent>(TEXT("EmotionDisplayComponent"));
+    MetabolismComp = CreateDefaultSubobject<UMetabolismComponent>(TEXT("MetabolismComponent"));
 
     // =========================================================
     // 2. 创建并配置感知组件 (Perception)
