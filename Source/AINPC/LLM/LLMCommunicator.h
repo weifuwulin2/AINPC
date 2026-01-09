@@ -24,8 +24,15 @@ struct FMentalState
 	
 	#undef DECLARE_MENTAL_STATE_FIELD
 	
+	// 行为意图 / Behavioral Intention
+	// LLM 明确指示的行为倾向，用于与 Utility AI 协调
+	// Explicit behavioral intention from LLM, used to coordinate with Utility AI
+	// Examples: "Attack", "Flee", "Idle", "Greet", "Investigate"
+	UPROPERTY(BlueprintReadWrite)
+	FString Intention = TEXT("Idle");
+	
 	// 情绪标签 / Emotion Label
-	// LLM 返回的情绪描述，用于显示 emoji 和对话泡泡
+	// LLM 返回的情绪描述,用于显示 emoji 和对话泡泡
 	// Emotion description returned by LLM, used for emoji and speech bubble display
 	// Examples: "Happy", "Angry", "Scared", "Confused", "Excited"
 	UPROPERTY(BlueprintReadWrite)

@@ -51,6 +51,12 @@ public:
 	// Example: "Attack any human on sight. Flee if health is below 30%."
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI | Cognition")
 	FString BehavioralGuidelines = TEXT("");
+
+	// 心理状态插值器 / Mental State Interpolator
+	// 平滑过渡情绪变化
+	UPROPERTY()
+	UMentalStateInterpolator* Interpolator;
+
 	
 protected:
 	// 内部持有的 LLM 服务
@@ -65,11 +71,7 @@ protected:
 	UPROPERTY()
 	USentimentMapper* SentimentMapper;
 
-	// 心理状态插值器 / Mental State Interpolator
-	// 平滑过渡情绪变化
-	UPROPERTY()
-	UMentalStateInterpolator* Interpolator;
-
+	
 	// 内部回调：处理 LLMCommunicator 返回的原始结果
 	void OnLLMReply(bool bSuccess, const FMentalState& NewState);
 

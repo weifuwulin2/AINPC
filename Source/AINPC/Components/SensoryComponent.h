@@ -91,6 +91,33 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category = "AI Sensory | Attention")
 	float PerceptionCooldown = 5.0f;
 	
+	
+	// ✅ 视觉累积系统：追踪非敌对目标的累积观察次数
+	// Visual Accumulation System: Track cumulative sightings of non-hostile targets
+	
+	// 记录每个目标被看到的累积次数
+	// Track cumulative sighting count for each target
+	UPROPERTY()
+	TMap<AActor*, int32> VisualAccumulationCount;
+	
+	// 触发认知事件所需的累积次数阈值（仅用于低优先级目标）
+	// Threshold of sightings needed to trigger a cognitive event (for low-priority targets only)
+	UPROPERTY(EditDefaultsOnly, Category = "AI Sensory | Attention")
+	int32 AccumulationThreshold = 3;
+	
+	// ✅ 即时响应系统：高优先级目标的即时感知
+	// Immediate Response System: Instant perception for high-priority targets
+	
+	// 是否对高优先级目标（玩家、敌人）启用即时响应
+	// Enable immediate response for high-priority targets (Player, Enemy)
+	UPROPERTY(EditDefaultsOnly, Category = "AI Sensory | Immediate Response")
+	bool bEnableImmediateResponse = true;
+	
+	// 高优先级目标的感知重要性（Magnitude）
+	// Perception magnitude for high-priority targets
+	UPROPERTY(EditDefaultsOnly, Category = "AI Sensory | Immediate Response", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float HighPriorityMagnitude = 0.5f;
+	
 	// 检查目标是否应该被感知（考虑冷却）
 	// Check if target should be perceived (considering cooldown)
 	bool ShouldPerceiveTarget(AActor* Target);
@@ -102,4 +129,20 @@ private:
 	// 清理过期的感知记录
 	// Clean up expired perception records
 	void CleanupPerceptionTracking();
+	
+	// 检查两个 Actor 是否属于敌对阵营
+	// Check if two actors belong to hostile factions
+	bool AreActorsHostile(AActor* ActorA, AActor* ActorB) const;
+	
+	// 获取 Actor 的阵营
+	// Get actor's faction
+	FName GetActorFaction(AActor* Actor) const;
+	
+	// 增加目标的视觉累积计数，返回当前计数
+	// Increment visual accumulation for target, returns current count
+	int32 IncrementVisualAccumulation(AActor* Target);
+	
+	// 重置目标的累积计数（在触发认知事件后）
+	// Reset accumulation count for target (after triggering cognitive event)
+	void ResetVisualAccumulation(AActor* Target);
 };

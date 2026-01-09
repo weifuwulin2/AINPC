@@ -2,6 +2,9 @@
 #include "GameFramework/Pawn.h"
 #include "Kismet/GameplayStatics.h"
 #include "Components/PersonalityComponent.h"
+#include "Controller/UtilityAIController.h"
+#include "Components/CognitionComponent.h"
+#include "UtilityAI/MentalStateInterpolation.h"
 
 
 
@@ -129,6 +132,9 @@ float UUtilityActionBase::CalculateScore(UNPCMentalState* MentalState, AAIContro
                  case EUtilityCurveType::TargetThreshold:
                     CurveValue = (RawValue >= 0.1f) ? 1.0f : 0.0f; // 简单的阈值过滤
                     break;
+                 case EUtilityCurveType::Inverse:
+                    CurveValue = 1.0f - RawValue; // 反向：有敌人(1.0) -> 0.0, 没敌人(0.0) -> 1.0
+                    break;
                 default:
                     CurveValue = RawValue;
                     break;
@@ -249,41 +255,52 @@ float UUtilityActionBase::GetConsiderationValue(EUtilityInputType InputType, UNP
     APawn* BotPawn = Controller ? Controller->GetPawn() : nullptr;
     if (!BotPawn) return 0.0f;
 
+    // 🔍 尝试获取 MentalStateInterpolator 来使用 Target 值
+    // Try to get MentalStateInterpolator to use Target values
+    UMentalStateInterpolator* Interpolator = nullptr;
+    if (AUtilityAIController* UtilityController = Cast<AUtilityAIController>(Controller))
+    {
+        if (UtilityController->CognitionComp)
+        {
+            Interpolator = UtilityController->CognitionComp->Interpolator;
+        }
+    }
+
     switch (InputType)
     {
-        // === 马斯洛需求层次 (手动映射) ===
-        // Maslow's Hierarchy (Manual Mapping)
+        // === 马斯洛需求层次 (使用 Target 值) ===
+        // Maslow's Hierarchy (Use Target Values)
         // 注意：枚举值是驼峰命名，但字段名可能有下划线
         
         // 生理层 (Physiological)
         case EUtilityInputType::Hunger:
-            return State ? State->Hunger : 0.0f;
+            return Interpolator ? Interpolator->GetTargetValue(TEXT("Hunger")) : (State ? State->Hunger : 0.0f);
         case EUtilityInputType::Energy:
-            return State ? State->Energy : 0.0f;
+            return Interpolator ? Interpolator->GetTargetValue(TEXT("Energy")) : (State ? State->Energy : 0.0f);
         
         // 安全层 (Safety)
         case EUtilityInputType::PerceivedThreat:
-            return State ? State->Perceived_Threat : 0.0f;
+            return Interpolator ? Interpolator->GetTargetValue(TEXT("Perceived_Threat")) : (State ? State->Perceived_Threat : 0.0f);
         case EUtilityInputType::ResourceAnxiety:
-            return State ? State->Resource_Anxiety : 0.0f;
+            return Interpolator ? Interpolator->GetTargetValue(TEXT("Resource_Anxiety")) : (State ? State->Resource_Anxiety : 0.0f);
         
         // 社交层 (Love/Belonging)
         case EUtilityInputType::Loneliness:
-            return State ? State->Loneliness : 0.0f;
+            return Interpolator ? Interpolator->GetTargetValue(TEXT("Loneliness")) : (State ? State->Loneliness : 0.0f);
         case EUtilityInputType::Trust:
-            return State ? State->Trust : 0.0f;
+            return Interpolator ? Interpolator->GetTargetValue(TEXT("Trust")) : (State ? State->Trust : 0.0f);
         
         // 尊严层 (Esteem)
         case EUtilityInputType::Anger:
-            return State ? State->Anger : 0.0f;
+            return Interpolator ? Interpolator->GetTargetValue(TEXT("Anger")) : (State ? State->Anger : 0.0f);
         case EUtilityInputType::SocialStatus:
-            return State ? State->Social_Status : 0.0f;
+            return Interpolator ? Interpolator->GetTargetValue(TEXT("Social_Status")) : (State ? State->Social_Status : 0.0f);
         
         // 自我实现层 (Self-Actualization)
         case EUtilityInputType::DutyUrgency:
-            return State ? State->Duty_Urgency : 0.0f;
+            return Interpolator ? Interpolator->GetTargetValue(TEXT("Duty_Urgency")) : (State ? State->Duty_Urgency : 0.0f);
         case EUtilityInputType::Curiosity:
-            return State ? State->Curiosity : 0.0f;
+            return Interpolator ? Interpolator->GetTargetValue(TEXT("Curiosity")) : (State ? State->Curiosity : 0.0f);
 
         // --- 自身状态 (Self Status) ---
         case EUtilityInputType::SelfHealth:

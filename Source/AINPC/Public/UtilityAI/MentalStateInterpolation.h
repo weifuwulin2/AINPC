@@ -122,6 +122,18 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Mental State Interpolation")
     void ResetAllTargets();
 
+    /**
+     * 获取目标值 / Get Target Value
+     * 
+     * 用于 Utility AI 获取 LLM 的意图值（而不是插值后的当前值）
+     * Used by Utility AI to get LLM's intended value (instead of interpolated current value)
+     * 
+     * @param VariableName - 变量名
+     * @return 目标值，如果不存在则返回 0.0
+     */
+    UFUNCTION(BlueprintCallable, Category = "Mental State Interpolation")
+    float GetTargetValue(const FString& VariableName) const;
+
 private:
     // 目标值映射 / Target Value Mapping
     // Key: 变量名 (如 "Anger")

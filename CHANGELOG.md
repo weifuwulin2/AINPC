@@ -7,6 +7,66 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.4.2] - 2026-01-09
+
+### 🐛 Critical Bug Fixes
+
+#### Faction System
+- **Fixed Faction Loading**: Modified `PersonalityComponent` to correctly load `Faction` field from `PersonalityTable` into `PersonalityConfig` struct
+- **Fixed GetActorFaction**: Updated `SensoryComponent::GetActorFaction()` to handle both Controller and Pawn as input, fixing the issue where Self faction was always "Neutral"
+- **Enhanced Faction Detection**: Added automatic `SetFocus()` call when hostile faction is detected, ensuring Attack actions target the correct enemy
+
+#### Utility AI Decision Making
+- **Implemented Target Value System**: Modified `UtilityActionBase::GetConsiderationValue()` to use `MentalStateInterpolator::GetTargetValue()` instead of current interpolated values
+  - Utility AI now responds immediately to LLM intentions without waiting for interpolation
+  - Example: When LLM sets `Perceived_Threat=0.7`, Utility AI sees 0.7 immediately instead of waiting for interpolation from 0.0
+- **Added MentalStateInterpolator::GetTargetValue()**: New public function to retrieve LLM's intended values for Utility AI decision making
+
+#### Attack Action Targeting
+- **Fixed Attack Target Selection**: Modified `TestAction_Attack` to only attack the current `FocusActor` instead of automatically searching for enemies or defaulting to Player
+  - Removed automatic enemy search logic from `Enter()` and `Execute()`
+  - Attack now relies on `SensoryComponent` to set the correct target via `SetFocus()`
+  - Prevents NPCs from incorrectly attacking Player when they should attack each other
+
+### 🔧 Technical Improvements
+
+**SensoryComponent**
+- Added `SetFocus()` call when hostile faction is detected (Magnitude 0.8)
+- Ensures Attack actions receive the correct target from perception system
+- Added debug logging for FocusActor changes
+
+**UtilityActionBase**
+- Added includes for `UtilityAIController`, `CognitionComponent`, and `MentalStateInterpolator`
+- Modified `GetConsiderationValue()` to access Interpolator through Controller→CognitionComp→Interpolator
+- Fallback to current MentalState values if Interpolator is unavailable
+
+**MentalStateInterpolation**
+- Added `GetTargetValue(const FString& VariableName)` public function
+- Returns LLM's intended value before interpolation completes
+- Returns 0.0 if target value not set
+
+### 📝 Code Quality
+
+**Improved Variable Naming**
+- Renamed `Controller` to `Controller1` in `GetActorFaction()` to avoid shadowing warnings
+- Better code clarity and compiler compliance
+
+### 🎯 Behavior Changes
+
+**Before:**
+- Warrior sees Zombie → LLM returns `Perceived_Threat=0.7` → Utility AI sees `0.0` (not interpolated yet) → Flee action wins
+- Attack action automatically searches for "Enemy" tag or Player → Both Warrior and Zombie attack Player
+
+**After:**
+- Warrior sees Zombie → LLM returns `Perceived_Threat=0.7` → Utility AI sees `0.7` (target value) → Attack action wins
+- Attack action uses FocusActor set by SensoryComponent → Warrior attacks Zombie, Zombie attacks Warrior
+
+### 🐛 Known Issues
+
+None currently identified.
+
+---
+
 ## [0.4.1] - 2026-01-08
 
 ### 🐛 Bug Fixes & Refinements

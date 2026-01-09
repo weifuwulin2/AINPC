@@ -2,6 +2,7 @@
 #include "Controller/UtilityAIController.h"
 #include "UtilityAI/UNPCMentalState.h"
 #include "Components/PersonalityComponent.h"
+#include "LLM/LLMCommunicator.h"
 
 UUtilityAIComponent::UUtilityAIComponent()
 {
@@ -124,6 +125,30 @@ void UUtilityAIComponent::EvaluateAndDecide()
             {
                 UE_LOG(LogTemp, Log, TEXT("    ↳ [%s] Inertia Bonus: +%.2f (%.3f -> %.3f)"), 
                        *PersonalityID, Action->InertiaBonus, OldScore, Score);
+            }
+        }
+
+        // 🧠 LLM 意图加成 (Intention Guidance)
+        // LLM 提供"建议"，Utility AI 依然做最终决策
+        // LLM provides "suggestion", Utility AI still makes final decision
+        if (State && !State->ToStruct().Intention.IsEmpty())
+        {
+            FString LLMIntention = State->ToStruct().Intention;
+            
+            // 检查 Action 名称是否包含 Intention 关键词
+            // Check if Action name contains the Intention keyword
+            // 例如：Intention="Attack" 匹配 ActionName="Test_Attack"
+            if (Action->ActionName.Contains(LLMIntention))
+            {
+                float OldScore = Score;
+                float IntentionBonus = 0.3f; // 可配置的加成值
+                Score += IntentionBonus;
+                
+                if (bShouldLog)
+                {
+                    UE_LOG(LogTemp, Log, TEXT("    ↳ [%s] 🧠 LLM Intention Bonus: +%.2f (Intention: %s, %.3f -> %.3f)"), 
+                           *PersonalityID, IntentionBonus, *LLMIntention, OldScore, Score);
+                }
             }
         }
 

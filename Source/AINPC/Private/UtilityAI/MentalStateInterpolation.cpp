@@ -129,6 +129,24 @@ void UMentalStateInterpolator::ResetAllTargets()
     UE_LOG(LogTemp, Log, TEXT("[MentalStateInterpolator] Reset all target values"));
 }
 
+float UMentalStateInterpolator::GetTargetValue(const FString& VariableName) const
+{
+    // 查找目标值
+    // Find target value
+    const float* ValuePtr = TargetValues.Find(VariableName);
+    
+    if (ValuePtr)
+    {
+        return *ValuePtr;
+    }
+    else
+    {
+        // 如果没有设置目标值，返回 0.0
+        // If no target value is set, return 0.0
+        return 0.0f;
+    }
+}
+
 float UMentalStateInterpolator::GetCurrentValue(UNPCMentalState* MentalState, const FString& VariableName) const
 {
     // 使用宏自动生成的 getter

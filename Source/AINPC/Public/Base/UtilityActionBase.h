@@ -77,7 +77,8 @@ enum class EUtilityCurveType : uint8
 	InverseQuadratic, // 反平方 (y = 1 - (1-x)^2) - 一点点就很有用
 	Logistic,         // S形 (Sigmoid) - 只有中间变化大
 	Step,             // 阶梯 (x > 0.5 ? 1 : 0)
-    TargetThreshold   // 目标阈值 (x > Threshold ? 1 : 0) (New)
+    TargetThreshold,  // 目标阈值 (x > Threshold ? 1 : 0) (New)
+    Inverse           // 反向 (y = 1 - x) - 用于反向 Context，例如"没有敌人时才能聊天"
 };
 
 USTRUCT(BlueprintType)

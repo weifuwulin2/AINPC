@@ -33,54 +33,20 @@ void UTestAction_Attack::Enter_Implementation(AAIController* Controller)
 	UE_LOG(LogTemp, Warning, TEXT("[TEST] Attack Action ENTERED"));
 	UE_LOG(LogTemp, Warning, TEXT("═══════════════════════════════════════"));
 	
-	// ✅ 立即搜索并设置攻击目标
-	// Immediately search and set attack target
-	if (Controller && Controller->GetWorld())
+	// ✅ 使用当前的 FocusActor 作为攻击目标
+	// Use current FocusActor as attack target
+	if (Controller)
 	{
-		APawn* ControlledPawn = Controller->GetPawn();
-		if (ControlledPawn)
+		AActor* CurrentFocus = Controller->GetFocusActor();
+		
+		if (CurrentFocus && IsValid(CurrentFocus))
 		{
-			// 搜索最近的敌人
-			AActor* TargetEnemy = nullptr;
-			float MinDistance = FLT_MAX;
-			
-			TArray<AActor*> FoundActors;
-			UGameplayStatics::GetAllActorsWithTag(Controller->GetWorld(), FName("Enemy"), FoundActors);
-			
-			for (AActor* Actor : FoundActors)
-			{
-				if (Actor == ControlledPawn) continue;
-				if (!IsValid(Actor)) continue;
-				
-				float Distance = FVector::Dist(ControlledPawn->GetActorLocation(), Actor->GetActorLocation());
-				if (Distance < MinDistance)
-				{
-					MinDistance = Distance;
-					TargetEnemy = Actor;
-				}
-			}
-			
-			// 如果没有找到 "Enemy" 标签的 Actor，尝试攻击玩家
-			if (!TargetEnemy)
-			{
-				TargetEnemy = UGameplayStatics::GetPlayerPawn(Controller->GetWorld(), 0);
-				if (TargetEnemy == ControlledPawn)
-				{
-					TargetEnemy = nullptr;
-				}
-			}
-			
-			// ✅ 设置 FocusActor，让 Utility AI 的 HasAttackTarget 检查通过
-			if (TargetEnemy)
-			{
-				Controller->SetFocus(TargetEnemy, EAIFocusPriority::Gameplay);
-				UE_LOG(LogTemp, Log, TEXT("[Attack] Target locked: %s"), *TargetEnemy->GetName());
-			}
-			else
-			{
-				UE_LOG(LogTemp, Warning, TEXT("[Attack] No target found on Enter!"));
-				bIsComplete = true; // 没有目标，直接标记完成
-			}
+			UE_LOG(LogTemp, Log, TEXT("[Attack] Target locked: %s"), *CurrentFocus->GetName());
+		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[Attack] No FocusActor set! Attack will fail."));
+			bIsComplete = true; // 没有目标，直接标记完成
 		}
 	}
 	
@@ -147,51 +113,16 @@ void UTestAction_Attack::Execute_Implementation(AAIController* Controller)
 		return;
 	}
 	
-	// 寻找最近的敌人（优先攻击带有 "Enemy" 标签的 Actor）
-	// Find nearest enemy (prioritize actors with "Enemy" tag)
-	AActor* TargetEnemy = nullptr;
-	float MinDistance = FLT_MAX;
+	// ✅ 使用当前的 FocusActor 作为攻击目标
+	// Use current FocusActor as attack target
+	AActor* TargetEnemy = Controller->GetFocusActor();
 	
-	// 搜索所有带有 "Enemy" 标签的 Actor
-	// Search for all actors with "Enemy" tag
-	TArray<AActor*> FoundActors;
-	UGameplayStatics::GetAllActorsWithTag(World, FName("Enemy"), FoundActors);
-	
-	for (AActor* Actor : FoundActors)
+	if (!TargetEnemy || !IsValid(TargetEnemy))
 	{
-		if (Actor == ControlledPawn) continue;
-		if (!IsValid(Actor)) continue;
-		
-		float Distance = FVector::Dist(ControlledPawn->GetActorLocation(), Actor->GetActorLocation());
-		if (Distance < MinDistance)
-		{
-			MinDistance = Distance;
-			TargetEnemy = Actor;
-		}
-	}
-	
-	// 如果没有找到 "Enemy" 标签的 Actor，尝试攻击玩家
-	// If no "Enemy" tagged actor found, try to attack player
-	if (!TargetEnemy)
-	{
-		TargetEnemy = UGameplayStatics::GetPlayerPawn(World, 0);
-		if (TargetEnemy == ControlledPawn)
-		{
-			TargetEnemy = nullptr;
-		}
-	}
-	
-	if (!TargetEnemy)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("[Attack] No enemy found! Stopping attack."));
-		bIsComplete = true; // ✅ 没有目标，标记完成
-		Controller->ClearFocus(EAIFocusPriority::Gameplay); // ✅ 清除 Focus
+		UE_LOG(LogTemp, Warning, TEXT("[Attack] No valid FocusActor! Stopping attack."));
+		bIsComplete = true;
 		return;
 	}
-
-	// ✅ 设置 FocusActor，让 Utility AI 知道当前攻击目标
-	// Set FocusActor so Utility AI knows the current attack target
-	Controller->SetFocus(TargetEnemy, EAIFocusPriority::Gameplay);
 	
 	float CurrentTime = World->GetTimeSeconds();
 	float ElapsedTime = CurrentTime - ExecutionTime;

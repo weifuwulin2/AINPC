@@ -1,0 +1,31 @@
+fix(faction): Fix faction system and Utility AI target value usage
+
+Critical bug fixes for faction-based AI behavior:
+
+## Faction System
+- Fix Faction field loading from PersonalityTable
+- Fix GetActorFaction() to handle Controller and Pawn inputs  
+- Add automatic SetFocus() for hostile targets
+
+## Utility AI
+- Implement Target Value System for immediate LLM response
+- Add MentalStateInterpolator::GetTargetValue() function
+- Use target values instead of interpolated values in decision making
+
+## Attack Targeting
+- Fix Attack action to use only FocusActor as target
+- Remove automatic enemy/player search logic
+- Prevent incorrect Player targeting
+
+## Files Modified
+- SensoryComponent.cpp: Add SetFocus(), fix GetActorFaction()
+- UtilityActionBase.cpp: Use Interpolator target values
+- MentalStateInterpolation.h/cpp: Add GetTargetValue()
+- TestAction_Attack.cpp: Remove auto-search, use FocusActor only
+
+## Behavior Changes
+Before: Warrior flees from Zombie (interpolation lag)
+After: Warrior attacks Zombie (immediate LLM intention)
+
+Before: Both NPCs attack Player (auto-search)
+After: NPCs attack each other (correct faction targeting)
