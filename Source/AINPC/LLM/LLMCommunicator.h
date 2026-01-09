@@ -17,12 +17,12 @@ struct FMentalState
 	GENERATED_BODY()
 	
 	// ✅ 使用宏自动生成所有字段
-	#define DECLARE_FIELD(Name, DefaultValue, DisplayName, Description) \
+	#define DECLARE_MENTAL_STATE_FIELD(Name, DefaultValue, DisplayName, Description) \
 		UPROPERTY() float Name = DefaultValue;
 	
-	MENTAL_STATE_FIELDS(DECLARE_FIELD)
+	MENTAL_STATE_FIELDS(DECLARE_MENTAL_STATE_FIELD)
 	
-	#undef DECLARE_FIELD
+	#undef DECLARE_MENTAL_STATE_FIELD
 	
 	// 情绪标签 / Emotion Label
 	// LLM 返回的情绪描述，用于显示 emoji 和对话泡泡

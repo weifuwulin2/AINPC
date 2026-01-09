@@ -1,126 +1,177 @@
-#include "MemoryComponent.h"
+#include "Components/MemoryComponent.h"
+#include "Social/SocialGameplayTags.h"
 
 UMemoryComponent::UMemoryComponent()
 {
-    PrimaryComponentTick.bCanEverTick = false;
+	PrimaryComponentTick.bCanEverTick = false;
+	ReflectionThreshold = 20.0f;
 }
 
 void UMemoryComponent::BeginPlay()
 {
-    Super::BeginPlay();
-    // 可以在这里加载存档的记忆
+	Super::BeginPlay();
 }
 
-void UMemoryComponent::AddMemory(FString Content, float Importance)
+void UMemoryComponent::CommitEvent(const FSemanticEvent& Event)
 {
-    // 1. 构建新记忆
-    FMemoryFragment NewMem;
-    NewMem.Description = Content;
-    NewMem.Timestamp = FDateTime::Now();
-    NewMem.Importance = Importance;
+	FMemoryItem NewItem;
+	NewItem.Description = Event.Content;
+	NewItem.Tags.AddTag(Event.Verb);
+	NewItem.ImportanceScore = CalculateImportance(Event);
+	NewItem.Timestamp = FDateTime::Now();
 
-    // 2. 加入流
-    MemoryStream.Add(NewMem);
+	// Storage: Comprehensive Record (Append Only)
+	MemoryStream.Add(NewItem);
 
-    // 3. 遗忘机制 (FIFO - 先进先出，但保留极其重要的记忆)
-    if (MemoryStream.Num() > MaxMemoryCount)
-    {
-        // 简单策略：直接删除最旧的
-        // 进阶策略：遍历前10个，删除 Importance 低于 0.8 的
-        MemoryStream.RemoveAt(0);
-    }
+	// Accumulate Importance for Reflection Trigger
+	CurrentImportanceSum += NewItem.ImportanceScore;
 
-    UE_LOG(LogTemp, Log, TEXT("[Memory] Stored: %s"), *Content);
+	UE_LOG(LogTemp, Log, TEXT("[Memory] Stored: %s (Imp: %.2f)"), *NewItem.Description, NewItem.ImportanceScore);
+
+	// Check Trigger (Logic only, actual LLM call would be async)
+	if (CurrentImportanceSum >= ReflectionThreshold)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Memory] 'Slow System' Reflection Triggered! (Sum: %.2f)"), CurrentImportanceSum);
+		// Reset accumulator after triggering (in a real system, reset after successful reflection)
+		CurrentImportanceSum = 0.0f; 
+		
+		// Note: The actual call to LLM is better handled by CognitionComponent listening or polling.
+		// However, for simplicity given current roadmap, we can rely on the Timer in UtilityAIController for "Dreaming".
+		// Or we could broadcast an event here "OnReflectionNeeded".
+	}
 }
 
-FString UMemoryComponent::RetrieveRelevantMemories(FString CurrentContext)
+float UMemoryComponent::CalculateImportance(const FSemanticEvent& Event)
 {
-    if (MemoryStream.Num() == 0) return TEXT("No past memories.");
+	// Physiological Layer Logic: Heuristics based on Tags and Magnitude
+	float BaseScore = Event.Magnitude * 10.0f; // Scale 0-1 to 0-10
 
-    FString ResultString = "";
-    int32 FoundCount = 0;
-    const int32 MaxRetrieve = 5; // 最多给 LLM 看 5 条，省 Token
+	if (Event.Verb.MatchesTag(AINPCTags::Event_Danger))
+	{
+		BaseScore += 5.0f; // Danger is always important
+	}
+	else if (Event.Verb.MatchesTag(AINPCTags::Social_Conflict))
+	{
+		BaseScore += 3.0f; // Conflict is memorable
+	}
+	else if (Event.Verb.MatchesTag(AINPCTags::Activity_Mundane))
+	{
+		BaseScore *= 0.1f; // Mundane things fade fast
+	}
 
-    // --- 策略 A: 关键字匹配 (Relevance) ---
-    // 简单的做法：把 CurrentContext 拆成单词，去历史里搜
-    // 比如 Context="I see a Zombie"，那么我们去搜包含 "Zombie" 的旧记忆
-    
-    TArray<FString> Keywords;
-    CurrentContext.ParseIntoArray(Keywords, TEXT(" "), true);
-
-    // 倒序遍历 (从最新的开始找)
-    for (int32 i = MemoryStream.Num() - 1; i >= 0; i--)
-    {
-        bool bIsRelevant = false;
-        
-        // 1. 检查是否包含关键字
-        for (const FString& Word : Keywords)
-        {
-            // 忽略像 "I", "a", "the" 这种停用词 (这里简化处理，只匹配长度大于3的词)
-            if (Word.Len() > 3 && MemoryStream[i].Description.Contains(Word))
-            {
-                bIsRelevant = true;
-                break;
-            }
-        }
-
-        // 2. 总是包含最近的 2 条记忆 (Recency Bias)
-        // 即使没有关键字，最近发生的事也很重要
-        if (i >= MemoryStream.Num() - 2)
-        {
-            bIsRelevant = true;
-        }
-
-        // 如果相关，就加入结果
-        if (bIsRelevant)
-        {
-            FString TimeStr = MemoryStream[i].Timestamp.ToString();
-            ResultString += FString::Printf(TEXT("- [%s] %s\n"), *TimeStr, *MemoryStream[i].Description);
-            
-            FoundCount++;
-            if (FoundCount >= MaxRetrieve) break; // 找够了就停
-        }
-    }
-
-    return ResultString;
+	return FMath::Clamp(BaseScore, 0.1f, 10.0f);
 }
 
+TArray<FMemoryItem> UMemoryComponent::RetrieveRelevantMemories(const FString& QueryContext, int32 Limit)
+{
+	if (MemoryStream.Num() == 0) return TArray<FMemoryItem>();
 
-// MemoryComponent.cpp (补充实现)
+	// Scoring: Score = Recency + Importance + Relevance
+	struct FScoredMemory
+	{
+		int32 Index;
+		float Score;
+	};
+
+	TArray<FScoredMemory> ScoredMemories;
+	FDateTime Now = FDateTime::Now();
+	
+	// Simple Relevance: check keyword overlap
+	TArray<FString> Keywords;
+	QueryContext.ParseIntoArray(Keywords, TEXT(" "), true);
+
+	for (int32 i = 0; i < MemoryStream.Num(); ++i)
+	{
+		const FMemoryItem& Item = MemoryStream[i];
+
+		// 1. Recency (Exponential Decay)
+		FTimespan Age = Now - Item.Timestamp;
+		double HoursOld = Age.GetTotalHours();
+		float RecencyScore = 1.0f / (1.0f + 0.5f * (float)HoursOld); // Decay factor
+
+		// 2. Importance
+		float ImportanceScore = Item.ImportanceScore / 10.0f; // Normalize 0-1
+
+		// 3. Relevance (Simple Keyword Match)
+		float RelevanceScore = 0.0f;
+		for (const FString& Word : Keywords)
+		{
+			if (Word.Len() > 3)
+			{
+				// Match against Description
+				if (Item.Description.Contains(Word))
+				{
+					RelevanceScore += 0.5f;
+				}
+
+				// Match against Tags (Key Update: Allow querying by Tag semantics)
+				// E.g. Query "Danger" matches tag "Event.Danger"
+				if (Item.Tags.ToString().Contains(Word))
+				{
+					RelevanceScore += 1.0f; // Matching a structural tag is highly relevant
+				}
+			}
+		}
+
+		// Final Score
+		float FinalScore = (RecencyScore * 1.0f) + (ImportanceScore * 1.0f) + (RelevanceScore * 2.0f);
+
+		ScoredMemories.Add({ i, FinalScore });
+	}
+
+	// Sort by Score Descending
+	ScoredMemories.Sort([](const FScoredMemory& A, const FScoredMemory& B) {
+		return A.Score > B.Score;
+	});
+
+	// Return Top N
+	TArray<FMemoryItem> Results;
+	for (int32 i = 0; i < FMath::Min(Limit, ScoredMemories.Num()); ++i)
+	{
+		Results.Add(MemoryStream[ScoredMemories[i].Index]);
+	}
+
+	return Results;
+}
+
+void UMemoryComponent::DumpMemoryLog()
+{
+	UE_LOG(LogTemp, Display, TEXT("=== Memory Stream Dump (%d items) ==="), MemoryStream.Num());
+	for (const FMemoryItem& Item : MemoryStream)
+	{
+		UE_LOG(LogTemp, Display, TEXT("[%s] (Imp: %.1f) %s"), *Item.Timestamp.ToString(), Item.ImportanceScore, *Item.Description);
+	}
+}
 
 FString UMemoryComponent::GetAllRecentMemoriesAsString()
 {
-    FString CombinedLog = "";
-    for (const FMemoryFragment& Mem : MemoryStream)
-    {
-        // 只提取短期流水账
-        if (!Mem.bIsLongTermInsight)
-        {
-            CombinedLog += FString::Printf(TEXT("- [%s] %s\n"), *Mem.Timestamp.ToString(), *Mem.Description);
-        }
-    }
-    return CombinedLog;
+	FString Result = "";
+	for (const FMemoryItem& Item : MemoryStream)
+	{
+		// TODO: Could filter by "Recent" flag if we had one, but dumping all for now
+		Result += FString::Printf(TEXT("- [%s] %s\n"), *Item.Timestamp.ToString(), *Item.Description);
+	}
+	return Result;
 }
 
 void UMemoryComponent::ConsolidateMemories(const TArray<FString>& NewInsights)
 {
-    // 1. 清理掉所有的短期记忆 (保留原本就是 LongTerm 的)
-    // 使用 RemoveAll 配合 Lambda
-    MemoryStream.RemoveAll([](const FMemoryFragment& Mem) {
-        return !Mem.bIsLongTermInsight; // 删掉非长期记忆
-    });
-
-    // 2. 将新的 Insight 作为长期记忆加入
-    for (const FString& Insight : NewInsights)
-    {
-        FMemoryFragment NewMem;
-        NewMem.Description = Insight;
-        NewMem.Timestamp = FDateTime::Now();
-        NewMem.Importance = 1.0f; // 总结出来的通常很重要
-        NewMem.bIsLongTermInsight = true; // 标记为长期
-
-        MemoryStream.Add(NewMem);
-    }
-
-    UE_LOG(LogTemp, Warning, TEXT("[Memory] Dreaming complete. Consolidated to %d insights."), NewInsights.Num());
+	// 1. In a real system, you might archive old memories here.
+	// For now, we simply ADD the insights as new, high-importance memories.
+	
+	UE_LOG(LogTemp, Log, TEXT("[Memory] Consolidating %d Insights..."), NewInsights.Num());
+	
+	for (const FString& Insight : NewInsights)
+	{
+		FMemoryItem NewItem;
+		NewItem.Description = FString::Printf(TEXT("[REFLECTION] %s"), *Insight);
+		NewItem.Timestamp = FDateTime::Now();
+		NewItem.ImportanceScore = 10.0f; // Insights are very important
+		// Could add a "Reflection" tag here
+		
+		MemoryStream.Add(NewItem);
+	}
+	
+	// Optional: Clear low-importance short-term memories?
+	// MemoryStream.RemoveAll(...)
 }

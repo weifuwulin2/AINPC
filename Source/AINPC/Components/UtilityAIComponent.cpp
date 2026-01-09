@@ -76,14 +76,18 @@ void UUtilityAIComponent::EvaluateAndDecide()
     }
 
     // 🔍 调试：打印当前 MentalState
-    static float LastLogTime = 0.0f;
-    float CurrentTime = GetWorld()->GetTimeSeconds();
-    bool bShouldLog = (CurrentTime - LastLogTime) > 2.0f; // 每2秒打印一次
+    // 只有在收到刺激请求时才打印，或者你也可以保留定时的 Summary
+    // Only log when requested (by stimulus), or maintain periodic summary if preferred.
+    // User requested "Only log calculation after stimulus", so we prioritize bPendingDebugLog.
+    bool bShouldLog = bPendingDebugLog;
     
+    // 如果想要保留偶尔的心跳日志，可以取消下面这行的注释，但 CalculateScore 的详细日志只会由 bPendingDebugLog 控制
+    // if (!bShouldLog) { static float LastLog = 0; if (GetWorld()->GetTimeSeconds() - LastLog > 5.0f) { bShouldLog = true; LastLog = GetWorld()->GetTimeSeconds(); } }
+
     if (bShouldLog)
     {
         UE_LOG(LogTemp, Warning, TEXT("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"));
-        UE_LOG(LogTemp, Warning, TEXT("[UtilityAI|%s] Evaluating Actions (Count: %d)"), *PersonalityID, AvailableActions.Num());
+        UE_LOG(LogTemp, Warning, TEXT("[UtilityAI|%s] Evaluating Actions (Count: %d) [Triggered]"), *PersonalityID, AvailableActions.Num());
         
         // 显示当前正在执行的 Action
         if (CurrentAction)
@@ -94,23 +98,14 @@ void UUtilityAIComponent::EvaluateAndDecide()
         {
             UE_LOG(LogTemp, Log, TEXT("[UtilityAI|%s] Currently Running: None"), *PersonalityID);
         }
-        
-        if (State)
-        {
-            /*UE_LOG(LogTemp, Log, TEXT("[UtilityAI|%s] MentalState: Anger=%.2f, Fear=%.2f, Confidence=%.2f"), 
-                   *PersonalityID, State->Anger, State->Fear, State->Confidence);*/
-        }
-        else
-        {
-            UE_LOG(LogTemp, Error, TEXT("[UtilityAI|%s] ⚠️ MentalState is NULL!"), *PersonalityID);
-        }
     }
 
     // --- 遍历打分 ---
     for (UUtilityActionBase* Action : AvailableActions)
     {
         // 调用 Action 自身的算分逻辑
-        float Score = Action->CalculateScore(State, OwnerController);
+        // Pass bShouldLog (which is true if bPendingDebugLog is true) to enable detailed calculation logs
+        float Score = Action->CalculateScore(State, OwnerController, bShouldLog);
 
         // 🔍 调试：打印每个 Action 的分数
         if (bShouldLog)
@@ -151,7 +146,8 @@ void UUtilityAIComponent::EvaluateAndDecide()
             UE_LOG(LogTemp, Error, TEXT("[UtilityAI|%s] ⚠️ No valid action found!"), *PersonalityID);
         }
         UE_LOG(LogTemp, Warning, TEXT("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"));
-        LastLogTime = CurrentTime;
+        // Reset the request flag
+        bPendingDebugLog = false;
     }
 
     // --- 状态切换 ---

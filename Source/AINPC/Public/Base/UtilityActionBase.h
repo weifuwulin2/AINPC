@@ -52,7 +52,10 @@ enum class EUtilityInputType : uint8
 	DistanceToTarget,     // 环境：与目标的距离 (归一化)
 	AmmoCount,            // 环境：弹药量百分比
 	HasCover,             // 环境：附近是否有掩体 (0 或 1)
-	IsTargetPlayer        // 环境：目标是否是玩家
+	IsTargetPlayer,       // 环境：目标是否是玩家
+	HasAttackTarget,      // 环境：是否有攻击目标 (FocusActor 是否存在)
+	HasEnemyNearby,       // 环境：附近是否有敌人 (不依赖 FocusActor)
+	HasFriendlyNearby     // 环境：附近是否有友军/中立单位 (非 Enemy, 非 Self)
 };
 
 // 考量类型：动机 vs 必要条件
@@ -62,6 +65,19 @@ enum class EConsiderationType : uint8
 {
 	Motivation,  // 动机：使用加法求和 Σ(Weight × Input)
 	Context      // 必要条件：使用乘法 ∏(Context)
+};
+
+// 预设的响应曲线类型
+// Preset response curve types
+UENUM(BlueprintType)
+enum class EUtilityCurveType : uint8
+{
+	Linear,           // 线性 (y = x)
+	Quadratic,        // 平方 (y = x * x) - 只有很高时才有用
+	InverseQuadratic, // 反平方 (y = 1 - (1-x)^2) - 一点点就很有用
+	Logistic,         // S形 (Sigmoid) - 只有中间变化大
+	Step,             // 阶梯 (x > 0.5 ? 1 : 0)
+    TargetThreshold   // 目标阈值 (x > Threshold ? 1 : 0) (New)
 };
 
 USTRUCT(BlueprintType)
@@ -88,6 +104,16 @@ struct FUtilityConsideration
               meta = (DisplayName = "Variable to Consider",
                       ToolTip = "选择要考量的马斯洛变量或环境变量 / Select Maslow or environment variable to consider"))
     EUtilityInputType InputType;
+
+    // 曲线类型：选择预设的数学曲线，避免必须创建 CurveAsset
+    // Curve Type: Select preset math curve to avoid creating CurveAssets
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Response Curve")
+    EUtilityCurveType CurveType = EUtilityCurveType::Linear;
+
+    // (可选) 自定义响应曲线：如果设置了此项，将覆盖 CurveType (高级用法)
+    // (Optional) Custom Response Curve: If set, overrides CurveType (Advanced usage)
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Response Curve")
+    UCurveFloat* ResponseCurve;
 };
 
 USTRUCT(BlueprintType)
@@ -158,7 +184,7 @@ public:
     void InitFromConfig(const FUtilityActionConfig& Config);
 
     // 计算分数：核心逻辑 (包含冷却、惯性、多因子乘法)
-    virtual float CalculateScore(UNPCMentalState* MentalState, AAIController* Controller);
+    virtual float CalculateScore(UNPCMentalState* MentalState, AAIController* Controller, bool bLogDebug = false);
 
     // 标记执行：当动作被选中并执行时调用，用于刷新冷却时间
     void MarkExecutionTime(float CurrentTime);

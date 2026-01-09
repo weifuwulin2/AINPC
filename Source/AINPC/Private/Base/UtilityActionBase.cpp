@@ -24,10 +24,32 @@ void UUtilityActionBase::InitFromConfig(const FUtilityActionConfig& Config)
     }
 }
 
-float UUtilityActionBase::CalculateScore(UNPCMentalState* MentalState, AAIController* Controller)
+float UUtilityActionBase::CalculateScore(UNPCMentalState* MentalState, AAIController* Controller, bool bLogDebug)
 {
     // 0. 安全检查
     if (!Controller) return 0.0f;
+    
+    // ✅ 死亡检查：如果 Pawn 已死亡或无效，所有动作得分为 0
+    // Death Check: If Pawn is dead or invalid, all actions score 0
+    APawn* ControlledPawn = Controller->GetPawn();
+    if (!ControlledPawn || !IsValid(ControlledPawn) || ControlledPawn->IsPendingKillPending())
+    {
+        return 0.0f;
+    }
+
+    // ✅ 检查是否在播放死亡动画
+    // Check if playing death animation
+    if (ACharacter* Character = Cast<ACharacter>(ControlledPawn))
+    {
+        if (Character->GetMesh() && Character->GetMesh()->GetAnimInstance())
+        {
+            if (Character->GetMesh()->GetAnimInstance()->IsAnyMontagePlaying())
+            {
+                // 正在播放动画（可能是死亡动画），所有动作得分为 0
+                return 0.0f;
+            }
+        }
+    }
     
     // ✅ 如果没有 Considerations，直接返回 BaseReward
     if (Considerations.Num() == 0) 
@@ -62,8 +84,7 @@ float UUtilityActionBase::CalculateScore(UNPCMentalState* MentalState, AAIContro
     float ContextProduct = 1.0f;     // 必要条件乘积（乘法）
 
     // 🔍 调试：打印初始分数
-    static bool bEnableDetailedLog = true; // 设为 true 来启用详细日志
-    if (bEnableDetailedLog)
+    if (bLogDebug)
     {
         UE_LOG(LogTemp, Warning, TEXT("    [%s] Starting calculation: BaseReward=%.2f"), *ActionName, BaseReward);
     }
@@ -74,6 +95,52 @@ float UUtilityActionBase::CalculateScore(UNPCMentalState* MentalState, AAIContro
         
         // A. 获取原始数据 (0~1 或 实际值)
         float RawValue = GetConsiderationValue(Factor.InputType, MentalState, Controller);
+
+        // A2. 应用响应曲线 (Response Curve)
+        float CurveValue = RawValue;
+        
+        // 优先使用自定义曲线资源 (Advanced)
+        if (Factor.ResponseCurve)
+        {
+            // 假设输入都在 0~1 之间，直接采样
+            CurveValue = Factor.ResponseCurve->GetFloatValue(RawValue);
+        }
+        else
+        {
+            // 使用预设的数学曲线 (Built-in)
+            switch (Factor.CurveType)
+            {
+                case EUtilityCurveType::Linear:
+                    CurveValue = RawValue;
+                    break;
+                case EUtilityCurveType::Quadratic:
+                    CurveValue = RawValue * RawValue; // y = x^2 (Low values get suppressed)
+                    break;
+                case EUtilityCurveType::InverseQuadratic:
+                    CurveValue = 1.0f - (1.0f - RawValue) * (1.0f - RawValue); // y = 1-(1-x)^2 (Fast rise)
+                    break;
+                case EUtilityCurveType::Logistic:
+                    // Simple sigmoid-like: y = 1 / (1 + e^(-10*(x-0.5)))
+                    CurveValue = 1.0f / (1.0f + FMath::Exp(-10.0f * (RawValue - 0.5f)));
+                    break;
+                case EUtilityCurveType::Step:
+                    CurveValue = (RawValue >= 0.5f) ? 1.0f : 0.0f;
+                    break;
+                 case EUtilityCurveType::TargetThreshold:
+                    CurveValue = (RawValue >= 0.1f) ? 1.0f : 0.0f; // 简单的阈值过滤
+                    break;
+                default:
+                    CurveValue = RawValue;
+                    break;
+            }
+        }
+        
+        // 确保输出在合理范围 (0~1)
+        CurveValue = FMath::Clamp(CurveValue, 0.0f, 1.0f);
+        
+        // 使用曲线后的值继续计算
+        // Use the curved value for further calculation
+        float EffectiveValue = CurveValue;
 
         if (Factor.ConsiderationType == EConsiderationType::Motivation)
         {
@@ -89,14 +156,23 @@ float UUtilityActionBase::CalculateScore(UNPCMentalState* MentalState, AAIContro
             }
 
             // C. 计算动机得分并累加
-            float MotivationScore = RawValue * PersonalityWeight;
+            float MotivationScore = EffectiveValue * PersonalityWeight;
             MotivationSum += MotivationScore;
             
-            if (bEnableDetailedLog)
+            if (bLogDebug)
             {
-                UE_LOG(LogTemp, Warning, TEXT("      [Motivation %d] %s: Raw=%.3f × Weight=%.3f = %.3f (Sum=%.3f)"), 
+                // 如果用了曲线，打印一下原始值和曲线值
+                FString CurveInfo;
+                if (Factor.ResponseCurve)
+                    CurveInfo = FString::Printf(TEXT("(CustomCurve: %.2f->%.2f)"), RawValue, CurveValue);
+                else if (Factor.CurveType != EUtilityCurveType::Linear)
+                    CurveInfo = FString::Printf(TEXT("(%s: %.2f->%.2f)"), 
+                        *UEnum::GetValueAsString(Factor.CurveType), RawValue, CurveValue);
+                
+                UE_LOG(LogTemp, Warning, TEXT("      [Motivation %d] %s: %s Raw=%.3f × Weight=%.3f = %.3f (Sum=%.3f)"), 
                        i, *GetVariableNameFromInputType(Factor.InputType), 
-                       RawValue, PersonalityWeight, MotivationScore, MotivationSum);
+                       *CurveInfo,
+                       EffectiveValue, PersonalityWeight, MotivationScore, MotivationSum);
             }
         }
         else // EConsiderationType::Context
@@ -105,19 +181,19 @@ float UUtilityActionBase::CalculateScore(UNPCMentalState* MentalState, AAIContro
             
             // Context 直接使用原始值（0~1），不需要权重
             float OldProduct = ContextProduct;
-            ContextProduct *= RawValue;
+            ContextProduct *= EffectiveValue;
             
-            if (bEnableDetailedLog)
+            if (bLogDebug)
             {
                 UE_LOG(LogTemp, Warning, TEXT("      [Context %d] %s: %.3f × %.3f = %.3f"), 
                        i, *GetVariableNameFromInputType(Factor.InputType), 
-                       OldProduct, RawValue, ContextProduct);
+                       OldProduct, EffectiveValue, ContextProduct);
             }
 
             // 优化：如果必要条件已经为0，直接返回0
             if (ContextProduct <= UE_KINDA_SMALL_NUMBER)
             {
-                if (bEnableDetailedLog)
+                if (bLogDebug)
                 {
                     UE_LOG(LogTemp, Warning, TEXT("      ⚠️ Context became 0! Action is impossible."));
                 }
@@ -140,7 +216,7 @@ float UUtilityActionBase::CalculateScore(UNPCMentalState* MentalState, AAIContro
     float FinalScore = BaseReward * MotivationSum * ContextProduct;
 
     // 🔍 调试：打印最终分数
-    if (bEnableDetailedLog)
+    if (bLogDebug)
     {
         UE_LOG(LogTemp, Warning, TEXT("    [%s] Final Score: BaseReward(%.2f) × MotivationSum(%.2f) × ContextProduct(%.2f) = %.3f"), 
                *ActionName, BaseReward, MotivationSum, ContextProduct, FinalScore);
@@ -250,6 +326,111 @@ float UUtilityActionBase::GetConsiderationValue(EUtilityInputType InputType, UNP
             // TODO: 获取目标血量
             return 1.0f;
 
+        // ✅ 新增：检查是否有攻击目标
+        case EUtilityInputType::HasAttackTarget:
+        {
+            AActor* Target = Controller->GetFocusActor();
+            
+            // 检查目标是否存在、有效、且未被销毁
+            if (Target && IsValid(Target) && !Target->IsPendingKillPending())
+            {
+                // 排除已标记为死亡的目标
+                if (Target->ActorHasTag("Dead")) return 0.0f;
+
+                // 排除如果是布娃娃状态（物理模拟通常意味着死亡）
+                if (ACharacter* CharTarget = Cast<ACharacter>(Target))
+                {
+                    if (CharTarget->GetMesh() && CharTarget->GetMesh()->IsSimulatingPhysics()) return 0.0f;
+                }
+
+                return 1.0f; // 有有效目标
+            }
+            
+            return 0.0f; // 没有目标
+        }
+
+        // ✅ 新增：检查附近是否有敌人（不依赖 FocusActor）
+        case EUtilityInputType::HasEnemyNearby:
+        {
+            if (!BotPawn || !Controller->GetWorld()) return 0.0f;
+            
+            // 搜索带有 "Enemy" 标签的 Actor
+            TArray<AActor*> Enemies;
+            UGameplayStatics::GetAllActorsWithTag(Controller->GetWorld(), FName("Enemy"), Enemies);
+            
+            // 检查是否有有效的敌人（排除自己，且未死亡）
+            for (AActor* Enemy : Enemies)
+            {
+                if (Enemy == BotPawn) continue;
+                if (!IsValid(Enemy) || Enemy->IsPendingKillPending()) continue;
+                if (Enemy->ActorHasTag("Dead")) continue;
+                
+                // 排除布娃娃
+                if (ACharacter* CharEnemy = Cast<ACharacter>(Enemy))
+                {
+                    if (CharEnemy->GetMesh() && CharEnemy->GetMesh()->IsSimulatingPhysics()) continue;
+                }
+
+                // 有有效敌人
+                return 1.0f;
+            }
+            
+            // 没有 "Enemy" 标签的 Actor，检查玩家
+            if (AActor* Player = UGameplayStatics::GetPlayerPawn(Controller->GetWorld(), 0))
+            {
+                if (Player != BotPawn && IsValid(Player) && !Player->IsPendingKillPending())
+                {
+                    // 同样检查玩家是否死亡
+                    if (!Player->ActorHasTag("Dead"))
+                    {
+                         if (ACharacter* CharPlayer = Cast<ACharacter>(Player))
+                         {
+                             if (!CharPlayer->GetMesh() || !CharPlayer->GetMesh()->IsSimulatingPhysics())
+                             {
+                                 return 1.0f; // 玩家活着
+                             }
+                         }
+                         else
+                         {
+                             return 1.0f;
+                         }
+                    }
+                }
+            }
+            
+            return 0.0f; // 没有敌人
+        }
+
+        // ✅ 新增：检查附近是否有友军 (非 Enemy)
+        case EUtilityInputType::HasFriendlyNearby:
+        {
+            if (!BotPawn || !Controller->GetWorld()) return 0.0f;
+
+            // 这里我们简单起见，利用 UGameplayStatics::GetAllActorsOfClass 检查所有 Character
+            // 然后过滤掉 Enemy 和 Self
+            TArray<AActor*> AllChars;
+            UGameplayStatics::GetAllActorsOfClass(Controller->GetWorld(), ACharacter::StaticClass(), AllChars);
+
+            for (AActor* Actor : AllChars)
+            {
+                if (Actor == BotPawn) continue;
+                if (!IsValid(Actor) || Actor->IsPendingKillPending()) continue;
+                if (Actor->ActorHasTag("Enemy")) continue; // 排除敌人
+                if (Actor->ActorHasTag("Dead")) continue;  // 排除死人
+
+                // 排除布娃娃
+                if (ACharacter* CharActor = Cast<ACharacter>(Actor))
+                {
+                    if (CharActor->GetMesh() && CharActor->GetMesh()->IsSimulatingPhysics()) continue;
+                }
+
+                // 找到一个不是敌人的活人
+                return 1.0f;
+            }
+
+            return 0.0f;
+        }
+
         default:
             return 0.0f;
     }
@@ -280,6 +461,9 @@ FString UUtilityActionBase::GetVariableNameFromInputType(EUtilityInputType Input
         case EUtilityInputType::AmmoCount:
         case EUtilityInputType::HasCover:
         case EUtilityInputType::IsTargetPlayer:
+        case EUtilityInputType::HasAttackTarget:
+        case EUtilityInputType::HasEnemyNearby:
+        case EUtilityInputType::HasFriendlyNearby:
             return TEXT("Environment");  // 环境变量不需要性格权重
         
         default:

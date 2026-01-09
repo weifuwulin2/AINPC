@@ -43,4 +43,13 @@ private:
 	void LoadActionsFromTable();
 	// 内部函数：选择最佳动作
 	void EvaluateAndDecide();
+
+public:
+	// 请求下一帧打印调试日志 (通常在感知到刺激后调用)
+	UFUNCTION(BlueprintCallable, Category = "AI Debug")
+	void RequestDebugLog() { bPendingDebugLog = true; }
+
+private:
+	// 是否请求了调试日志
+	bool bPendingDebugLog = false;
 };

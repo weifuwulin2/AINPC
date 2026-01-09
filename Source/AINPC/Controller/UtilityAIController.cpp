@@ -17,10 +17,11 @@
 
 AUtilityAIController::AUtilityAIController()
 {
-    // =========================================================
+// =========================================================
     // 1. 创建核心逻辑组件
     // =========================================================
     SensoryComp = CreateDefaultSubobject<USensoryComponent>(TEXT("SensoryComponent"));
+    MemoryComp = CreateDefaultSubobject<UMemoryComponent>(TEXT("MemoryComponent")); // The Brain
     CognitionComp = CreateDefaultSubobject<UCognitionComponent>(TEXT("CognitionComponent"));
     UtilityComp = CreateDefaultSubobject<UUtilityAIComponent>(TEXT("UtilityComponent"));
     PersonalityComp = CreateDefaultSubobject<UPersonalityComponent>(TEXT("PersonalityComponent"));
@@ -84,8 +85,6 @@ void AUtilityAIController::BeginPlay()
     // 3. 初始化共享数据 (MentalState)
     // =========================================================
     MentalState = NewObject<UNPCMentalState>(this);
-    // ✅ 不需要手动设置默认值，构造函数已经使用宏自动初始化所有字段
-    // 所有字段的默认值在 MentalStateFields.h 中统一配置
 
     // =========================================================
     // 4. 神经接驳 (Wiring everything together)
@@ -99,13 +98,15 @@ void AUtilityAIController::BeginPlay()
         
         // 当 Sensory 翻译好信号后，调用 RelaySensoryToCognition
         SensoryComp->OnStimulusProduced.AddDynamic(this, &AUtilityAIController::RelaySensoryToCognition);
+
+        // Phase 3 & 4 Connector: Nervous System -> Brain
+        SensoryComp->OnSemanticEventSensed.AddDynamic(this, &AUtilityAIController::OnSemanticEventReceived);
     }
 
     // --- 连接 B: 认知 -> 数据存储 ---
     // 当 Cognition 算完情绪后，调用 OnMindUpdated 同步数据
     if (CognitionComp)
     {
-        // 假设 CognitionComp 有这个委托
         CognitionComp->OnMentalStateChanged.AddDynamic(this, &AUtilityAIController::OnMindUpdated);
     }
 
@@ -148,14 +149,29 @@ void AUtilityAIController::ReceiveSpeech(AActor* Speaker, FString Message)
     }
 }
 
+void AUtilityAIController::OnSemanticEventReceived(const FSemanticEvent& Event)
+{
+    // The Brain receives the Event
+    if (MemoryComp)
+    {
+        MemoryComp->CommitEvent(Event);
+    }
+
+    // ✅ 收到刺激后，请求打印下一帧的 Utility AI 计算日志
+    if (UtilityComp)
+    {
+        UtilityComp->RequestDebugLog();
+    }
+
+    // Optional: Pass to Cognition for immediate reaction?
+    // For now, Memory initiates the Slow System loop (Reflection)
+}
+
 void AUtilityAIController::RelaySensoryToCognition(const FString& StimulusDescription)
 {
     // 中转：把翻译好的话传给大脑
     if (CognitionComp)
     {
-        // 这里的 Log 可以帮你调试“到底有没有把信号传进去”
-        // UE_LOG(LogTemp, Log, TEXT("[Controller] Relaying Stimulus: %s"), *StimulusDescription);
-        
         CognitionComp->ProcessStimulus(StimulusDescription);
     }
 }

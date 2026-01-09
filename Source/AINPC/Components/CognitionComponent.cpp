@@ -10,13 +10,26 @@ UCognitionComponent::UCognitionComponent()
 	// 大脑需要每帧 Tick 来更新插值
 	// Brain needs to Tick every frame to update interpolation
 	PrimaryComponentTick.bCanEverTick = true;
-
-	MemoryComp = CreateDefaultSubobject<UMemoryComponent>(TEXT("Memory"));
 }
 
 void UCognitionComponent::BeginPlay()
 {
 	Super::BeginPlay();
+
+	// 0. 获取 Owner 上的 MemoryComponent
+	// Get MemoryComponent from Owner
+	if (AActor* Owner = GetOwner())
+	{
+		MemoryComp = Owner->FindComponentByClass<UMemoryComponent>();
+		if (!MemoryComp)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[Cognition] Warning: No MemoryComponent found on Owner! Memories will not be stored/retrieved."));
+		}
+		else
+		{
+			UE_LOG(LogTemp, Log, TEXT("[Cognition] Connected to MemoryComponent."));
+		}
+	}
 
 	// 1. 初始化 LLM 服务对象
 	LLMService = NewObject<ULLMCommunicator>(this);
@@ -111,22 +124,37 @@ void UCognitionComponent::ProcessStimulus(FString SituationDescription)
 	// 🔍 关键日志：确认 ProcessStimulus 被调用
 	UE_LOG(LogTemp, Warning, TEXT("[Cognition] Processing Stimulus: %s"), *SituationDescription);
 	
-	// 1. 存入新记忆 (把刚才看到的事存下来)
-	if (MemoryComp)
-	{
-		MemoryComp->AddMemory(SituationDescription);
-	}
+	// 1. 存入新记忆 (交给 MemoryComponent 处理，它会自己决定是否触发反思)
+	// Phase 4: Memory System handles storage and reflection trigger internally
+	// We don't manually AddMemory here anymore using string, we expect Controller to have called CommitEvent.
+	// However, ProcessStimulus is called by Controller::RelaySensoryToCognition.
+	// Wait, RelaySensoryToCognition is legacy?
+	// The new path is: Event -> Sensory -> Memory.
+	// The new path for "Thinking" is: ... when does thinking happen?
+	// "Phase 2: Social Layer - 运作流程：触发：当生理层判断事件重要且非战斗时"
+	// So MemoryComponent or Controller should trigger Cognition.
+	
+	// Let's assume ProcessStimulus is now the entry point for "Thinking about a situation".
+	// So we DO need to retrieve memories here.
 
-	// 2. 检索旧记忆 (寻找相关性)
+	// 2. 检索检索 (Retrieval)
 	FString ContextMemory = "";
 	if (MemoryComp)
 	{
-		ContextMemory = MemoryComp->RetrieveRelevantMemories(SituationDescription);
+		TArray<FMemoryItem> Memories = MemoryComp->RetrieveRelevantMemories(SituationDescription, 5);
+		for (const FMemoryItem& Item : Memories)
+		{
+			ContextMemory += FString::Printf(TEXT("- [%s] %s (Imp: %.1f)\n"), 
+				*Item.Timestamp.ToString(), *Item.Description, Item.ImportanceScore);
+		}
+	}
+	
+	// If no memory found
+	if (ContextMemory.IsEmpty())
+	{
+		ContextMemory = "No relevant memories.";
 	}
 
-	// 构造 JSON 格式的 Prompt，提高 LLM 准确率
-	// Construct JSON-formatted Prompt for better LLM accuracy
-	
 	// 构建角色部分 / Build role section
 	FString RoleSection = FString::Printf(TEXT(
 		"=== YOUR ROLE ===\n"
@@ -140,6 +168,9 @@ void UCognitionComponent::ProcessStimulus(FString SituationDescription)
 			"=== BEHAVIORAL GUIDELINES ===\n"
 			"%s\n"), *BehavioralGuidelines);
 	}
+
+	// 构造 JSON 格式的 Prompt
+	// ... (rest of prompt construction)
 	
 	FString Prompt = FString::Printf(TEXT(
 		"You are an NPC's cognitive system. Analyze the situation and output mental state.\n"

@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "AIController.h"
 #include "Perception/AIPerceptionTypes.h" 
+#include "Social/SocialTypes.h" // Add this
 #include "UtilityAIController.generated.h"
 
 // 前置声明 (Forward Declarations)
@@ -10,12 +11,13 @@ class UAIPerceptionComponent;
 class UAISenseConfig_Sight;
 class UAISenseConfig_Hearing;
 class USensoryComponent;
+class UMemoryComponent; // Add this
 class UCognitionComponent;
 class UUtilityAIComponent;
 class UPersonalityComponent;
 class UEmotionDisplayComponent;
 class UNPCMentalState;
-struct FMentalState; // 假设这是你的结构体
+struct FMentalState; 
 
 UCLASS()
 class AINPC_API AUtilityAIController : public AAIController
@@ -33,11 +35,15 @@ public:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI Components")
     UAIPerceptionComponent* AIPerception;
 
-    // 感官翻译组件 (负责把物理信号翻译成文字)
+    // The Nervous System (Sensory)
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI Components")
     USensoryComponent* SensoryComp;
 
-    // 认知组件 (负责处理情绪和记忆)
+    // The Brain (Memory)
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI Components")
+    UMemoryComponent* MemoryComp;
+
+    // 认知组件 (负责处理情绪)
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI Components")
     UCognitionComponent* CognitionComp;
 
@@ -46,12 +52,10 @@ public:
     UUtilityAIComponent* UtilityComp;
 
     // 性格组件 (负责 OCEAN 性格和马斯洛权重)
-    // Personality Component (manages OCEAN personality and Maslow weights)
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI Components")
     UPersonalityComponent* PersonalityComp;
     
     // 情绪显示组件 (负责显示 emoji 和对话泡泡)
-    // Emotion Display Component (manages emoji and speech bubble display)
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI Components")
     UEmotionDisplayComponent* EmotionDisplayComp;
 
@@ -77,7 +81,7 @@ public:
     // 4. 对外接口 (External Interface)
     // =========================================================
 
-    // 供聊天系统或剧情系统调用
+    // 供聊天系统或剧情系统调用 (Deprecated? Replaced by Sensory?)
     UFUNCTION(BlueprintCallable, Category = "AI Communication")
     void ReceiveSpeech(AActor* Speaker, FString Message);
 
@@ -88,7 +92,11 @@ protected:
     // 5. 内部回调 (Callbacks)
     // =========================================================
 
-    // 回调：当 Sensory 组件翻译完信号后，中转给认知组件
+    // Callback: Connects Sensory Output (Nerves) to Memory Input (Brain)
+    UFUNCTION()
+    void OnSemanticEventReceived(const FSemanticEvent& Event);
+
+    // 回调：当 Sensory 组件翻译完信号后，中转给认知组件 (Legacy?)
     UFUNCTION()
     void RelaySensoryToCognition(const FString& StimulusDescription);
 

@@ -24,7 +24,8 @@ public class AINPC : ModuleRules
 			"HTTP", 
 			"Json", 
 			"JsonUtilities",
-			"NavigationSystem"
+			"NavigationSystem",
+			"GameplayTags"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });

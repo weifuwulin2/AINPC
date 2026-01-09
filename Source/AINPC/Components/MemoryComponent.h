@@ -1,29 +1,10 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
 #pragma once
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "Social/SocialTypes.h"
 #include "MemoryComponent.generated.h"
 
-// 定义单条记忆的结构
-USTRUCT(BlueprintType)
-struct FMemoryFragment
-{
-	GENERATED_BODY()
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	FString Description; // 记忆内容："I saw a zombie"
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	FDateTime Timestamp; // 时间戳：2023-10-01 12:00:00
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	float Importance;    // 重要性 (0.0 - 1.0) - 用于决定是否长期保留
-
-	// 新增：标记这是不是一条经过总结的长期记忆
-	UPROPERTY(VisibleAnywhere) bool bIsLongTermInsight = false;
-};
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class AINPC_API UMemoryComponent : public UActorComponent
@@ -32,37 +13,60 @@ class AINPC_API UMemoryComponent : public UActorComponent
 
 public:    
 	UMemoryComponent();
+
+protected:
 	virtual void BeginPlay() override;
 
-	// --- 核心接口 ---
+public:
+	// --- Phase 4: Storage (Comprehensive Record) ---
 
-	/** * 存入记忆 
-	 * @param Content 记忆的内容
-	 * @param Importance 重要程度(0-1)，越高越不容易被遗忘
+	/**
+	 * Core Input: Commit a semantic event to the comprehensive memory stream.
+	 * Calculates importance, timestamps it, and stores it.
+	 * Also triggers the check for Reflection (Slow System).
 	 */
 	UFUNCTION(BlueprintCallable, Category = "AI | Memory")
-	void AddMemory(FString Content, float Importance = 0.5f);
+	void CommitEvent(const FSemanticEvent& Event);
 
-	/** * 检索记忆 (简易 RAG)
-	 * 根据当前的输入(CurrentContext)，在记忆库里找相关的旧事
-	 * @return 格式化好的字符串，可以直接丢进 LLM 的 Prompt
+	// --- Phase 5: Retrieval (RAG) ---
+
+	/**
+	 * Finds the most relevant memories for the given context.
+	 * Score = Recency + Importance + Relevance.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "AI | Memory")
-	FString RetrieveRelevantMemories(FString CurrentContext);
+	TArray<FMemoryItem> RetrieveRelevantMemories(const FString& QueryContext, int32 Limit = 5);
 
-	UFUNCTION(BlueprintCallable)
+	// --- Debug ---
+	
+	UFUNCTION(BlueprintCallable, Category = "AI | Debug")
+	void DumpMemoryLog();
+
+	// --- Phase 6: Reflection Helpers ---
+
+	// Dumping all memories for "Dreaming" (The Reflection process)
+	UFUNCTION(BlueprintCallable, Category = "AI | Memory")
 	FString GetAllRecentMemoriesAsString();
 
-	UFUNCTION(BlueprintCallable)
+	// Receive insights from LLM and consolidate them as long-term memory
+	UFUNCTION(BlueprintCallable, Category = "AI | Memory")
 	void ConsolidateMemories(const TArray<FString>& NewInsights);
-	
-protected:
-	// 记忆流：按时间顺序存储
-	UPROPERTY(VisibleAnywhere, Category = "AI | Memory")
-	TArray<FMemoryFragment> MemoryStream;
 
-	// 记忆库最大容量 (防止内存无限膨胀)
-	UPROPERTY(EditDefaultsOnly, Category = "AI | Memory")
-	int32 MaxMemoryCount = 50;
-		
+protected:
+	// The stream of all memories (Comprehensive Record)
+	UPROPERTY(VisibleAnywhere, Category = "Memory")
+	TArray<FMemoryItem> MemoryStream;
+
+	// --- Reflection Triggers ---
+
+	// Accumulated importance since last reflection
+	UPROPERTY(VisibleAnywhere, Category = "Memory | Reflection")
+	float CurrentImportanceSum = 0.0f;
+
+	// Threshold to trigger a reflection cycle (The "Capacity" of short term buffer)
+	UPROPERTY(EditDefaultsOnly, Category = "Memory | Reflection")
+	float ReflectionThreshold = 20.0f;
+
+	// Calculate importance based on event data (Physiological Layer Logic)
+	float CalculateImportance(const FSemanticEvent& Event);
 };
