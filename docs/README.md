@@ -1,101 +1,40 @@
-# 📚 Documentation Index
+# 📚 Knowledge Base Index
 
-本项目的文档已按类别组织到不同的文件夹中，方便查找和管理。
+Welcome to the AINPC Knowledge Base. This index serves as the central hub for all project documentation.
 
----
+## 🧭 Navigation Categories
 
-## 📁 文档结构
+### 🌟 Getting Started
+*   [**Framework Testing Guide**](guides/Framework_Testing_Guide.md) - A complete guide to testing the AINPC framework features.
+*   [**Quick Start**](../README.md#🚀-快速开始--quick-start) - (Link to Main README)
+*   [**LLM Configuration**](guides/LLM_Config_Guide.md) - How to set up API keys and endpoints.
 
-```
-AINPC/
-├── README.md                    # 项目主文档
-├── CHANGELOG.md                 # 项目变更日志
-├── docs/
-│   ├── README.md               # 本文档索引
-│   ├── analysis/               # 📊 分析文档
-│   │   └── DataFlow_Analysis.md
-│   ├── guides/                 # 📖 使用指南
-│   │   ├── BugFixes_Patch.md
-│   │   ├── Dreaming_Test_Guide.md
-│   │   └── LLM_Config_Guide.md
-│   ├── reports/                # 📝 进度报告
-│   │   ├── Bug4_Fix_Report.md
-│   │   ├── EXECUTIVE_SUMMARY.md
-│   │   ├── FINAL_PROGRESS_REPORT.md
-│   │   └── PROGRESS_REPORT.md
-│   └── GIT_COMMIT_MESSAGES.md  # Git 提交信息模板
-└── Source/                     # 源代码
-```
+### 🏗️ Architecture & Design
+*   [**Data Flow Analysis**](analysis/DataFlow_Analysis.md) - **(Crucial)** Mermaid diagrams and detailed system data flow analysis.
+*   [**Personality Pipeline**](design/Personality_OCEAN_Maslow_LLM_Pipeline.md) - Detailed flow from OCEAN traits to Maslow needs to LLM prompts.
+*   [**Jurisdiction System**](design/Maslow_Variables_Jurisdiction.md) - Rules defining whether the Engine, Utility AI, or LLM controls specific state variables.
+*   [**Utility AI Algorithm**](design/UtilityAI_TwoPhase_Algorithm.md) - Explanation of the specific scoring algorithm used.
 
----
+### 🛠️ Configuration Guides
+*   [**Single Point Config**](guides/Single_Point_Configuration_Guide.md) - How to add new mental states using the `MentalStateFields.h` macro system.
+*   [**Utility Action Config**](guides/Utility_AI_Configuration_Guide.md) - How to create and tune Utility AI Actions.
+*   [**Personality Tables**](guides/PersonalityTable_Configuration_Guide.md) - Configuring DataTable assets for different NPC personalities.
 
-## 🚀 快速导航
+### 🐛 Debugging & Maintenance
+*   [**Bug Tracker**](BUG_TRACKER.md) - **(Active)** Track ongoing issues and resolutions.
+*   [**Bug Fix Patches**](guides/BugFixes_Patch.md) - Collection of known fixes and patches.
+*   [**Faction Loading Fix**](troubleshooting/Faction_Not_Loading_Fix.md) - Troubleshooting Faction initialization issues.
+*   [**Dreaming System Test**](guides/Dreaming_Test_Guide.md) - Validating the memory consolidation system.
+*   [**Commit Log**](../GIT_COMMIT_MESSAGES.md) - History of git commit messages.
+*   [**Changelog**](../CHANGELOG.md) - Version history.
 
-### 我想...
+### 🔄 System Updates
+*   [**Faction System Update**](updates/Faction_System_Update.md) - Simplification to three core factions (Human, Monster, Neutral) with improved hostility logic.
 
-| 需求 | 文档 |
-|------|------|
-| 了解系统架构 | [DataFlow_Analysis.md](analysis/DataFlow_Analysis.md) |
-| 修复Bug | [BugFixes_Patch.md](guides/BugFixes_Patch.md) |
-| 配置API | [LLM_Config_Guide.md](guides/LLM_Config_Guide.md) |
-| 测试Dreaming | [Dreaming_Test_Guide.md](guides/Dreaming_Test_Guide.md) |
-| 查看修复进度 | [FINAL_PROGRESS_REPORT.md](reports/FINAL_PROGRESS_REPORT.md) |
-| 提交代码 | [GIT_COMMIT_MESSAGES.md](GIT_COMMIT_MESSAGES.md) |
+### 📊 Reports
+*   [**Executive Summary**](reports/EXECUTIVE_SUMMARY.md)
+*   [**Final Progress Report**](reports/FINAL_PROGRESS_REPORT.md)
+*   [**Concurrent Request Fix**](reports/Bug4_Fix_Report.md)
 
 ---
-
-## 📊 分析文档
-
-### [DataFlow_Analysis.md](analysis/DataFlow_Analysis.md)
-**完整的数据流转分析**
-- Mermaid 流程图
-- 7个Bug的详细说明
-- 数据流转完整性检查
-- 修复优先级建议
-
----
-
-## 📖 使用指南
-
-### [BugFixes_Patch.md](guides/BugFixes_Patch.md)
-**逐步Bug修复指南**
-- P0/P1/P2 修复方案
-- 完整代码示例
-- 测试建议
-
-### [Dreaming_Test_Guide.md](guides/Dreaming_Test_Guide.md)
-**Dreaming功能测试**
-- 功能说明
-- 测试步骤
-- 问题排查
-
-### [LLM_Config_Guide.md](guides/LLM_Config_Guide.md)
-**LLM API配置**
-- 配置文件位置
-- API Key设置
-- 常见问题
-
----
-
-## 📝 进度报告
-
-### [EXECUTIVE_SUMMARY.md](reports/EXECUTIVE_SUMMARY.md)
-**执行摘要** - Bug统计、修复路线图
-
-### [FINAL_PROGRESS_REPORT.md](reports/FINAL_PROGRESS_REPORT.md)
-**最终进度** - 完整修复详情、测试清单
-
-### [Bug4_Fix_Report.md](reports/Bug4_Fix_Report.md)
-**并发冲突修复** - 详细技术报告
-
----
-
-## 🔧 其他文档
-
-### [GIT_COMMIT_MESSAGES.md](GIT_COMMIT_MESSAGES.md)
-**Git提交模板** - 5种commit message风格
-
----
-
-**文档版本:** 1.0  
-**最后更新:** 2026-01-03
+*Last Updated: 2026-01-12*

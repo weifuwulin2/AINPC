@@ -78,4 +78,8 @@ protected:
 private:
 	// 专门的回调：处理总结结果
 	void OnDreamingAnalysisComplete(bool bSuccess, const FString& RawResponse);
+
+	// 重试定时器 / Retry timer
+	FTimerHandle RetryStimulusTimerHandle;
+	FString PendingStimulus;
 };

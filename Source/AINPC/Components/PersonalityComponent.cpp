@@ -14,64 +14,18 @@ void UPersonalityComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// 1. 从 DataTable 加载性格配置
-	// Load personality configuration from DataTable
-	if (PersonalityTable && !PersonalityID.IsNone())
-	{
-		FPersonalityConfig* PersonalityRow = PersonalityTable->FindRow<FPersonalityConfig>(PersonalityID, TEXT("PersonalityComponent"));
-		
-		if (PersonalityRow)
-		{
-			Personality = *PersonalityRow;
-			UE_LOG(LogTemp, Log, TEXT("[PersonalityComponent] Loaded personality: %s"), *PersonalityID.ToString());
-		}
-		else
-		{
-			UE_LOG(LogTemp, Warning, TEXT("[PersonalityComponent] Personality ID '%s' not found in table! Using default."), *PersonalityID.ToString());
-			Personality = FPersonalityConfig();  // 使用默认值
-		}
-	}
-	else
-	{
-		UE_LOG(LogTemp, Warning, TEXT("[PersonalityComponent] No PersonalityTable or PersonalityID set! Using default personality."));
-		Personality = FPersonalityConfig();  // 使用默认值
-	}
-
-	// 2. 如果没有设置心理学模型，使用默认的
+	// 如果没有设置心理学模型，使用默认的
 	// If no psychology model is set, use default
 	if (!PsychologyModel)
 	{
 		InitializeDefaultPsychologyModel();
 	}
-
-	// 3. 计算马斯洛权重
-	// Calculate Maslow weights
-	RecalculateWeights();
-
-	// 4. 将角色描述传递给 CognitionComponent
-	// Pass role description to CognitionComponent
-	AAIController* AIController = Cast<AAIController>(GetOwner());
-	if (AIController)
-	{
-		AUtilityAIController* UtilityController = Cast<AUtilityAIController>(AIController);
-		if (UtilityController && UtilityController->CognitionComp)
-		{
-			UtilityController->CognitionComp->RoleDescription = Personality.RoleDescription;
-			
-			// 如果有行为准则，也一起传递
-			// If there are behavioral guidelines, pass them too
-			if (!Personality.BehavioralGuidelines.IsEmpty())
-			{
-				UtilityController->CognitionComp->BehavioralGuidelines = Personality.BehavioralGuidelines;
-			}
-			
-			UE_LOG(LogTemp, Log, TEXT("[PersonalityComponent] Role description set: %s"), *Personality.RoleDescription);
-		}
-	}
-
-	// 5. 调试输出
-	// Debug output
-	DebugPrintPersonality();
+	
+	// Note: PersonalityID will be set by CombatEnemy::BeginPlay() via delayed timer
+	// CombatEnemy will call SetPersonalityByID() which triggers full initialization
+	// 注意：PersonalityID 会由 CombatEnemy::BeginPlay() 通过延迟定时器设置
+	// CombatEnemy 会调用 SetPersonalityByID() 触发完整初始化
+	UE_LOG(LogTemp, Verbose, TEXT("[PersonalityComponent] BeginPlay complete. Waiting for CombatEnemy to set PersonalityID..."));
 }
 
 void UPersonalityComponent::SetPersonalityByID(FName NewPersonalityID)
@@ -94,15 +48,25 @@ void UPersonalityComponent::SetPersonalityByID(FName NewPersonalityID)
 
 void UPersonalityComponent::RecalculateWeights()
 {
-	UE_LOG(LogTemp, Warning, TEXT("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"));
-	UE_LOG(LogTemp, Warning, TEXT("[PersonalityComponent] RecalculateWeights called"));
-	UE_LOG(LogTemp, Warning, TEXT("  PersonalityID: %s"), *PersonalityID.ToString());
-	UE_LOG(LogTemp, Warning, TEXT("  PersonalityTable: %s"), PersonalityTable ? TEXT("Valid") : TEXT("NULL"));
+	// ✅ Reduce log noise - only show detailed logs when PersonalityID is set
+	// 减少日志噪音 - 仅在 PersonalityID 已设置时显示详细日志
+	bool bShowDetailedLogs = !PersonalityID.IsNone();
+	
+	if (bShowDetailedLogs)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"));
+		UE_LOG(LogTemp, Warning, TEXT("[PersonalityComponent] RecalculateWeights called"));
+		UE_LOG(LogTemp, Warning, TEXT("  PersonalityID: %s"), *PersonalityID.ToString());
+		UE_LOG(LogTemp, Warning, TEXT("  PersonalityTable: %s"), PersonalityTable ? TEXT("Valid") : TEXT("NULL"));
+	}
 	
 	if (!PsychologyModel)
 	{
 		UE_LOG(LogTemp, Error, TEXT("[PersonalityComponent] PsychologyModel is null! Cannot calculate weights."));
-		UE_LOG(LogTemp, Warning, TEXT("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"));
+		if (bShowDetailedLogs)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"));
+		}
 		return;
 	}
 
@@ -119,6 +83,7 @@ void UPersonalityComponent::RecalculateWeights()
 			UE_LOG(LogTemp, Log, TEXT("     OCEAN: O=%.2f, C=%.2f, E=%.2f, A=%.2f, N=%.2f"), 
 			       Personality.Openness, Personality.Conscientiousness, 
 			       Personality.Extraversion, Personality.Agreeableness, Personality.Neuroticism);
+			UE_LOG(LogTemp, Log, TEXT("     Faction: %s"), *UEnum::GetValueAsString(Personality.Faction));
 			UE_LOG(LogTemp, Log, TEXT("     RoleDescription: %s"), *Personality.RoleDescription);
 		}
 		else
@@ -128,7 +93,12 @@ void UPersonalityComponent::RecalculateWeights()
 	}
 	else
 	{
-		UE_LOG(LogTemp, Warning, TEXT("  ⚠️ No PersonalityTable or PersonalityID is None, using current Personality struct"));
+		// ✅ This is expected during initialization - don't spam warnings
+		// 这在初始化期间是预期的 - 不要发出警告
+		if (bShowDetailedLogs)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("  ⚠️ No PersonalityTable or PersonalityID is None, using current Personality struct"));
+		}
 	}
 
 	// 调用心理学模型的核心函数
@@ -152,12 +122,18 @@ void UPersonalityComponent::RecalculateWeights()
 				UtilityController->CognitionComp->BehavioralGuidelines = Personality.BehavioralGuidelines;
 			}
 			
-			UE_LOG(LogTemp, Warning, TEXT("  ✅ Updated RoleDescription: %s"), *Personality.RoleDescription);
+			if (bShowDetailedLogs)
+			{
+				UE_LOG(LogTemp, Warning, TEXT("  ✅ Updated RoleDescription: %s"), *Personality.RoleDescription);
+			}
 		}
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("  ✅ Maslow weights recalculated successfully"));
-	UE_LOG(LogTemp, Warning, TEXT("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"));
+	if (bShowDetailedLogs)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("  ✅ Maslow weights recalculated successfully"));
+		UE_LOG(LogTemp, Warning, TEXT("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"));
+	}
 }
 
 float UPersonalityComponent::GetWeightForVariable(const FString& VariableName) const

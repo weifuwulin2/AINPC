@@ -1,5 +1,7 @@
 #include "Components/SensoryComponent.h"
 #include "Components/SmartObjectComponent.h"
+#include "Components/PersonalityComponent.h"
+#include "Kismet/GameplayStatics.h"
 #include "Social/SocialGameplayTags.h"
 
 USensoryComponent::USensoryComponent()
@@ -290,8 +292,9 @@ void USensoryComponent::HandleTargetPerceived(AActor* Actor, FAIStimulus Stimulu
             }
         }
 
-        // Generate text description (for both paths)
-        FString Desc = FormatDescription(Verb, Actor);
+        // Generate text description with faction/hostility context
+        // 生成包含阵营/敌对信息的描述
+        FString Desc = FormatDescriptionWithContext(Verb, Actor, SelfFaction, TargetFaction, bIsHostile);
 
         // New: Generate Semantic Event
         FSemanticEvent Event;
@@ -304,9 +307,25 @@ void USensoryComponent::HandleTargetPerceived(AActor* Actor, FAIStimulus Stimulu
         // 标记目标已被感知
         MarkTargetPerceived(Actor);
 
-        // ⚠️ CRITICAL: Filter BEFORE broadcasting to either system
-        // This prevents visual spam from reaching Cognition/Memory
-        if (ProcessEventFilter(Event))
+        // ⚠️ CRITICAL FIX: 敌对单位绕过过滤器，直接传递
+        // Hostile units bypass filter and go directly to Cognition
+        bool bShouldBroadcast = false;
+        
+        if (Magnitude >= 0.5f)
+        {
+            // 高重要性事件（敌对单位、危险）：直接传递，不过滤
+            // High importance events (hostile, danger): Direct pass, no filter
+            bShouldBroadcast = true;
+            UE_LOG(LogTemp, Warning, TEXT("[Sensory] → HIGH PRIORITY (Mag=%.2f): Bypassing filter!"), Magnitude);
+        }
+        else
+        {
+            // 低重要性事件：通过过滤器（累积系统）
+            // Low importance events: Through filter (accumulation system)
+            bShouldBroadcast = ProcessEventFilter(Event);
+        }
+        
+        if (bShouldBroadcast)
         {
             // Legacy Path: For backward compatibility with old Cognition logic
             OnStimulusProduced.Broadcast(Desc);
@@ -512,6 +531,65 @@ FString USensoryComponent::FormatDescription(FString Verb, AActor* Target, FStri
         return FString::Printf(TEXT("I %s %s %s"), *Verb, *TargetName, *ExtraInfo);
 }
 
+// ✅ NEW: Enhanced description with faction/hostility context for LLM
+// 新增：包含阵营/敌对信息的增强描述，供 LLM 使用
+FString USensoryComponent::FormatDescriptionWithContext(FString Verb, AActor* Target, FName SelfFaction, FName TargetFaction, bool bIsHostile)
+{
+    FString TargetName = "Unknown";
+    
+    if (Target)
+    {
+        if (APawn* TargetPawn = Cast<APawn>(Target))
+        {
+            if (AController* TargetController = TargetPawn->GetController())
+            {
+                if (AUtilityAIController* UtilityController = Cast<AUtilityAIController>(TargetController))
+                {
+                    if (UtilityController->PersonalityComp && !UtilityController->PersonalityComp->PersonalityID.IsNone())
+                    {
+                        TargetName = UtilityController->PersonalityComp->PersonalityID.ToString();
+                    }
+                }
+            }
+        }
+        
+        if (TargetName == "Unknown" && Target->ActorHasTag("Player"))
+        {
+            TargetName = "Player";
+        }
+        
+        if (TargetName == "Unknown")
+        {
+            TargetName = Target->GetName();
+        }
+    }
+    
+    // ✅ Build context-aware description
+    // 构建包含上下文的描述
+    FString Description = FString::Printf(TEXT("I %s %s"), *Verb, *TargetName);
+    
+    // Add faction information
+    // 添加阵营信息
+    if (TargetFaction != "Neutral" && TargetFaction != "None")
+    {
+        Description += FString::Printf(TEXT(" (Faction: %s)"), *TargetFaction.ToString());
+    }
+    
+    // ⚠️ CRITICAL: Add hostility warning for LLM
+    // 关键：为 LLM 添加敌对警告
+    if (bIsHostile)
+    {
+        Description += TEXT(" - HOSTILE ENEMY DETECTED!");
+    }
+    else if (SelfFaction == TargetFaction && SelfFaction != "Neutral")
+    {
+        Description += TEXT(" - Ally");
+    }
+    
+    return Description;
+}
+
+
 // ==========================================
 // Visual Accumulation Helpers
 // ==========================================
@@ -548,64 +626,170 @@ void USensoryComponent::ResetVisualAccumulation(AActor* Target)
 
 FName USensoryComponent::GetActorFaction(AActor* Actor) const
 {
-	if (!Actor) return "Neutral";
-	
-	UPersonalityComponent* PersonalityComp = nullptr;
-	
-	// Case 1: Actor is a Controller (e.g., when GetOwner() is called on SensoryComponent)
-	// 情况 1: Actor 是 Controller（例如在 SensoryComponent 上调用 GetOwner() 时）
-	if (AController* Controller = Cast<AController>(Actor))
-	{
-		PersonalityComp = Controller->FindComponentByClass<UPersonalityComponent>();
-	}
-	// Case 2: Actor is a Pawn, get its Controller
-	// 情况 2: Actor 是 Pawn，获取其 Controller
-	else if (APawn* Pawn = Cast<APawn>(Actor))
-	{
-		if (AController* Controller1 = Pawn->GetController())
-		{
-			PersonalityComp = Controller1->FindComponentByClass<UPersonalityComponent>();
-		}
-	}
-	
-	// If we found PersonalityComponent, return its Faction
-	// 如果找到了 PersonalityComponent，返回其 Faction
-	if (PersonalityComp)
-	{
-		return PersonalityComp->Personality.Faction;
-	}
-	
-	// Fallback: Check tags
-	if (Actor->ActorHasTag("Player"))
-	{
-		return "Human";
-	}
-	
-	return "Neutral";
+	// Keep internal helper returning string if needed by legacy, 
+    // but ideally we should deprecate it. 
+    // For now, let's map Enum to Name if needed, or just let it be.
+    // Actually, let's redirect this to use the static helper logic
+    // But return Name for legacy compatibility if any.
+    EFactionType F = GetFaction(Actor);
+    return UEnum::GetValueAsName(F);
+}
+
+EFactionType USensoryComponent::GetFaction(AActor* Actor)
+{
+    if (!Actor) return EFactionType::Neutral;
+
+    // ✅ FIX: If the Actor is a Controller (not a Pawn), get its controlled Pawn
+    // SensoryComponent is attached to Controller, so GetOwner() returns Controller
+    // 修复：如果 Actor 是 Controller（而非 Pawn），获取其控制的 Pawn
+    APawn* Pawn = Cast<APawn>(Actor);
+    if (!Pawn)
+    {
+        if (AController* Controller = Cast<AController>(Actor))
+        {
+            Pawn = Controller->GetPawn();
+        }
+    }
+    
+    // 1. 优先从 PersonalityComponent 读取 (最权威的来源)
+    // Priority: Read from PersonalityComponent (most authoritative source)
+    if (Pawn)
+    {
+        if (AController* Controller = Pawn->GetController())
+        {
+            if (UPersonalityComponent* PersonalityComp = Controller->FindComponentByClass<UPersonalityComponent>())
+            {
+                // ✅ SMART INITIALIZATION FIX:
+                // If PersonalityID is set but Faction is still Neutral, the Blueprint set the ID
+                // but didn't call SetPersonalityByID(). Trigger reload now.
+                // 智能初始化修复：如果 PersonalityID 已设置但 Faction 仍是 Neutral，
+                // 说明 Blueprint 设置了 ID 但没调用 SetPersonalityByID()，现在触发重载
+                if (PersonalityComp->Personality.Faction == EFactionType::Neutral && 
+                    !PersonalityComp->PersonalityID.IsNone() && 
+                    PersonalityComp->PersonalityID != "Default")
+                {
+                    UE_LOG(LogTemp, Warning, TEXT("[Sensory] Detected late PersonalityID (%s) without loaded Faction. Triggering reload..."), 
+                        *PersonalityComp->PersonalityID.ToString());
+                    
+                    // Trigger reload by calling SetPersonalityByID
+                    // This will load the correct Faction from DataTable
+                    const_cast<UPersonalityComponent*>(PersonalityComp)->SetPersonalityByID(PersonalityComp->PersonalityID);
+                }
+                
+                // Now return the Faction (should be loaded correctly)
+                // 现在返回 Faction（应该已正确加载）
+                if (PersonalityComp->Personality.Faction != EFactionType::Neutral)
+                {
+                    return PersonalityComp->Personality.Faction;
+                }
+                // If still Neutral after reload attempt, fall through to tag-based detection
+                // 如果重载后仍是 Neutral，继续使用基于 Tag 的检测
+            }
+        }
+    }
+
+    // 2. Fallback: Tag Mapping (Configuration Layer for non-AI actors)
+    // ⚠️ CRITICAL: Check tags on the PAWN, not the Controller!
+    // Tags are added to the Pawn in CombatEnemy::BeginPlay
+    AActor* ActorToCheck = Pawn ? Pawn : Actor;
+    
+    // Monsters
+    if (ActorToCheck->ActorHasTag("Zombie")) return EFactionType::Monster;
+    if (ActorToCheck->ActorHasTag("Bandit")) return EFactionType::Monster;
+    if (ActorToCheck->ActorHasTag("Monster")) return EFactionType::Monster;
+
+    // Humans
+    if (ActorToCheck->ActorHasTag("Human") || 
+        ActorToCheck->ActorHasTag("Guard") || 
+        ActorToCheck->ActorHasTag("Merchant") || 
+        ActorToCheck->ActorHasTag("Villager")) 
+    {
+        return EFactionType::Human;
+    }
+    
+    // Player -> Human
+    if (ActorToCheck->ActorHasTag("Player")) return EFactionType::Human;
+    if (Pawn && Pawn->IsPlayerControlled()) return EFactionType::Human;
+
+    return EFactionType::Neutral;
 }
 
 bool USensoryComponent::AreActorsHostile(AActor* ActorA, AActor* ActorB) const
 {
 	if (!ActorA || !ActorB) return false;
-	
-	FName FactionA = GetActorFaction(ActorA);
-	FName FactionB = GetActorFaction(ActorB);
-	
-	// Neutral faction is never hostile
-	// 中立阵营永远不敌对
-	if (FactionA == "Neutral" || FactionB == "Neutral")
-	{
-		return false;
-	}
-	
-	// Same faction is not hostile
-	// 同阵营不敌对
-	if (FactionA == FactionB)
-	{
-		return false;
-	}
-	
-	// Different non-neutral factions are hostile
-	// 不同的非中立阵营互相敌对
-	return true;
+
+    EFactionType FactionA = GetFaction(ActorA);
+    EFactionType FactionB = GetFaction(ActorB);
+
+    // ✅ Strict Faction Logic: "Different Faction = Enemy"
+    // Exception: Neutral is not hostile (unless explicitly handled?)
+    // User said: "wildlife might not be friendly" -> Those should be tagged Monster.
+    // True Neutral (rocks, props) should trigger NO hostility.
+    
+    if (FactionA == EFactionType::Neutral || FactionB == EFactionType::Neutral)
+    {
+        return false; 
+    }
+
+    // Different Faction = Hostile
+    return FactionA != FactionB;
+}
+
+AActor* USensoryComponent::FindBestSmartObject(FGameplayTag ActivityTag)
+{
+    AActor* BestCandidate = nullptr;
+    float ClosestDistSq = FLT_MAX;
+    FVector MyLoc = GetOwner()->GetActorLocation();
+
+    // 1. 优先检查最近感知到的 Actor (Short-term Memory)
+    // Priority 1: Check recently perceived actors
+    for (auto& Pair : RecentlyPerceivedActors)
+    {
+        AActor* Candidate = Pair.Key;
+        if (!IsValid(Candidate)) continue;
+
+        // 检查是否有 SmartObjectComponent
+        USmartObjectComponent* SmartComp = Candidate->FindComponentByClass<USmartObjectComponent>();
+        if (SmartComp && SmartComp->Semantics.SocialTag.MatchesTag(ActivityTag))
+        {
+            float DistSq = FVector::DistSquared(MyLoc, Candidate->GetActorLocation());
+            if (DistSq < ClosestDistSq)
+            {
+                ClosestDistSq = DistSq;
+                BestCandidate = Candidate;
+            }
+        }
+    }
+
+    // 2. 如果记忆里没有，为了 Showcase 的鲁棒性，我们可以扫描一定范围内的所有 Actor
+    // Priority 2: Fallback scan (only for showcase smoothness, can be removed for strict realism)
+    if (!BestCandidate)
+    {
+        TArray<AActor*> AllActors;
+        // 这是一个昂贵的操作，但在 demo 关卡中通常可以接受
+        // In a real game, you'd use a spatial grid or specific tag queries
+        UGameplayStatics::GetAllActorsOfClass(GetWorld(), AActor::StaticClass(), AllActors);
+        
+        for (AActor* Candidate : AllActors)
+        {
+             if (!IsValid(Candidate)) continue;
+             if (Candidate == GetOwner()) continue;
+             
+             // 距离检查 (例如 3000 cm 内)
+             float DistSq = FVector::DistSquared(MyLoc, Candidate->GetActorLocation());
+             if (DistSq > 3000.0f * 3000.0f) continue;
+
+             USmartObjectComponent* SmartComp = Candidate->FindComponentByClass<USmartObjectComponent>();
+             if (SmartComp && SmartComp->Semantics.SocialTag.MatchesTag(ActivityTag))
+             {
+                 if (DistSq < ClosestDistSq)
+                 {
+                     ClosestDistSq = DistSq;
+                     BestCandidate = Candidate;
+                 }
+             }
+        }
+    }
+
+    return BestCandidate;
 }

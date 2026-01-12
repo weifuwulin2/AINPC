@@ -286,3 +286,65 @@ git push origin v0.3.0
 ---
 
 选择你喜欢的风格，复制对应的命令即可！🚀
+
+---
+
+## [2026-01-12] Fix MetabolismComponent Compilation Error
+**Type**: fix
+**Scope**: MetabolismComponent
+**Description**:
+- Fixed `MetabolismComponent.cpp` to include `UtilityAI/UNPCMentalState.h` instead of the incorrect `UtilityAI/NPCMentalState.h`.
+- Resolved compilation error C1083.
+
+---
+
+## [2026-01-12] Implement Universal Smart Object Actions
+**Type**: feat
+**Scope**: ActionSystem
+**Description**:
+- Implemented `UAction_SmartObject` C++ class for tag-based interaction (Eat/Sleep).
+- Updated `SensoryComponent` with `FindBestSmartObject` logic.
+- Updated `UtilityActionBase` to support `SmartObjectTag` configuration and new Input Types (`HasFoodNearby`, `HasBedNearby`).
+- Added Documentation Guide: `guides/Universal_SmartObject_Action_Guide.md`.
+
+---
+
+## [2026-01-12] Simplify Faction System to Three Core Factions
+**Type**: refactor
+**Scope**: SensoryComponent, SocialTypes
+**Description**:
+- Simplified `EFactionType` enum to three core factions: `Neutral`, `Human`, `Monster`
+- Removed complex faction types (Bandit, Wildlife, etc.) for clearer semantics
+- Updated `SensoryComponent::AreActorsHostile()` with simplified hostility logic:
+  - Different non-neutral factions are hostile
+  - Same faction actors are never hostile
+  - Neutral faction is never hostile to anyone
+- Removed tag-based "Enemy" checks in favor of faction-based system
+- Updated `SocialTypes.h` with cleaner faction definitions
+- Ensured Player characters are correctly assigned to `Human` faction
+- Added comprehensive documentation in `docs/updates/Faction_System_Update.md`
+
+**Impact**:
+- Easier configuration: Only 3 factions to manage instead of multiple types
+- More predictable behavior: Clear hostility rules based on faction membership
+- Better maintainability: Centralized faction logic in enum and hostility function
+- Fixes issue where same-faction NPCs (e.g., two Zombies) would attack each other
+
+**Files Modified**:
+- `Source/AINPC/Public/SocialTypes.h` - Simplified EFactionType enum
+- `Source/AINPC/Components/SensoryComponent.h` - Updated hostility detection
+- `Source/AINPC/Components/SensoryComponent.cpp` - Implemented simplified hostility logic
+- `docs/updates/Faction_System_Update.md` - Added comprehensive update documentation
+
+---
+
+## [2026-01-13] Refine LLM Prompt Behavior & Fix Faction Initialization
+**Type**: fix
+**Scope**: Cognition, Sensory
+**Description**:
+- (Conv 710) Implemented robust retry mechanism for LLM requests to handle race conditions during initialization.
+- Fixed `PendingStimulus` clearing logic to ensure stimuli are processed correctly after retry.
+- (Conv 250) Fixed Faction initialization issues where `GetFaction()` returned Neutral.
+- Added `docs/troubleshooting/Faction_Not_Loading_Fix.md` guide.
+
+

@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "UObject/NoExportTypes.h"
 #include "AIController.h"
+#include "GameplayTagContainer.h"
 #include "GameFramework/Character.h"
 #include "Curves/CurveFloat.h"
 #include "UtilityAI/UNPCMentalState.h" // 确保路径引用正确
@@ -55,7 +56,9 @@ enum class EUtilityInputType : uint8
 	IsTargetPlayer,       // 环境：目标是否是玩家
 	HasAttackTarget,      // 环境：是否有攻击目标 (FocusActor 是否存在)
 	HasEnemyNearby,       // 环境：附近是否有敌人 (不依赖 FocusActor)
-	HasFriendlyNearby     // 环境：附近是否有友军/中立单位 (非 Enemy, 非 Self)
+	HasFriendlyNearby,    // 环境：附近是否有友军/中立单位 (非 Enemy, 非 Self)
+	HasFoodNearby,        // 环境：附近是否有食物 (Activity.Eat)
+	HasBedNearby          // 环境：附近是否有床 (Activity.Rest)
 };
 
 // 考量类型：动机 vs 必要条件
@@ -145,6 +148,12 @@ struct FUtilityActionConfig : public FTableRowBase
     // 惯性奖励：如果正在做这个动作，额外加多少分？
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
     float InertiaBonus = 0.0f;
+
+    // 智能对象标签：指定该动作针对哪种类型的智能对象
+    // Smart Object Tag: Specifies which type of smart object this action targets
+    // Example: "Activity.Eat", "Activity.Rest"
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Smart Object")
+    FGameplayTag SmartObjectTag;
 };
 
 // =========================================================
@@ -171,6 +180,9 @@ public:
 
     UPROPERTY(Transient)
     float InertiaBonus = 0.0f;
+
+    UPROPERTY(Transient)
+    FGameplayTag SmartObjectTag;
 
     UPROPERTY(EditDefaultsOnly, Category = "Action Config")
     FString ActionName;

@@ -7,6 +7,20 @@
 class AActor;
 
 /**
+ * Faction Types for AI relationships.
+ * Defines "Who is on whose side".
+ * Jobs (Guard/Merchant) should be defined by Tags or Roles, not Faction.
+ */
+
+UENUM(BlueprintType)
+enum class EFactionType : uint8
+{
+	Neutral     UMETA(DisplayName = "Neutral"),
+	Human       UMETA(DisplayName = "Human"),
+	Monster     UMETA(DisplayName = "Monster")
+};
+
+/**
  * The standard data package flowing through the AI NPC system.
  * Decouples "what happened" from "how to react".
  */

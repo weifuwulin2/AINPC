@@ -1,6 +1,6 @@
 #include "Components/MetabolismComponent.h"
 #include "Controller/UtilityAIController.h"
-#include "UtilityAI/NPCMentalState.h"
+#include "UtilityAI/UNPCMentalState.h"
 #include "Components/CognitionComponent.h"
 #include "UtilityAI/MentalStateInterpolation.h"
 

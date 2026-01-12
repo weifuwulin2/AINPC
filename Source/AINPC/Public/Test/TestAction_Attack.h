@@ -20,9 +20,14 @@ public:
 	UTestAction_Attack();
 
 	// 动作生命周期
+	// 动作生命周期
 	virtual void Enter_Implementation(AAIController* Controller) override;
 	virtual void Execute_Implementation(AAIController* Controller) override;
 	virtual void Exit_Implementation(AAIController* Controller) override;
+
+	// 重写 CalculateScore 以添加目标有效性检查
+	// Override CalculateScore to add target validity check
+	virtual float CalculateScore(UNPCMentalState* MentalState, AAIController* Controller, bool bLogDebug = false) override;
 
 private:
 	// 执行开始时间戳

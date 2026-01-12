@@ -8,6 +8,7 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DataTable.h"
+#include "Social/SocialTypes.h"
 #include "PersonalityConfig.generated.h"
 
 /**
@@ -67,12 +68,10 @@ struct FPersonalityConfig : public FTableRowBase
 	// 阵营 / Faction
 	// 定义此 NPC 的阵营，用于判断敌我关系
 	// Defines this NPC's faction for determining friend or foe
-	// Example: "Human", "Zombie", "Monster", "Neutral"
-	// NPCs of the same faction will not trigger immediate hostile response to each other
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Role Definition",
 	          meta = (DisplayName = "Faction (阵营)", 
 	                  ToolTip = "NPC 的阵营，同阵营不会互相敌对 / NPC's faction, same faction won't be hostile to each other"))
-	FName Faction = "Neutral";
+	EFactionType Faction = EFactionType::Neutral;
 	
 	// 角色描述 / Role Description
 	// 定义此 NPC 的身份和基本行为倾向，用于 LLM 上下文

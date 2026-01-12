@@ -7,7 +7,7 @@
 
 [![Unreal Engine](https://img.shields.io/badge/Unreal%20Engine-5.3+-blue.svg)](https://www.unrealengine.com/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Documentation](https://img.shields.io/badge/docs-latest-brightgreen.svg)](docs/README.md)
+[![Documentation](https://img.shields.io/badge/knowledge-base-blue.svg)](docs/README.md)
 
 </div>
 
@@ -239,32 +239,13 @@ AINPC/
 
 ## 📚 文档导航 / Documentation
 
-### 快速查找 / Quick Reference
+我们维护了详细的项目文档库。请访问 **[📚 Knowledge Base Index](docs/README.md)** 以获取完整列表。
 
-| 我想... | 查看文档 |
-|:--------|:---------|
-| 了解系统架构和数据流 | [DataFlow_Analysis.md](docs/analysis/DataFlow_Analysis.md) |
-| 理解Personality→OCEAN→Maslow→LLM的完整转换链路 | [Personality_OCEAN_Maslow_LLM_Pipeline.md](docs/design/Personality_OCEAN_Maslow_LLM_Pipeline.md) ⭐ |
-| 配置 LLM API | [LLM_Config_Guide.md](docs/guides/LLM_Config_Guide.md) |
-| 添加新的情绪属性 | [Single_Point_Configuration_Guide.md](docs/guides/Single_Point_Configuration_Guide.md) |
-| 配置 Utility AI 动作 | [Utility_AI_Configuration_Guide.md](docs/guides/Utility_AI_Configuration_Guide.md) |
-| 测试 Dreaming 功能 | [Dreaming_Test_Guide.md](docs/guides/Dreaming_Test_Guide.md) |
-| 修复已知 Bug | [BugFixes_Patch.md](docs/guides/BugFixes_Patch.md) |
-| 查看完整文档索引 | [docs/README.md](docs/README.md) |
-
-### 核心指南 / Core Guides
-
-- **[单点配置系统指南](docs/guides/Single_Point_Configuration_Guide.md)** - 如何使用宏自动化配置
-- **[Utility AI 配置指南](docs/guides/Utility_AI_Configuration_Guide.md)** - 创建和调试动作
-- **[框架测试指南](docs/guides/Framework_Testing_Guide.md)** - 完整测试流程
-- **[LLM 配置指南](docs/guides/LLM_Config_Guide.md)** - API 设置和故障排查
-
-### 技术报告 / Technical Reports
-
-- **[数据流分析](docs/analysis/DataFlow_Analysis.md)** - 完整的架构分析 + Mermaid 图
-- **[单点配置实现报告](docs/reports/Single_Point_Config_Implementation.md)** - 自动化系统详解
-- **[Bug 修复报告](docs/reports/Bug1_Fix_Report.md)** - 数据结构优化
-- **[并发请求修复](docs/reports/Bug4_Fix_Report.md)** - TMap 并发管理
+### 核心文档入口
+*   [**系统架构分析**](docs/analysis/DataFlow_Analysis.md)
+*   [**Bug 修复指南**](docs/guides/BugFixes_Patch.md)
+*   [**API 配置指南**](docs/guides/LLM_Config_Guide.md)
+*   [**Git 提交日志**](docs/GIT_COMMIT_MESSAGES.md)
 
 ---
 

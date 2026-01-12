@@ -60,6 +60,20 @@ public:
 	 */
 	bool ProcessEventFilter(FSemanticEvent& Event);
 
+	/**
+	 * Finds the best (closest) Smart Object matching the given tag.
+	 * 寻找最佳（最近）的匹配 Tag 的智能对象。
+	 */
+	UFUNCTION(BlueprintCallable, Category = "AI Sensory")
+	AActor* FindBestSmartObject(FGameplayTag ActivityTag);
+
+	/**
+	 * Helper: Get the faction of an actor (Safe to call on any actor).
+	 * Defaults to Neutral.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "AI Sensory")
+	static EFactionType GetFaction(AActor* Actor);
+
 protected:
 	virtual void BeginPlay() override;
 
@@ -76,6 +90,11 @@ private:
 
 	// Legacy Helper
 	FString FormatDescription(FString Verb, AActor* Target, FString ExtraInfo = "");
+	
+	// ✅ NEW: Enhanced description with faction/hostility context for LLM
+	// 新增：包含阵营/敌对信息的增强描述，供 LLM 使用
+	FString FormatDescriptionWithContext(FString Verb, AActor* Target, FName SelfFaction, FName TargetFaction, bool bIsHostile);
+
 
 private:
 	// ✅ 注意力追踪：防止重复感知同一目标

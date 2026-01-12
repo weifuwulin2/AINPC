@@ -7,6 +7,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+---
+
+## [0.4.5] - 2026-01-13
+
+### 🐛 Bug Fixes
+- **Robust LLM Retry Mechanism**: Fixed race conditions where LLM requests would fail if the Personality was not yet initialized (`PendingStimulus` fix).
+- **Faction Initialization**: Fixed issue where `GetFaction()` returned Neutral due to race conditions or missing DataTable fields.
+- **PendingStimulus Logic**: Correctly clearing `PendingStimulus` after successful retry to prevent infinite loops or silent failures.
+
+### 📝 Documentation
+- **Added**: `docs/troubleshooting/Faction_Not_Loading_Fix.md` - Guide to fixing Faction initialization issues.
+
+## [0.4.4] - 2026-01-12
+
+### 🔧 Changed - Faction System Simplification
+
+#### Core Faction System
+- **Simplified Faction Enum**: Reduced `EFactionType` to three core factions: `Neutral`, `Human`, and `Monster`
+  - Removed complex faction types (Bandit, Wildlife, etc.)
+  - Clearer semantic meaning and easier to configure
+  - All existing tags (e.g., "Bandit") now map to `Monster` faction
+
+#### Hostility Logic Refinement
+- **Updated Hostility Rules**: Simplified faction-based hostility detection in `SensoryComponent`
+  - If two actors are of different factions (and neither is Neutral), they are hostile
+  - Neutral faction is never hostile to anyone
+  - Same faction actors are never hostile to each other
+- **Removed Tag-Based Hostility**: Replaced "Enemy" tag checks with faction-based system for cleaner architecture
+
+#### Player Handling
+- **Player Faction Assignment**: Players are now correctly assigned to `Human` faction
+  - Ensures consistent behavior with other human NPCs
+  - Monsters will be hostile to players automatically
+
+### 📝 Documentation
+- **Added**: `docs/updates/Faction_System_Update.md` - Complete faction system update summary with examples and migration guide
+
+### 🎯 Impact
+- **Before**: Complex faction system with multiple types, tag-based hostility checks
+- **After**: Simple three-faction system with clear hostility rules based on faction membership
+- **Benefit**: Easier to configure, more predictable behavior, reduced complexity
+
+---
+
+## [0.4.3] - 2026-01-12
+
+### 🐛 Bug Fixes
+- **Fixed Compilation Error**: Updated `MetabolismComponent.cpp` to correctly include `UtilityAI/UNPCMentalState.h` instead of the non-existent `UtilityAI/NPCMentalState.h`.
+
+### ✨ Added
+- **Universal Smart Object Action**: Implemented `UAction_SmartObject` to handle generic interactions (Eat, Sleep) driven by tags.
+- **Sensory Scanning**: Added `FindBestSmartObject` to `SensoryComponent` to locate objects by `SocialTag`.
+- **Configuration**: Added `SmartObjectTag` to `FUtilityActionConfig` for data-driven targeting.
+- **New Inputs**: Added `HasFoodNearby` and `HasBedNearby` Utility inputs.
+
+
 ## [0.4.2] - 2026-01-09
 
 ### 🐛 Critical Bug Fixes

@@ -4,6 +4,8 @@
 #include "Components/PersonalityComponent.h"
 #include "Controller/UtilityAIController.h"
 #include "Components/CognitionComponent.h"
+#include "Components/SensoryComponent.h"
+#include "EngineUtils.h"
 #include "UtilityAI/MentalStateInterpolation.h"
 
 
@@ -20,6 +22,7 @@ void UUtilityActionBase::InitFromConfig(const FUtilityActionConfig& Config)
     BaseReward = Config.BaseReward;
     CooldownTime = Config.CooldownTime;
     InertiaBonus = Config.InertiaBonus; // 接收配置的惯性值
+    SmartObjectTag = Config.SmartObjectTag; // 接收智能对象标签
 
     if (ActionName.Equals("BaseAction") || ActionName.IsEmpty())
     {
@@ -371,46 +374,49 @@ float UUtilityActionBase::GetConsiderationValue(EUtilityInputType InputType, UNP
         {
             if (!BotPawn || !Controller->GetWorld()) return 0.0f;
             
-            // 搜索带有 "Enemy" 标签的 Actor
-            TArray<AActor*> Enemies;
-            UGameplayStatics::GetAllActorsWithTag(Controller->GetWorld(), FName("Enemy"), Enemies);
-            
-            // 检查是否有有效的敌人（排除自己，且未死亡）
-            for (AActor* Enemy : Enemies)
-            {
-                if (Enemy == BotPawn) continue;
-                if (!IsValid(Enemy) || Enemy->IsPendingKillPending()) continue;
-                if (Enemy->ActorHasTag("Dead")) continue;
-                
-                // 排除布娃娃
-                if (ACharacter* CharEnemy = Cast<ACharacter>(Enemy))
-                {
-                    if (CharEnemy->GetMesh() && CharEnemy->GetMesh()->IsSimulatingPhysics()) continue;
-                }
+            // 获取自己的阵营
+            EFactionType MyFaction = USensoryComponent::GetFaction(BotPawn);
+            float CheckRadiusSq = FMath::Square(1500.0f); // 15m 范围内
 
-                // 有有效敌人
-                return 1.0f;
-            }
-            
-            // 没有 "Enemy" 标签的 Actor，检查玩家
-            if (AActor* Player = UGameplayStatics::GetPlayerPawn(Controller->GetWorld(), 0))
+            // 扫描周围所有 Pawn (使用 TActorIterator 代替 GetPawnIterator)
+            if (UWorld* World = Controller->GetWorld())
             {
-                if (Player != BotPawn && IsValid(Player) && !Player->IsPendingKillPending())
+                for (TActorIterator<APawn> It(World); It; ++It)
                 {
-                    // 同样检查玩家是否死亡
-                    if (!Player->ActorHasTag("Dead"))
+                    APawn* TestPawn = *It;
+                    if (!TestPawn || TestPawn == BotPawn) continue;
+                    
+                    // 1. 距离检查 (优化：先检查距离，再做昂贵的逻辑)
+                    if (FVector::DistSquared(BotPawn->GetActorLocation(), TestPawn->GetActorLocation()) > CheckRadiusSq)
                     {
-                         if (ACharacter* CharPlayer = Cast<ACharacter>(Player))
-                         {
-                             if (!CharPlayer->GetMesh() || !CharPlayer->GetMesh()->IsSimulatingPhysics())
-                             {
-                                 return 1.0f; // 玩家活着
-                             }
-                         }
-                         else
-                         {
-                             return 1.0f;
-                         }
+                        continue;
+                    }
+
+                    if (!IsValid(TestPawn) || TestPawn->IsPendingKillPending()) continue;
+
+                    if (TestPawn->ActorHasTag("Dead")) continue;
+                    if (ACharacter* CharTest = Cast<ACharacter>(TestPawn))
+                    {
+                        if (CharTest->GetMesh() && CharTest->GetMesh()->IsSimulatingPhysics()) continue;
+                    }
+
+                    // 阵营检查 logic check
+                    EFactionType TargetFaction = USensoryComponent::GetFaction(TestPawn);
+                    
+                    bool bIsHostile = false;
+
+                    // Reuse the logic: Different Faction = Enemy (ignoring Neutral)
+                    if (MyFaction != EFactionType::Neutral && TargetFaction != EFactionType::Neutral)
+                    {
+                        if (MyFaction != TargetFaction)
+                        {
+                            bIsHostile = true;
+                        }
+                    }
+                    
+                    if (bIsHostile)
+                    {
+                        return 1.0f;
                     }
                 }
             }
@@ -423,6 +429,10 @@ float UUtilityActionBase::GetConsiderationValue(EUtilityInputType InputType, UNP
         {
             if (!BotPawn || !Controller->GetWorld()) return 0.0f;
 
+            // 获取自己的阵营
+            EFactionType MyFaction = USensoryComponent::GetFaction(BotPawn);
+            float CheckRadiusSq = FMath::Square(1500.0f); // 15m 范围内
+
             // 这里我们简单起见，利用 UGameplayStatics::GetAllActorsOfClass 检查所有 Character
             // 然后过滤掉 Enemy 和 Self
             TArray<AActor*> AllChars;
@@ -431,8 +441,14 @@ float UUtilityActionBase::GetConsiderationValue(EUtilityInputType InputType, UNP
             for (AActor* Actor : AllChars)
             {
                 if (Actor == BotPawn) continue;
+                
+                // 1. 距离检查
+                if (FVector::DistSquared(BotPawn->GetActorLocation(), Actor->GetActorLocation()) > CheckRadiusSq)
+                {
+                    continue;
+                }
+
                 if (!IsValid(Actor) || Actor->IsPendingKillPending()) continue;
-                if (Actor->ActorHasTag("Enemy")) continue; // 排除敌人
                 if (Actor->ActorHasTag("Dead")) continue;  // 排除死人
 
                 // 排除布娃娃
@@ -440,11 +456,55 @@ float UUtilityActionBase::GetConsiderationValue(EUtilityInputType InputType, UNP
                 {
                     if (CharActor->GetMesh() && CharActor->GetMesh()->IsSimulatingPhysics()) continue;
                 }
+                
+                // 阵营检查
+                EFactionType TargetFaction = USensoryComponent::GetFaction(Actor);
+                
+                // 友军定义：同阵营 OR (Neutral vs Neutral - not really friendly but safe)
+                // 严格友军：MyFaction == TargetFaction (且不是Neutral)
+                // 或者简单定义：Not Hostile
+                
+                bool bIsHostile = false;
+                if (MyFaction != EFactionType::Neutral && TargetFaction != EFactionType::Neutral)
+                {
+                    if (MyFaction != TargetFaction) bIsHostile = true;
+                }
 
-                // 找到一个不是敌人的活人
-                return 1.0f;
+                if (!bIsHostile)
+                {
+                    // 找到一个不是敌人的活人 (友军或路人)
+                    return 1.0f;
+                }
             }
 
+            return 0.0f;
+        }
+
+        // ✅ 新增：检查是否有食物附近
+        case EUtilityInputType::HasFoodNearby:
+        {
+            if (USensoryComponent* Sensory = Controller->FindComponentByClass<USensoryComponent>())
+            {
+                // 使用 AINPCTags::Activity_Eat
+                if (Sensory->FindBestSmartObject(FGameplayTag::RequestGameplayTag("Activity.Eat")))
+                {
+                    return 1.0f;
+                }
+            }
+            return 0.0f;
+        }
+
+        // ✅ 新增：检查是否有床附近
+        case EUtilityInputType::HasBedNearby:
+        {
+            if (USensoryComponent* Sensory = Controller->FindComponentByClass<USensoryComponent>())
+            {
+                 // 使用 AINPCTags::Activity_Rest
+                if (Sensory->FindBestSmartObject(FGameplayTag::RequestGameplayTag("Activity.Rest")))
+                {
+                    return 1.0f;
+                }
+            }
             return 0.0f;
         }
 

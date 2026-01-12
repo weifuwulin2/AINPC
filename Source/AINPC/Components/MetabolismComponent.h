@@ -45,11 +45,12 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Metabolism|Safety")
 	float ThreatDecayRate = 0.1f;
 
+	// 获取 MentalState 的辅助函数
+	UNPCMentalState* GetMentalState() const;
 private:
 	// 缓存 Controller 引用
 	UPROPERTY()
 	AUtilityAIController* CachedController;
 
-	// 获取 MentalState 的辅助函数
-	UNPCMentalState* GetMentalState() const;
+	
 };

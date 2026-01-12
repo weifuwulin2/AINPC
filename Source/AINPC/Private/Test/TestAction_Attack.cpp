@@ -14,6 +14,34 @@ UTestAction_Attack::UTestAction_Attack()
 	ExecutionTime = 0.0f;
 	bIsComplete = false;
 	LastAttackTime = 0.0f;
+	LastAttackTime = 0.0f;
+}
+
+float UTestAction_Attack::CalculateScore(UNPCMentalState* MentalState, AAIController* Controller, bool bLogDebug)
+{
+	// 1. 先计算基础分数 (Based on Considerations)
+	float Score = Super::CalculateScore(MentalState, Controller, bLogDebug);
+	
+	// 2. 强制检查上下文：必须有有效的 FocusActor (攻击目标)
+	// Force check context: Must have valid FocusActor (Attack Target)
+	if (Controller)
+	{
+		AActor* FocusActor = Controller->GetFocusActor();
+		if (!FocusActor || !IsValid(FocusActor))
+		{
+			if (bLogDebug && Score > 0.0f)
+			{
+				UE_LOG(LogTemp, Warning, TEXT("    [Test_Attack] ⛔ Score forced to 0.0 (No valid FocusActor)"));
+			}
+			return 0.0f;
+		}
+	}
+	else
+	{
+		return 0.0f;
+	}
+	
+	return Score;
 }
 
 void UTestAction_Attack::Enter_Implementation(AAIController* Controller)

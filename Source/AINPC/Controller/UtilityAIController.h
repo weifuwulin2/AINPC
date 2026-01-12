@@ -6,6 +6,7 @@
 #include "Social/SocialTypes.h" // Add this
 #include "UtilityAIController.generated.h"
 
+class UMetabolismComponent;
 // 前置声明 (Forward Declarations)
 class UAIPerceptionComponent;
 class UAISenseConfig_Sight;

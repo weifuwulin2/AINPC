@@ -1,6 +1,7 @@
 #include "CognitionComponent.h"
 
 #include "Controller/UtilityAIController.h"
+#include "Components/PersonalityComponent.h"
 #include "LLM/LLMCommunicator.h"
 #include "UtilityAI/SentimentMapping.h"
 #include "UtilityAI/MentalStateInterpolation.h"
@@ -155,110 +156,123 @@ void UCognitionComponent::ProcessStimulus(FString SituationDescription)
 		ContextMemory = "No relevant memories.";
 	}
 
+	// ✅ 从 PersonalityComponent 获取角色信息 / Get role info from PersonalityComponent
+	FString ActualRoleDescription = RoleDescription; // Default fallback
+	FString ActualBehavioralGuidelines = BehavioralGuidelines;
+	FString PersonalityIDStr = TEXT("Unknown");
+	FString FactionStr = TEXT("Neutral");
+	
+	if (AAIController* AIController = Cast<AAIController>(GetOwner()))
+	{
+		if (AUtilityAIController* UtilityController = Cast<AUtilityAIController>(AIController))
+		{
+			if (UPersonalityComponent* PersonalityComp = UtilityController->PersonalityComp)
+			{
+				// 使用 PersonalityComponent 中的配置
+				// Use configuration from PersonalityComponent
+				if (!PersonalityComp->Personality.RoleDescription.IsEmpty())
+				{
+					ActualRoleDescription = PersonalityComp->Personality.RoleDescription;
+				}
+				if (!PersonalityComp->Personality.BehavioralGuidelines.IsEmpty())
+				{
+					ActualBehavioralGuidelines = PersonalityComp->Personality.BehavioralGuidelines;
+				}
+				
+				// 获取 PersonalityID 和 Faction
+				// Get PersonalityID and Faction
+				PersonalityIDStr = PersonalityComp->PersonalityID.ToString();
+				FactionStr = UEnum::GetValueAsName(PersonalityComp->Personality.Faction).ToString();
+				
+				UE_LOG(LogTemp, Log, TEXT("[Cognition] Using personality from PersonalityComponent: ID=%s, Faction=%s"), 
+					*PersonalityIDStr, *FactionStr);
+			}
+		}
+	}
+	
+	// ⚠️ 关键修复：如果 Personality 还没初始化（ID为None），不要发送请求，避免 LLM 产生幻觉
+	// Critical Fix: If Personality is not initialized (ID is None), do not send request to avoid LLM hallucinations
+	if (PersonalityIDStr == "None" || PersonalityIDStr == "Default" || PersonalityIDStr.IsEmpty())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Cognition] PersonalityID not set yet. Scheduling retry in 0.5s..."));
+		
+		PendingStimulus = SituationDescription;
+		
+		// 避免重复设置 Timer
+		if (!GetWorld()->GetTimerManager().IsTimerActive(RetryStimulusTimerHandle))
+		{
+			UE_LOG(LogTemp, Log, TEXT("[Cognition] Timer started. Will retry in 0.5s."));
+			GetWorld()->GetTimerManager().SetTimer(RetryStimulusTimerHandle, [this]()
+			{
+				if (!PendingStimulus.IsEmpty())
+				{
+					UE_LOG(LogTemp, Log, TEXT("[Cognition] Retrying pending stimulus..."));
+					
+					// 先复制并清空，防止 ProcessStimulus 再次 Pending 后被这里误删
+					// Copy and clear first to prevent accidental deletion if ProcessStimulus pends again
+					FString CheckStimulus = PendingStimulus;
+					PendingStimulus.Empty();
+					
+					ProcessStimulus(CheckStimulus);
+				}
+			}, 0.5f, false);
+		}
+		
+		return;
+	}
+	
 	// 构建角色部分 / Build role section
+	// ⚠️ 关键：明确告诉 LLM 这是什么类型的 NPC
 	FString RoleSection = FString::Printf(TEXT(
-		"=== YOUR ROLE ===\n"
-		"%s\n"), *RoleDescription);
+		"You are: %s (Faction: %s)\n"
+		"Role: %s\n"), *PersonalityIDStr, *FactionStr, *ActualRoleDescription);
 	
 	// 如果有行为准则，添加到角色部分 / If there are behavioral guidelines, add to role section
-	if (!BehavioralGuidelines.IsEmpty())
+	if (!ActualBehavioralGuidelines.IsEmpty())
 	{
-		RoleSection += FString::Printf(TEXT(
-			"\n"
-			"=== BEHAVIORAL GUIDELINES ===\n"
-			"%s\n"), *BehavioralGuidelines);
+		RoleSection += FString::Printf(TEXT("Rules: %s\n"), *ActualBehavioralGuidelines);
+	}
+	
+	// ⚠️ 根据 PersonalityID 添加性格驱动而非硬性规则
+	// Add personality drives instead of hard rules to allow LLM emergence
+	if (PersonalityIDStr.Contains(TEXT("Zombie")) || FactionStr.Contains(TEXT("Monster")))
+	{
+		// 僵尸：生理限制和原始驱动 / Physiological limits and primal drives
+		RoleSection += TEXT("\n[INSTINCTS] Driven purely by insatiable hunger for living flesh. No fear, no pain, no higher logic.\n[LIMITATION] Brain rot preventing complex speech (can only grunt/hiss/say single broken words).\n");
+	}
+	else if (PersonalityIDStr.Contains(TEXT("Warrior")) || PersonalityIDStr.Contains(TEXT("Brave")))
+	{
+		// 战士：价值观驱动 / Value driven
+		RoleSection += TEXT("\n[VALUES] Honor, Glory, Strength. You despise cowardice.\n[Tendency] You prefer to face threats head-on unless the situation is absolutely hopeless.\n");
+	}
+	else if (PersonalityIDStr.Contains(TEXT("Merchant")))
+	{
+		RoleSection += TEXT("\n[VALUES] Profit, Wealth, Self-Preservation.\n[Tendency] You avoid physical danger and prefer to negotiate or flee to protect your goods.\n");
 	}
 
-	// 构造 JSON 格式的 Prompt
-	// ... (rest of prompt construction)
-	
+	// 构造精简的 Prompt / Build concise prompt
 	FString Prompt = FString::Printf(TEXT(
-		"You are an NPC's cognitive system. Analyze the situation and output mental state.\n"
-		"\n"
-		"%s"
-		"\n"
-		"=== INPUT ===\n"
-		"Recent Memories:\n"
 		"%s\n"
-		"\n"
-		"Current Situation:\n"
-		"%s\n"
-		"\n"
-		"=== MENTAL STATE VARIABLES ===\n"
-		"[LLM-CONTROLLED] - You analyze these based on social/psychological factors:\n"
-		"- Trust: Honesty, betrayal, help (0.0=no trust, 1.0=complete trust)\n"
-		"- Anger: Insults, provocations, apologies (0.0=calm, 1.0=furious)\n"
-		"- Social_Status: Respect, being looked down upon (0.0=don't care, 1.0=obsessed)\n"
-		"- Curiosity: Mysteries, secrets, strange things (0.0=not curious, 1.0=very curious)\n"
-		"\n"
-		"[HYBRID] - You can increase based on verbal/social cues:\n"
-		"- Perceived_Threat: Verbal threats, hostile tone, dangerous implications\n"
-		"- Resource_Anxiety: Rumors of scarcity, war, economic crisis\n"
-		"- Loneliness: Being ignored, excluded, cold-shouldered\n"
-		"- Duty_Urgency: Urgent orders, emergency, 'immediately' mentioned\n"
-		"\n"
-		"[ENGINE-MANAGED] - Always output 'None' (engine will override):\n"
-		"- Hunger, Energy\n"
-		"\n"
-		"=== OUTPUT TAGS ===\n"
-		"Use INTENSITY TAGS, not numbers:\n"
-		"[None, Slight, Moderate, Strong, Extreme]\n"
-		"\n"
-		"Or use NATURAL TAGS:\n"
-		"- Anger: Annoyed, Angry, Furious\n"
-		"- Trust: Suspicious, Trusting, Devoted\n"
-		"- Threat: Safe, Cautious, Threatened, Terrified\n"
-		"\n"
-		"=== INTENTION (for action coordination) ===\n"
-		"Choose ONE primary action intention based on the situation:\n"
-		"Available intentions:\n"
-		"- Attack: Engage hostile target in combat\n"
-		"- Flee: Escape from danger or threatening situation\n"
-		"- Idle: No specific action needed, passive state\n"
-		"- Talk: Initiate or respond to social interaction\n"
-		"\n"
-		"=== EMOTION (for emoji display) ===\n"
-		"Choose ONE emotion based on the DOMINANT need (Maslow's Hierarchy):\n"
-		"\n"
-		"Priority (highest to lowest):\n"
-		"1. SAFETY: Scared (high threat), Anxious (resource anxiety)\n"
-		"2. SOCIAL: Sad (lonely), Suspicious (low trust), Happy (high trust + safe)\n"
-		"3. ESTEEM: Angry (high anger), Proud (high status)\n"
-		"4. SELF-ACTUALIZATION: Curious (high curiosity), Determined (duty urgent)\n"
-		"5. OTHER: Confused (unclear), Excited (opportunity), Neutral (default)\n"
-		"\n"
-		"Available emotions:\n"
-		"Scared, Anxious, Sad, Suspicious, Happy, Angry, Proud, Curious, Determined, Confused, Excited, Neutral\n"
-		"\n"
-		"=== SPEECH (for dialogue bubble) ===\n"
-		"Generate a SHORT dialogue (5-15 words):\n"
-		"- Match the emotion and INTENTION\n"
-		"- Stay in character\n"
-		"- Be ORIGINAL (don't copy examples)\n"
-		"- Natural, conversational language\n"
-		"\n"
-		"=== OUTPUT FORMAT ===\n"
-		"Respond with ONLY valid JSON. No markdown, no explanation.\n"
-		"\n"
-		"Required fields:\n"
-		"{\n"
-		"  \"Hunger\": \"None\",\n"
-		"  \"Energy\": \"None\",\n"
-		"  \"Perceived_Threat\": \"<tag>\",\n"
-		"  \"Resource_Anxiety\": \"<tag>\",\n"
-		"  \"Loneliness\": \"<tag>\",\n"
-		"  \"Trust\": \"<tag>\",\n"
-		"  \"Anger\": \"<tag>\",\n"
-		"  \"Social_Status\": \"<tag>\",\n"
-		"  \"Duty_Urgency\": \"<tag>\",\n"
-		"  \"Curiosity\": \"<tag>\",\n"
-		"  \"Intention\": \"<Attack|Flee|Idle|Talk>\",\n"
-		"  \"Emotion\": \"<emotion>\",\n"
-		"  \"Speech\": \"<original dialogue>\"\n"
+		"Situation: %s\n"
+		"Memories: %s\n\n"
+		"Output valid JSON based on this TypeScript definition. ALL strings must be double-quoted.\n"
+		"type Tag = \"None\" | \"Slight\" | \"Moderate\" | \"Strong\" | \"Extreme\";\n"
+		"interface Response {\n"
+		"  Hunger: \"None\";\n"
+		"  Energy: \"None\";\n"
+		"  Perceived_Threat: Tag;\n"
+		"  Resource_Anxiety: Tag;\n"
+		"  Loneliness: Tag;\n"
+		"  Trust: Tag;\n"
+		"  Anger: Tag;\n"
+		"  Social_Status: Tag;\n"
+		"  Duty_Urgency: Tag;\n"
+		"  Curiosity: Tag;\n"
+		"  Intention: \"Attack\" | \"Flee\" | \"Idle\" | \"Talk\";\n"
+		"  Emotion: \"Scared\" | \"Anxious\" | \"Sad\" | \"Suspicious\" | \"Happy\" | \"Angry\" | \"Proud\" | \"Curious\" | \"Determined\" | \"Confused\" | \"Excited\" | \"Neutral\";\n"
+		"  Speech: string; // approx 5 words, match personality\n"
 		"}\n"
-		"\n"
-		"Now analyze:\n"
-	), *RoleSection, *ContextMemory, *SituationDescription);
+	), *RoleSection, *SituationDescription, *ContextMemory);
 	
 	UE_LOG(LogTemp, Log, TEXT("[Cognition] Sending to LLM..."));
 	
