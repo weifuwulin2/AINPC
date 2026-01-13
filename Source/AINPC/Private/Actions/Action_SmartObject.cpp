@@ -32,9 +32,22 @@ void UAction_SmartObject::Enter_Implementation(AAIController* Controller)
 
 	if (TargetSmartObject)
 	{
-		// 3. Move to it
-		Controller->MoveToActor(TargetSmartObject, 50.0f); // 50cm acceptance radius
-		UE_LOG(LogTemp, Log, TEXT("[%s] Moving to Smart Object: %s"), *ActionName, *TargetSmartObject->GetName());
+		// 3. Move to it - 检查返回值
+		// 使用 200cm 的 acceptance radius，因为床/桌子的中心点可能不在 Nav Mesh 上
+		EPathFollowingRequestResult::Type MoveResult = Controller->MoveToActor(TargetSmartObject, 200.0f);
+		
+		if (MoveResult == EPathFollowingRequestResult::RequestSuccessful)
+		{
+			UE_LOG(LogTemp, Log, TEXT("[%s] Moving to Smart Object: %s"), *ActionName, *TargetSmartObject->GetName());
+		}
+		else if (MoveResult == EPathFollowingRequestResult::AlreadyAtGoal)
+		{
+			UE_LOG(LogTemp, Log, TEXT("[%s] Already at Smart Object: %s"), *ActionName, *TargetSmartObject->GetName());
+		}
+		else
+		{
+			UE_LOG(LogTemp, Error, TEXT("[%s] MoveToActor FAILED! Result: %d. Check Nav Mesh!"), *ActionName, (int)MoveResult);
+		}
 	}
 	else
 	{
@@ -45,17 +58,47 @@ void UAction_SmartObject::Enter_Implementation(AAIController* Controller)
 
 void UAction_SmartObject::Execute_Implementation(AAIController* Controller)
 {
-	if (!Controller || !TargetSmartObject) return;
+	if (!Controller) return;
+
+	// ✅ 如果没有目标，尝试重新查找
+	// If no target, try to find one again
+	if (!TargetSmartObject)
+	{
+		USensoryComponent* SensoryComp = Controller->FindComponentByClass<USensoryComponent>();
+		if (SensoryComp && SmartObjectTag.IsValid())
+		{
+			TargetSmartObject = SensoryComp->FindBestSmartObject(SmartObjectTag);
+			if (TargetSmartObject)
+			{
+				Controller->MoveToActor(TargetSmartObject, 200.0f); // 使用 200cm
+				UE_LOG(LogTemp, Log, TEXT("[%s] (Retry) Moving to Smart Object: %s"), *ActionName, *TargetSmartObject->GetName());
+			}
+		}
+		
+		// 还是没找到，直接返回
+		if (!TargetSmartObject) return;
+	}
 
 	// 1. Check if reached
 	EPathFollowingStatus::Type Status = Controller->GetMoveStatus();
 	
+	// 🔍 调试：显示移动状态（每 2 秒）
+	float CurrentTime = Controller->GetWorld()->GetTimeSeconds();
+	if (CurrentTime - LastDebugTime > 2.0f)
+	{
+		float DistSq = FVector::DistSquared(Controller->GetPawn()->GetActorLocation(), TargetSmartObject->GetActorLocation());
+		float Dist = FMath::Sqrt(DistSq);
+		UE_LOG(LogTemp, Log, TEXT("[%s] MoveStatus: %d, Distance: %.0f cm, bIsInteracting: %s"), 
+		       *ActionName, (int)Status, Dist, bIsInteracting ? TEXT("Yes") : TEXT("No"));
+		LastDebugTime = CurrentTime;
+	}
+	
 	// If Idle or Waiting, we might be there
 	if (Status == EPathFollowingStatus::Idle)
 	{
-		// Double check distance to be sure
+		// Double check distance to be sure (使用 200cm = 2m)
 		float DistSq = FVector::DistSquared(Controller->GetPawn()->GetActorLocation(), TargetSmartObject->GetActorLocation());
-		if (DistSq < 150.0f * 150.0f) // Within 1.5m
+		if (DistSq < 200.0f * 200.0f) // Within 2m
 		{
 			if (!bIsInteracting)
 			{
@@ -134,11 +177,16 @@ void UAction_SmartObject::Exit_Implementation(AAIController* Controller)
 		}
 	}
 
+	// ✅ 重置状态 / Reset state
+	bIsInteracting = false;
 	TargetSmartObject = nullptr;
+	
 	if (Controller)
 	{
 		Controller->StopMovement();
 	}
+	
+	UE_LOG(LogTemp, Log, TEXT("[%s] Exit - Reset state"), *ActionName);
 }
 
 bool UAction_SmartObject::ShouldExit(AAIController* Controller) const

@@ -31,3 +31,25 @@ This file contains a log of commit messages for the AINPC project.
 
 **Breaking Changes**:
 - `Energy` field renamed to `Fatigue` across all code and DataTables
+
+---
+
+## [2026-01-13] SmartObject Action & UtilityAI Fixes
+
+**Type**: fix
+**Scope**: Action_SmartObject, UtilityAIComponent, LLMCommunicator
+
+**Description**:
+- Fixed InertiaBonus applying when base score = 0 (prevented action exit)
+- Fixed bIsInteracting not being reset in Exit() (caused stuck states)
+- Fixed static LastDebugTime variable causing cross-instance interference
+- Added MoveToActor error checking with proper logging
+- Increased SmartObject acceptance radius from 50cm to 200cm (NavMesh fix)
+- Updated LLM System Prompt to include Emotion, Speech, and Intention fields
+
+**Files Changed**:
+- `Source/AINPC/Components/UtilityAIComponent.cpp`
+- `Source/AINPC/Private/Actions/Action_SmartObject.cpp`
+- `Source/AINPC/Public/Actions/Action_SmartObject.h`
+- `Source/AINPC/LLM/LLMCommunicator.cpp`
+- `CHANGELOG.md`

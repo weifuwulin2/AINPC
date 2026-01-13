@@ -70,6 +70,18 @@ void UUtilityAIComponent::TickComponent(float DeltaTime, ELevelTick TickType, FA
     {
         CurrentAction->Execute(OwnerController);
     }
+
+    // 🔍 定期打印当前动作状态（每 5 秒）
+    static float LastStatusLog = 0.0f;
+    float CurrentTime = GetWorld()->GetTimeSeconds();
+    if (CurrentTime - LastStatusLog > 5.0f)
+    {
+        if (CurrentAction)
+        {
+            UE_LOG(LogTemp, Warning, TEXT("[UtilityAI] Current Action: %s"), *CurrentAction->ActionName);
+        }
+        LastStatusLog = CurrentTime;
+    }
 }
 
 void UUtilityAIComponent::EvaluateAndDecide()
@@ -119,13 +131,18 @@ void UUtilityAIComponent::EvaluateAndDecide()
         // Pass bShouldLog (which is true if bPendingDebugLog is true) to enable detailed calculation logs
         float Score = Action->CalculateScore(State, OwnerController, bShouldLog);
 
-        // 🔍 调试：总是打印每个 Action 的分数（临时调试）
-        // Always log action scores for debugging
-        UE_LOG(LogTemp, Log, TEXT("  [%s|%s] Score: %.3f (BaseReward: %.2f, Considerations: %d)"), 
-               *PersonalityID, *Action->ActionName, Score, Action->BaseReward, Action->Considerations.Num());
+        // 🔍 调试：只在触发时打印分数
+        // Only log action scores when triggered
+        if (bShouldLog)
+        {
+            UE_LOG(LogTemp, Log, TEXT("  [%s|%s] Score: %.3f (BaseReward: %.2f, Considerations: %d)"), 
+                   *PersonalityID, *Action->ActionName, Score, Action->BaseReward, Action->Considerations.Num());
+        }
 
-        // 惯性奖励 (Momentum)
-        if (Action == CurrentAction)
+        // 惯性奖励 (Momentum) - 只有当基础分数 > 0 时才添加
+        // Only add inertia bonus when base score > 0
+        // 这样当 Hunger = 0 时，Action_Eat 不会因为 InertiaBonus 而继续执行
+        if (Action == CurrentAction && Score > 0.0f)
         {
             float OldScore = Score;
             Score += Action->InertiaBonus; // 或者直接写死 +0.1f

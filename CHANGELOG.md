@@ -41,6 +41,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### 🐛 Bug Fixes
 - **Fixed Action Duration Auto-Exit**: Actions with `ActionDuration` now correctly force score to 0 when expired
 - **Fixed Action Switching**: NPCs now correctly switch from Eating/Sleeping to Idle when done
+- **Fixed InertiaBonus Logic**: InertiaBonus no longer applies when base score is 0 (allows action exit when need is satisfied)
+- **Fixed Action State Reset**: `bIsInteracting` now properly reset in `Exit()` to prevent stuck states
+- **Fixed Static Variable Bug**: Changed `LastDebugTime` from `static` to member variable to prevent cross-instance interference
+- **Fixed MoveToActor Failure**: Added error checking for `MoveToActor` return value with proper logging
+- **Fixed SmartObject NavMesh Issue**: Increased acceptance radius from 50cm to 200cm to handle SmartObjects whose center is not on NavMesh
+- **Fixed LLM Missing Emotion/Speech**: Updated System Prompt to include `Emotion`, `Speech`, and `Intention` fields
 
 ### 📝 Documentation
 - **Added**: `docs/guides/Metabolism_Logic_Fix_Summary.md` - Complete summary of metabolism fixes

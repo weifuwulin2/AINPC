@@ -75,6 +75,9 @@ void ULLMCommunicator::SendRequest(const FString& UserInput, FOnLLMResponse OnCo
         "Return specific float values (0.0 to 1.0) for these fields:\n"
         "{\n"
         "%s"
+        "  \"Intention\": \"Attack\" | \"Flee\" | \"Idle\" | \"Talk\",\n"
+        "  \"Emotion\": \"Scared\" | \"Anxious\" | \"Sad\" | \"Suspicious\" | \"Happy\" | \"Angry\" | \"Proud\" | \"Curious\" | \"Determined\" | \"Confused\" | \"Excited\" | \"Neutral\",\n"
+        "  \"Speech\": \"string (approx 5 words, match personality)\"\n"
         "}\n"
         "Do not include markdown formatting (```json). Just raw JSON."
     ), *FieldsList);

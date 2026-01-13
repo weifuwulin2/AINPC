@@ -47,10 +47,13 @@ private:
 	AActor* TargetSmartObject;
 
 	// Is the interaction currently active? (e.g. eating loop)
-	bool bIsInteracting;
+	bool bIsInteracting = false;
 
 	// 动作开始时间 / Action start time
-	float ActionStartTime;
+	float ActionStartTime = 0.0f;
+
+	// 调试日志时间戳 / Debug log timestamp
+	float LastDebugTime = 0.0f;
 
 	// Helper to restore stats based on the tag
 	void RestoreStats(AAIController* Controller, float DeltaTime);
