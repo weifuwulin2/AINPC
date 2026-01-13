@@ -12,6 +12,9 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "Animation/AnimInstance.h"
 #include "Components/PersonalityComponent.h"
+#include "Controller/UtilityAIController.h"
+#include "Components/SensoryComponent.h"
+#include "Kismet/GameplayStatics.h"
 
 ACombatEnemy::ACombatEnemy()
 {
@@ -237,6 +240,30 @@ void ACombatEnemy::HandleDeath()
 	// call the died delegate to notify any subscribers
 	OnEnemyDied.Broadcast();
 
+	// ✅ Notify nearby AI Sensory systems
+	// 通知附近的 AI 感知系统
+	TArray<AActor*> NearbyControllers;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AUtilityAIController::StaticClass(), NearbyControllers);
+
+	for (AActor* ControllerActor : NearbyControllers)
+	{
+		if (AUtilityAIController* AICon = Cast<AUtilityAIController>(ControllerActor))
+		{
+			// Check distance (Sensory Range check, approx 30m)
+			if (AICon->GetPawn() && FVector::DistSquared(GetActorLocation(), AICon->GetPawn()->GetActorLocation()) < 3000.0f * 3000.0f)
+			{
+				if (AICon->SensoryComp)
+				{
+					AICon->SensoryComp->HandleDeath(this, LastDamageCauser);
+				}
+				else if (USensoryComponent* FoundSensory = AICon->FindComponentByClass<USensoryComponent>())
+				{
+					FoundSensory->HandleDeath(this, LastDamageCauser);
+				}
+			}
+		}
+	}
+
 	// set up the death timer
 	GetWorld()->GetTimerManager().SetTimer(DeathTimer, this, &ACombatEnemy::RemoveFromLevel, DeathRemovalTime);
 }
@@ -262,6 +289,12 @@ float ACombatEnemy::TakeDamage(float Damage, struct FDamageEvent const& DamageEv
 
 	// reduce the current HP
 	CurrentHP -= Damage;
+    
+    // update last attacker
+    if (DamageCauser)
+    {
+        LastDamageCauser = DamageCauser;
+    }
 
 	// have we run out of HP?
 	if (CurrentHP <= 0.0f)

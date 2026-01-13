@@ -71,6 +71,10 @@ protected:
 	/** If true, the character is currently playing an attack animation */
 	bool bIsAttacking = false;
 
+	/** The actor who last dealt damage to this character */
+	UPROPERTY(Transient, VisibleInstanceOnly, Category = "Damage")
+	AActor* LastDamageCauser = nullptr;
+
 	/** Distance ahead of the character that melee attack sphere collision traces will extend */
 	UPROPERTY(EditAnywhere, Category="Melee Attack|Trace", meta = (ClampMin = 0, ClampMax = 500, Units = "cm"))
 	float MeleeTraceDistance = 75.0f;

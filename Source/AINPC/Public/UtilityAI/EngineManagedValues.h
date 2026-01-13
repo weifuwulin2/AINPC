@@ -41,14 +41,14 @@ struct FEngineManagedValues
 	float Hunger = 0.0f;
 
 	/**
-	 * 精力 / Energy
+	 * 疲劳度 / Fatigue
 	 * 
 	 * 更新逻辑 / Update Logic:
-	 * - 活动时 / When active: Energy -= ActivityCost × DeltaTime
-	 * - 休息时 / When resting: Energy += RestGain × DeltaTime
+	 * - 活动时 / When active: Fatigue += FatigueRate × DeltaTime
+	 * - 休息时 / When resting: Fatigue -= RestoreRate × DeltaTime
 	 */
 	UPROPERTY(BlueprintReadOnly, Category = "Engine Exclusive")
-	float Energy = 1.0f;
+	float Fatigue = 0.0f;
 
 	// ========== 混合管辖区 - Engine 部分 (Hybrid - Engine Part) ==========
 	
@@ -102,7 +102,7 @@ struct FEngineManagedValues
 	void Reset()
 	{
 		Hunger = 0.0f;
-		Energy = 1.0f;
+		Fatigue = 0.0f;
 		Perceived_Threat = 0.0f;
 		Resource_Anxiety = 0.0f;
 		Loneliness = 0.0f;
@@ -117,12 +117,12 @@ struct FEngineManagedValues
 		return FString::Printf(
 			TEXT("EngineManagedValues:\n")
 			TEXT("  [ENGINE] Hunger: %.2f\n")
-			TEXT("  [ENGINE] Energy: %.2f\n")
+			TEXT("  [ENGINE] Fatigue: %.2f\n")
 			TEXT("  [HYBRID] Perceived_Threat: %.2f\n")
 			TEXT("  [HYBRID] Resource_Anxiety: %.2f\n")
 			TEXT("  [HYBRID] Loneliness: %.2f\n")
 			TEXT("  [HYBRID] Duty_Urgency: %.2f"),
-			Hunger, Energy,
+			Hunger, Fatigue,
 			Perceived_Threat, Resource_Anxiety,
 			Loneliness, Duty_Urgency
 		);

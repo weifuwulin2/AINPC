@@ -18,6 +18,12 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Social")
 	FSmartObjectSemantics Semantics;
 
+	// 恢复速率 (每秒恢复多少，0.0~1.0)
+	// Restoration rate per second (how much Hunger/Energy to restore)
+	// Example: 0.1 = slow restore (Apple), 0.5 = fast restore (Feast)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Social", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float RestoreValue = 0.2f;
+
 	// --- ISmartObjectInterface Implementation ---
 	virtual void GetAffordances_Implementation(TMap<FString, float>& OutAffordances) override;
 	virtual bool Interact_Implementation(AActor* User) override;

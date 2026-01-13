@@ -9,6 +9,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+---
+
+## [0.4.7] - 2026-01-13
+
+### 🔧 Changed - Metabolism System Overhaul
+
+#### Engine-Exclusive Variable Protection
+- **Fixed LLM Overwriting Engine Values**: LLM responses and Interpolator no longer overwrite `Hunger` and `Fatigue` values managed by `MetabolismComponent`
+  - Modified `UNPCMentalState::UpdateFromStruct()` to skip Engine-exclusive fields
+  - Modified `MentalStateInterpolator::SetCurrentValue()` to skip Engine-exclusive fields
+  - Modified `UtilityActionBase::GetConsiderationValue()` to read `Hunger`/`Fatigue` directly from State, not Interpolator
+
+#### Variable Rename: Energy → Fatigue
+- **Renamed `Energy` to `Fatigue`** for clearer semantics
+  - `Fatigue = 0.0` → Not tired (just woke up)
+  - `Fatigue = 1.0` → Very tired (needs sleep)
+  - Updated all references across codebase
+
+#### Metabolism Logic Fix
+- **Fixed Hunger/Fatigue Direction**: Clarified that both represent "need level" (higher = more urgent)
+  - Time passing → Increases Hunger/Fatigue (become hungry/tired)
+  - Eating/Sleeping → Decreases Hunger/Fatigue (become satisfied/rested)
+  - SmartObject `RestoreValue` is positive (e.g., 1.0 = restore 1.0 per second)
+
+#### Action Scoring Fix
+- **Removed Montage Playing Check**: Fixed issue where eating/sleeping animations blocked all action scoring
+  - Previously: Any montage playing → All action scores = 0
+  - Now: Eating/Sleeping animations don't block action evaluation
+
+### 🐛 Bug Fixes
+- **Fixed Action Duration Auto-Exit**: Actions with `ActionDuration` now correctly force score to 0 when expired
+- **Fixed Action Switching**: NPCs now correctly switch from Eating/Sleeping to Idle when done
+
+### 📝 Documentation
+- **Added**: `docs/guides/Metabolism_Logic_Fix_Summary.md` - Complete summary of metabolism fixes
+
+### 🎯 Impact
+- **Before**: Hunger/Fatigue values were constantly reset by LLM, actions never switched properly
+- **After**: Metabolism system works end-to-end: NPC becomes hungry → eats → becomes satisfied → idles → becomes hungry again
+
+---
+
+## [0.4.6] - 2026-01-13
+
+### ✨ Features
+- **Combat Death Perception**: `CombatEnemy` now broadcasts death events to nearby AI NPCs' `SensoryComponent`.
+- **Sensory Filtering for Death**: `SensoryComponent::HandleDeath` now uses the same attention/filtering mechanism as Sight (`ShouldPerceiveTarget`, `ProcessEventFilter`) to prevent spam and respect importance rules.
+- **Killer Tracking**: `CombatEnemy` now tracks `LastDamageCauser` to correctly identify the killer in death events.
+
 ## [0.4.5] - 2026-01-13
 
 ### 🐛 Bug Fixes

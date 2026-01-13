@@ -479,6 +479,18 @@ void USensoryComponent::HandleDeath(AActor* DeadActor, AActor* Killer)
         UE_LOG(LogTemp, Log, TEXT("[Sensory] WITNESSED DEATH: %s"), *Desc);
     }
 
+    // ✅ 过滤器: 使用与视觉相同的过滤机制
+    // Filter: Use same filtering mechanism as sight
+    
+    // 1. Attention Cooldown (Prevent processing same death event multiple times)
+    // 防止短时间内重复处理同一死亡事件
+    if (!ShouldPerceiveTarget(DeadActor)) 
+    {
+        return;
+    }
+    
+    MarkTargetPerceived(DeadActor);
+
     // Legacy: Broadcast text
     OnStimulusProduced.Broadcast(Desc);
 
@@ -490,8 +502,12 @@ void USensoryComponent::HandleDeath(AActor* DeadActor, AActor* Killer)
     Event.Content = Desc;
     Event.Magnitude = Magnitude;
 
-    // 死亡事件总是重要的，直接广播不过滤
-    OnSemanticEventSensed.Broadcast(Event);
+    // 2. Process via Filter (respects magnitude and other rules)
+    // 通过过滤器处理（遵循重要性和其他规则）
+    if (ProcessEventFilter(Event))
+    {
+        OnSemanticEventSensed.Broadcast(Event);
+    }
 }
 
 FString USensoryComponent::FormatDescription(FString Verb, AActor* Target, FString ExtraInfo)

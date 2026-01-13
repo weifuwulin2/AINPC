@@ -31,16 +31,28 @@ void UNPCMentalState::ResetState()
 
 void UNPCMentalState::UpdateFromStruct(const FMentalState& NewState)
 {
-	// ✅ 使用宏自动生成所有字段的转换代码
-	#define UPDATE_FIELD(Name, DefaultValue, DisplayName, Description) \
-		Name = FMath::Clamp(NewState.Name, 0.0f, 1.0f);
+	// ✅ CRITICAL: Skip Engine-exclusive fields (Hunger, Fatigue)
+	// These are managed by MetabolismComponent and should NOT be overwritten by LLM
+	// 
+	// ❌ 不要更新 Hunger 和 Fatigue！它们由 MetabolismComponent 管理
+	// ❌ DO NOT update Hunger and Fatigue! They are managed by MetabolismComponent
 	
-	MENTAL_STATE_FIELDS(UPDATE_FIELD)
+	// 🔍 调试：显示 LLM 返回的 Hunger/Fatigue 值（但不使用它们）
+	UE_LOG(LogTemp, Warning, TEXT("[MentalState] LLM returned Hunger=%.3f, Fatigue=%.3f (SKIPPED - using Engine values: Hunger=%.3f, Fatigue=%.3f)"),
+	       NewState.Hunger, NewState.Fatigue, Hunger, Fatigue);
 	
-	#undef UPDATE_FIELD
+	// 只更新 LLM 管辖的字段 / Only update LLM-controlled fields
+	Perceived_Threat = FMath::Clamp(NewState.Perceived_Threat, 0.0f, 1.0f);
+	Resource_Anxiety = FMath::Clamp(NewState.Resource_Anxiety, 0.0f, 1.0f);
+	Loneliness = FMath::Clamp(NewState.Loneliness, 0.0f, 1.0f);
+	Trust = FMath::Clamp(NewState.Trust, 0.0f, 1.0f);
+	Anger = FMath::Clamp(NewState.Anger, 0.0f, 1.0f);
+	Social_Status = FMath::Clamp(NewState.Social_Status, 0.0f, 1.0f);
+	Duty_Urgency = FMath::Clamp(NewState.Duty_Urgency, 0.0f, 1.0f);
+	Curiosity = FMath::Clamp(NewState.Curiosity, 0.0f, 1.0f);
 	
 	// 可选：打印日志用于调试
-	UE_LOG(LogTemp, Verbose, TEXT("[MentalState] Updated from struct"));
+	UE_LOG(LogTemp, Verbose, TEXT("[MentalState] Updated from struct (skipped Engine fields: Hunger, Energy)"));
 }
 
 FMentalState UNPCMentalState::ToStruct() const

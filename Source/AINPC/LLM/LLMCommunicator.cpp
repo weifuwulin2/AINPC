@@ -262,7 +262,7 @@ void ULLMCommunicator::OnResponseReceived(FHttpRequestPtr Request, FHttpResponse
             
             // 生理层 (Physiological)
             UE_LOG(LogTemp, Log, TEXT("  [Physiological] Hunger=%.2f, Energy=%.2f"), 
-                   ResultState.Hunger, ResultState.Energy);
+                   ResultState.Hunger, ResultState.Fatigue);
             
             // 安全层 (Safety)
             UE_LOG(LogTemp, Log, TEXT("  [Safety] Perceived_Threat=%.2f, Resource_Anxiety=%.2f"), 

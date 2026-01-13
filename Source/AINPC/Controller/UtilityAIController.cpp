@@ -136,6 +136,32 @@ void AUtilityAIController::BeginPlay()
         
         UE_LOG(LogTemp, Log, TEXT("[%s] Dreaming timer initialized (interval: 5 minutes)"), *GetName());
     }
+
+    // =========================================================
+    // 6. 配置 Metabolism (根据 Faction 决定是否启用)
+    // Configure Metabolism (Enable/Disable based on Faction)
+    // =========================================================
+    if (MetabolismComp && PersonalityComp)
+    {
+        EFactionType Faction = PersonalityComp->Personality.Faction;
+        
+        if (Faction == EFactionType::Monster)
+        {
+            // 怪物不需要吃饭睡觉
+            // Monsters don't need to eat or sleep
+            MetabolismComp->SetComponentTickEnabled(false);
+            UE_LOG(LogTemp, Log, TEXT("[%s] Metabolism DISABLED (Faction: Monster)"), *GetName());
+        }
+        else
+        {
+            // 人类和中立 NPC 需要新陈代谢
+            // Human and Neutral NPCs need metabolism
+            MetabolismComp->SetComponentTickEnabled(true);
+            UE_LOG(LogTemp, Log, TEXT("[%s] Metabolism ENABLED (Faction: %s)"), 
+                   *GetName(), 
+                   *UEnum::GetValueAsString(Faction));
+        }
+    }
 }
 
 // =========================================================

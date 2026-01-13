@@ -7,6 +7,8 @@
 #include "Components/SensoryComponent.h"
 #include "EngineUtils.h"
 #include "UtilityAI/MentalStateInterpolation.h"
+#include "Social/SocialGameplayTags.h"
+#include "Actions/Action_SmartObject.h"
 
 
 
@@ -43,17 +45,22 @@ float UUtilityActionBase::CalculateScore(UNPCMentalState* MentalState, AAIContro
         return 0.0f;
     }
 
-    // ✅ 检查是否在播放死亡动画
-    // Check if playing death animation
-    if (ACharacter* Character = Cast<ACharacter>(ControlledPawn))
+    // ❌ 移除死亡动画检查 - 吃饭/睡觉动画也会触发 IsAnyMontagePlaying()
+    // ❌ Removed death animation check - Eating/Sleeping animations also trigger IsAnyMontagePlaying()
+    // TODO: 如果需要死亡检查，应该使用专门的死亡标记或动画标签
+    // TODO: If death check is needed, use specific death flag or animation tags
+
+    // ✅ 持续时长检查：如果是 Action_SmartObject 且持续时长已到期，得分为 0
+    // Duration Check: If Action_SmartObject and duration expired, score is 0
+    if (UAction_SmartObject* SmartObjectAction = Cast<UAction_SmartObject>(this))
     {
-        if (Character->GetMesh() && Character->GetMesh()->GetAnimInstance())
+        if (SmartObjectAction->ShouldExit(Controller))
         {
-            if (Character->GetMesh()->GetAnimInstance()->IsAnyMontagePlaying())
+            if (bLogDebug)
             {
-                // 正在播放动画（可能是死亡动画），所有动作得分为 0
-                return 0.0f;
+                UE_LOG(LogTemp, Warning, TEXT("    [%s] ⏱️ Duration expired, forcing score to 0"), *ActionName);
             }
+            return 0.0f;
         }
     }
     
@@ -275,11 +282,15 @@ float UUtilityActionBase::GetConsiderationValue(EUtilityInputType InputType, UNP
         // Maslow's Hierarchy (Use Target Values)
         // 注意：枚举值是驼峰命名，但字段名可能有下划线
         
-        // 生理层 (Physiological)
+        // ✅ 生理层 (Physiological) - ENGINE 独裁
+        // Hunger 和 Fatigue 由 MetabolismComponent 管理，直接从 State 读取，不用 Interpolator
+        // Hunger and Fatigue are managed by MetabolismComponent, read directly from State, not Interpolator
         case EUtilityInputType::Hunger:
-            return Interpolator ? Interpolator->GetTargetValue(TEXT("Hunger")) : (State ? State->Hunger : 0.0f);
+            // ✅ ENGINE 独裁：直接从 State 读取
+            return State ? State->Hunger : 0.0f;
         case EUtilityInputType::Energy:
-            return Interpolator ? Interpolator->GetTargetValue(TEXT("Energy")) : (State ? State->Energy : 0.0f);
+            // ✅ ENGINE 独裁：直接从 State 读取 (Fatigue)
+            return State ? State->Fatigue : 0.0f;
         
         // 安全层 (Safety)
         case EUtilityInputType::PerceivedThreat:
@@ -485,11 +496,8 @@ float UUtilityActionBase::GetConsiderationValue(EUtilityInputType InputType, UNP
         {
             if (USensoryComponent* Sensory = Controller->FindComponentByClass<USensoryComponent>())
             {
-                // 使用 AINPCTags::Activity_Eat
-                if (Sensory->FindBestSmartObject(FGameplayTag::RequestGameplayTag("Activity.Eat")))
-                {
-                    return 1.0f;
-                }
+                AActor* Food = Sensory->FindBestSmartObject(AINPCTags::Activity_Eat);
+                return Food ? 1.0f : 0.0f;
             }
             return 0.0f;
         }
@@ -500,7 +508,7 @@ float UUtilityActionBase::GetConsiderationValue(EUtilityInputType InputType, UNP
             if (USensoryComponent* Sensory = Controller->FindComponentByClass<USensoryComponent>())
             {
                  // 使用 AINPCTags::Activity_Rest
-                if (Sensory->FindBestSmartObject(FGameplayTag::RequestGameplayTag("Activity.Rest")))
+                if (Sensory->FindBestSmartObject(AINPCTags::Activity_Rest))
                 {
                     return 1.0f;
                 }
@@ -541,6 +549,8 @@ FString UUtilityActionBase::GetVariableNameFromInputType(EUtilityInputType Input
         case EUtilityInputType::HasAttackTarget:
         case EUtilityInputType::HasEnemyNearby:
         case EUtilityInputType::HasFriendlyNearby:
+        case EUtilityInputType::HasFoodNearby:
+        case EUtilityInputType::HasBedNearby:
             return TEXT("Environment");  // 环境变量不需要性格权重
         
         default:

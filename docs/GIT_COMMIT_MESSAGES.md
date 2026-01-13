@@ -347,4 +347,15 @@ git push origin v0.3.0
 - (Conv 250) Fixed Faction initialization issues where `GetFaction()` returned Neutral.
 - Added `docs/troubleshooting/Faction_Not_Loading_Fix.md` guide.
 
+---
+
+## [2026-01-13] Implement Combat Death Perception with Filtering
+**Type**: feat
+**Scope**: Sensory, Combat
+**Description**:
+- Modified `ACombatEnemy` to broadcast death events to nearby `UtilityAIController`s.
+- Updated `SensoryComponent::HandleDeath` to use `ShouldPerceiveTarget` (filtering) and `ProcessEventFilter`, ensuring death events are consistent with other sensory inputs and not spammed.
+- Added `LastDamageCauser` to `ACombatEnemy` to propagate killer information.
+
+
 

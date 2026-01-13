@@ -30,6 +30,7 @@ Welcome to the AINPC Knowledge Base. This index serves as the central hub for al
 
 ### 🔄 System Updates
 *   [**Faction System Update**](updates/Faction_System_Update.md) - Simplification to three core factions (Human, Monster, Neutral) with improved hostility logic.
+*   [**Metabolism System Fix**](guides/Metabolism_Logic_Fix_Summary.md) - Complete overhaul of Hunger/Fatigue system with Engine-exclusive protection.
 
 ### 📊 Reports
 *   [**Executive Summary**](reports/EXECUTIVE_SUMMARY.md)
@@ -37,4 +38,4 @@ Welcome to the AINPC Knowledge Base. This index serves as the central hub for al
 *   [**Concurrent Request Fix**](reports/Bug4_Fix_Report.md)
 
 ---
-*Last Updated: 2026-01-12*
+*Last Updated: 2026-01-13*

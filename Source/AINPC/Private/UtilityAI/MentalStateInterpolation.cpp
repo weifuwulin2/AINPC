@@ -164,6 +164,14 @@ float UMentalStateInterpolator::GetCurrentValue(UNPCMentalState* MentalState, co
 
 void UMentalStateInterpolator::SetCurrentValue(UNPCMentalState* MentalState, const FString& VariableName, float Value)
 {
+    // ✅ CRITICAL: Skip Engine-exclusive fields (Hunger, Fatigue)
+    // These are managed by MetabolismComponent and should NOT be overwritten by Interpolator
+    if (VariableName == TEXT("Hunger") || VariableName == TEXT("Fatigue"))
+    {
+        // Skip - these are Engine-exclusive fields
+        return;
+    }
+
     // 限制范围
     // Clamp range
     Value = FMath::Clamp(Value, 0.0f, 1.0f);

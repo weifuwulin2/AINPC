@@ -31,7 +31,7 @@
 #define MENTAL_STATE_FIELDS(FIELD) \
 	/* ========== 生理层 (Physiological) - ENGINE 独裁 ========== */ \
 	FIELD(Hunger,            0.0f, "Hunger",            "[ENGINE] 饥饿感 - 随时间增长，吃东西减少") \
-	FIELD(Energy,            1.0f, "Energy",            "[ENGINE] 精力 - 活动消耗，休息恢复") \
+	FIELD(Fatigue,           0.0f, "Fatigue",           "[ENGINE] 疲劳度 - 随时间增长，睡觉减少") \
 	/* ========== 安全层 (Safety) - HYBRID 混合管辖 ========== */ \
 	FIELD(Perceived_Threat,  0.0f, "Perceived Threat",  "[HYBRID] 感知威胁 - Engine检测敌人 + LLM分析语言威胁") \
 	FIELD(Resource_Anxiety,  0.0f, "Resource Anxiety",  "[HYBRID] 资源焦虑 - Engine检测背包 + LLM分析传闻") \

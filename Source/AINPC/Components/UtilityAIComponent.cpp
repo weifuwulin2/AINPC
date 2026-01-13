@@ -3,6 +3,7 @@
 #include "UtilityAI/UNPCMentalState.h"
 #include "Components/PersonalityComponent.h"
 #include "LLM/LLMCommunicator.h"
+#include "Actions/Action_SmartObject.h"
 
 UUtilityAIComponent::UUtilityAIComponent()
 {
@@ -40,6 +41,16 @@ void UUtilityAIComponent::LoadActionsFromTable()
             // 注意：Action 的 Outer 设为 this (Component)，方便管理生命周期
             UUtilityActionBase* NewAction = NewObject<UUtilityActionBase>(this, Row->ActionClass);
             NewAction->InitFromConfig(*Row);
+
+            // ✅ 如果是 Action_SmartObject，传递动画配置
+            // If it's Action_SmartObject, pass animation configuration
+            if (UAction_SmartObject* SmartObjectAction = Cast<UAction_SmartObject>(NewAction))
+            {
+                SmartObjectAction->InteractionMontage = Row->InteractionMontage;
+                SmartObjectAction->bLoopAnimation = Row->bLoopAnimation;
+                SmartObjectAction->ActionDuration = Row->ActionDuration;
+            }
+
             AvailableActions.Add(NewAction);
         }
     }
@@ -108,12 +119,10 @@ void UUtilityAIComponent::EvaluateAndDecide()
         // Pass bShouldLog (which is true if bPendingDebugLog is true) to enable detailed calculation logs
         float Score = Action->CalculateScore(State, OwnerController, bShouldLog);
 
-        // 🔍 调试：打印每个 Action 的分数
-        if (bShouldLog)
-        {/*
-            UE_LOG(LogTemp, Log, TEXT("  [%s|%s] Score: %.3f (BaseWeight: %.2f, Considerations: %d)"), 
-                   *PersonalityID, *Action->ActionName, Score, Action->BaseWeight, Action->Considerations.Num());*/
-        }
+        // 🔍 调试：总是打印每个 Action 的分数（临时调试）
+        // Always log action scores for debugging
+        UE_LOG(LogTemp, Log, TEXT("  [%s|%s] Score: %.3f (BaseReward: %.2f, Considerations: %d)"), 
+               *PersonalityID, *Action->ActionName, Score, Action->BaseReward, Action->Considerations.Num());
 
         // 惯性奖励 (Momentum)
         if (Action == CurrentAction)

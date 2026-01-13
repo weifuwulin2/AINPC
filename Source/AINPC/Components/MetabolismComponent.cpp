@@ -61,18 +61,29 @@ void UMetabolismComponent::TickComponent(float DeltaTime, ELevelTick TickType, F
         Interpolator = CachedController->CognitionComp->Interpolator;
     }
 
-    // === 1. 生理需求 (总是自动增长) ===
-    // Physiological needs (Always increase)
+    // === 1. 生理需求 (时间流逝导致需求增加) ===
+    // Physiological needs (Time passing increases needs)
     
-    // 饥饿 (Hunger)
+    // 饥饿 (Hunger = 饥饿度，时间流逝增加饥饿度)
+    // Hunger (Hunger = hunger level, time passing increases hunger)
+    float OldHunger = State->Hunger;
     State->Hunger = FMath::Clamp(State->Hunger + (HungerRate * DeltaTime), 0.0f, 1.0f);
     
-    // 疲劳 (Energy) - 注意：这里我们将 Energy 定义为"疲劳度" (0=精力充沛, 1=累死)
-    // 如果你的定义是能量值 (1=满电)，请改为减法
-    // 假设 Energy 代表 "Fatigue/Tiredness" 为了统一逻辑 (值越高越想睡觉)
-    // 如果 Energy 代表 "Battery", 请告诉我，我改为 -= 
-    // 根据 Maslow 里的定义，Energy 通常指"需要能量"，所以越高越缺能量。
-    State->Energy = FMath::Clamp(State->Energy + (EnergyRate * DeltaTime), 0.0f, 1.0f);
+    // 疲劳 (Fatigue = 疲劳度，时间流逝增加疲劳度)
+    // Fatigue (Fatigue = fatigue level, time passing increases fatigue)
+    State->Fatigue = FMath::Clamp(State->Fatigue + (EnergyRate * DeltaTime), 0.0f, 1.0f);
+
+    // 🔍 调试日志：每 5 秒打印一次状态
+    // Debug logging: Print status every 5 seconds
+    static float LastDebugLogTime = 0.0f;
+    float CurrentTime = GetWorld()->GetTimeSeconds();
+    if (CurrentTime - LastDebugLogTime > 5.0f)
+    {
+        float HungerDelta = State->Hunger - OldHunger;
+        UE_LOG(LogTemp, Warning, TEXT("[Metabolism] %s - Hunger: %.3f (Delta: %+.4f/frame, Rate: %.4f/s), Fatigue: %.3f"), 
+               *CachedController->GetName(), State->Hunger, HungerDelta, HungerRate, State->Fatigue);
+        LastDebugLogTime = CurrentTime;
+    }
 
 
     // === 2. 情绪冷却 (Cool Down) ===

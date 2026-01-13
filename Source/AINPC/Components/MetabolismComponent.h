@@ -25,14 +25,16 @@ public:
 
 	// 饥饿增长速率 (每秒增加多少，0.0~1.0)
 	// Hunger increase rate per second
-	// Example: 0.001 = 1.0 full hunger in 1000 seconds (~16 mins)
+	// Example: 0.01 = 1.0 full hunger in 100 seconds (~1.7 mins) - Good for testing
+	// Production: 0.001 = 1.0 full hunger in 1000 seconds (~16 mins)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Metabolism|Physiological")
-	float HungerRate = 0.0005f; 
+	float HungerRate = 0.01f; 
 
 	// 疲劳增长速率 (每秒增加多少)
 	// Energy/Fatigue increase rate per second
+	// Example: 0.008 = 1.0 full fatigue in 125 seconds (~2 mins) - Good for testing
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Metabolism|Physiological")
-	float EnergyRate = 0.0003f;
+	float EnergyRate = 0.008f;
 
 	// 情绪冷却速率 (每秒减少多少)
 	// Emotional decay rate (Cool down) per second

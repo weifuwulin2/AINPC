@@ -154,6 +154,23 @@ struct FUtilityActionConfig : public FTableRowBase
     // Example: "Activity.Eat", "Activity.Rest"
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Smart Object")
     FGameplayTag SmartObjectTag;
+
+    // === 动画配置 (Animation Configuration) ===
+    
+    // 交互动画 Montage (例如：吃饭、睡觉动画)
+    // Interaction animation montage (e.g., eating, sleeping animation)
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
+    UAnimMontage* InteractionMontage = nullptr;
+
+    // 是否循环播放动画 / Whether to loop the animation
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
+    bool bLoopAnimation = true;
+
+    // 动作持续时长（秒）/ Action duration in seconds
+    // 0 = 无限持续，直到 Utility AI 切换到其他动作
+    // 0 = Infinite duration, until Utility AI switches to another action
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
+    float ActionDuration = 0.0f;
 };
 
 // =========================================================
