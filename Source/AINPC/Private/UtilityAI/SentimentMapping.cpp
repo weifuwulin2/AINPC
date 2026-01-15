@@ -53,11 +53,19 @@ void USentimentMapper::InitializeDefaultMapping()
     
     // 特定情绪的自然语言标签 / Natural Language Tags for Specific Emotions
     
-    // Anger (愤怒)
-    TagToValueMap.Add(TEXT("Annoyed"),  0.25f);  // 烦躁
-    TagToValueMap.Add(TEXT("Angry"),    0.5f);   // 生气
-    TagToValueMap.Add(TEXT("Furious"),  0.9f);   // 暴怒
-    TagToValueMap.Add(TEXT("Enraged"),  1.0f);   // 狂暴
+    // Indignity (屈辱/尊严受损)
+    TagToValueMap.Add(TEXT("Annoyed"),      0.2f);
+    TagToValueMap.Add(TEXT("Disrespected"), 0.4f);
+    TagToValueMap.Add(TEXT("Insulted"),     0.6f);
+    TagToValueMap.Add(TEXT("Humiliated"),   0.9f);
+    TagToValueMap.Add(TEXT("Resentful"),    1.0f);
+
+    // Boredom (无聊)
+    TagToValueMap.Add(TEXT("Interested"),   0.0f); // 反向: 感兴趣=0无聊
+    TagToValueMap.Add(TEXT("Routine"),      0.3f);
+    TagToValueMap.Add(TEXT("Bored"),        0.6f);
+    TagToValueMap.Add(TEXT("Tedious"),      0.8f);
+    TagToValueMap.Add(TEXT("Monotonous"),   1.0f);
     
     // Trust (信任)
     TagToValueMap.Add(TEXT("Suspicious"), 0.2f); // 怀疑
@@ -135,10 +143,12 @@ FString USentimentMapper::GeneratePromptInstructions() const
     Instructions += TEXT("- Extreme/Max: 1.0 (极端)\n\n");
     
     Instructions += TEXT("You can also use natural language tags for specific emotions:\n");
-    Instructions += TEXT("- Anger: Annoyed, Angry, Furious, Enraged\n");
+    Instructions += TEXT("- Indignity: Disrespected, Insulted, Humiliated, Resentful\n");
+    Instructions += TEXT("- Boredom: Routine, Bored, Tedious, Monotonous\n");
     Instructions += TEXT("- Trust: Suspicious, Trusting, Devoted\n");
     Instructions += TEXT("- Hunger: Satisfied, Peckish, Hungry, Starving\n");
     Instructions += TEXT("- Threat: Safe, Cautious, Threatened, Terrified\n\n");
+
     
     Instructions += TEXT("IMPORTANT: Do NOT output numerical values (0.0-1.0). Only use the tags above.\n");
     

@@ -24,27 +24,22 @@ enum class EUtilityInputType : uint8
 {
 	// === 马斯洛需求层次 (来自 MentalState) ===
 	// Maslow's Hierarchy of Needs (from MentalState)
-	// 注意：枚举值使用驼峰命名（无下划线），但对应的字段名可能有下划线
 	
 	// 生理层 (Physiological)
 	Hunger,
-	Energy,
+	Fatigue,
 	
 	// 安全层 (Safety)
 	PerceivedThreat,      // 对应 Perceived_Threat
-	ResourceAnxiety,      // 对应 Resource_Anxiety
 	
-	// 社交层 (Love/Belonging)
+	// 社交层 (Belonging)
 	Loneliness,
-	Trust,
 	
 	// 尊严层 (Esteem)
-	Anger,
-	SocialStatus,         // 对应 Social_Status
+	Indignity,
 	
 	// 自我实现层 (Self-Actualization)
-	DutyUrgency,          // 对应 Duty_Urgency
-	Curiosity,
+	Boredom,
 	
 	// === 环境感知字段 (不在 MentalState 中) ===
 	// Environmental Perception Fields (not in MentalState)
@@ -171,6 +166,22 @@ struct FUtilityActionConfig : public FTableRowBase
     // 0 = Infinite duration, until Utility AI switches to another action
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
     float ActionDuration = 0.0f;
+
+    // === Emotion Matrix 配置 ===
+
+    // Activity 标签：用于 Emotion Matrix 查表
+    // Activity Tag: Used for Emotion Matrix lookup
+    // Example: "Activity.Combat", "Activity.Flee", "Activity.Social"
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Emotion Matrix",
+              meta = (DisplayName = "Activity Tag for Emotion Matrix"))
+    FGameplayTag ActivityTag;
+
+    // 意图标签：如果 LLM 的 Intention 字段包含此标签，分数大幅增加
+    // Intention Tag: If LLM Intention field contains this tag/string, score is boosted
+    // Example: "Attack", "Flee", "Talk", "Patrol"
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "LLM Integration",
+              meta = (DisplayName = "Matching Intention Name"))
+    FString IntentionTag;
 };
 
 // =========================================================
@@ -200,6 +211,14 @@ public:
 
     UPROPERTY(Transient)
     FGameplayTag SmartObjectTag;
+
+    // Activity Tag: 用于 Emotion Matrix 查表
+    UPROPERTY(Transient)
+    FGameplayTag ActivityTag;
+
+    // LLM Intention Tag
+    UPROPERTY(Transient)
+    FString IntentionTag;
 
     UPROPERTY(EditDefaultsOnly, Category = "Action Config")
     FString ActionName;

@@ -4,6 +4,7 @@
 #include "AIController.h"
 #include "Perception/AIPerceptionTypes.h" 
 #include "Social/SocialTypes.h" // Add this
+#include "UtilityAI/EmotionTypes.h" // Add this
 #include "UtilityAIController.generated.h"
 
 class UMetabolismComponent;
@@ -81,6 +82,14 @@ public:
     // 情绪状态对象 (Blackboard) - Utility组件会读取这里
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI Data")
     UNPCMentalState* MentalState;
+
+    // 当前情绪状态 (Cached)
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI Data")
+    EEmotionState CurrentEmotion = EEmotionState::Neutral;
+
+    // 情绪矩阵配置表 (Emotion Matrix)
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI Configuration")
+    UDataTable* EmotionMatrixTable;
 
     // =========================================================
     // 4. 对外接口 (External Interface)

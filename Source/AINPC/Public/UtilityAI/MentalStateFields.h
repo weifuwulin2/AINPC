@@ -29,21 +29,17 @@
  * 注意: 修改后需要重新编译项目 / Note: Recompile project after modification
  */
 #define MENTAL_STATE_FIELDS(FIELD) \
-	/* ========== 生理层 (Physiological) - ENGINE 独裁 ========== */ \
+	/* ========== 生理层 (Physiological) - ENGINE ========== */ \
 	FIELD(Hunger,            0.0f, "Hunger",            "[ENGINE] 饥饿感 - 随时间增长，吃东西减少") \
 	FIELD(Fatigue,           0.0f, "Fatigue",           "[ENGINE] 疲劳度 - 随时间增长，睡觉减少") \
-	/* ========== 安全层 (Safety) - HYBRID 混合管辖 ========== */ \
-	FIELD(Perceived_Threat,  0.0f, "Perceived Threat",  "[HYBRID] 感知威胁 - Engine检测敌人 + LLM分析语言威胁") \
-	FIELD(Resource_Anxiety,  0.0f, "Resource Anxiety",  "[HYBRID] 资源焦虑 - Engine检测背包 + LLM分析传闻") \
-	/* ========== 社交层 (Love/Belonging) - HYBRID + LLM ========== */ \
-	FIELD(Loneliness,        0.0f, "Loneliness",        "[HYBRID] 孤独感 - Engine计时器 + LLM检测被冷落") \
-	FIELD(Trust,             0.5f, "Trust",             "[LLM] 信任度 - LLM分析诚实、背叛、帮助") \
-	/* ========== 尊严层 (Esteem) - LLM 独裁 ========== */ \
-	FIELD(Anger,             0.0f, "Anger",             "[LLM] 愤怒 - LLM分析侮辱、挑衅、道歉") \
-	FIELD(Social_Status,     0.5f, "Social Status",     "[LLM] 地位需求 - LLM分析尊重、轻视") \
-	/* ========== 自我实现层 (Self-Actualization) - HYBRID + LLM ========== */ \
-	FIELD(Duty_Urgency,      0.0f, "Duty Urgency",      "[HYBRID] 责任紧迫感 - Engine检查时间 + LLM分析命令") \
-	FIELD(Curiosity,         0.5f, "Curiosity",         "[LLM] 好奇心 - LLM分析秘密、奇怪事物")
+	/* ========== 安全层 (Safety) - HYBRID ========== */ \
+	FIELD(Perceived_Threat,  0.0f, "Perceived Threat",  "[HYBRID] 威胁感 - Engine检测敌人 + LLM分析威胁语言/缺资源") \
+	/* ========== 社交层 (Belonging) - HYBRID ========== */ \
+	FIELD(Loneliness,        0.0f, "Loneliness",        "[HYBRID] 孤独感/被冷落 - Engine计时器 + LLM检测被忽视") \
+	/* ========== 尊严层 (Esteem) - LLM ========== */ \
+	FIELD(Indignity,         0.0f, "Indignity",         "[LLM] 屈辱感/尊严受损 - 随侮辱/轻视升高") \
+	/* ========== 自我实现层 (Self-Actualization) - LLM ========== */ \
+	FIELD(Boredom,           0.0f, "Boredom",           "[LLM] 无聊感/缺乏意义 - 随时间/重复升高")
 
 /**
  * 使用说明:

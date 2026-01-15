@@ -71,7 +71,17 @@ void UMetabolismComponent::TickComponent(float DeltaTime, ELevelTick TickType, F
     
     // 疲劳 (Fatigue = 疲劳度，时间流逝增加疲劳度)
     // Fatigue (Fatigue = fatigue level, time passing increases fatigue)
+    // 疲劳 (Fatigue = 疲劳度，时间流逝增加疲劳度)
+    // Fatigue (Fatigue = fatigue level, time passing increases fatigue)
     State->Fatigue = FMath::Clamp(State->Fatigue + (EnergyRate * DeltaTime), 0.0f, 1.0f);
+    
+    // 无聊 (Boredom = 缺乏刺激，时间流逝增加无聊感)
+    // Boredom (Boredom = lack of stimulation, time passing increases boredom)
+    State->Boredom = FMath::Clamp(State->Boredom + (BoredomRate * DeltaTime), 0.0f, 1.0f);
+    
+    // 孤独 (Loneliness = 缺乏社交，时间流逝增加孤独感)
+    // Loneliness (Loneliness = lack of social, time passing increases loneliness)
+    State->Loneliness = FMath::Clamp(State->Loneliness + (LonelinessRate * DeltaTime), 0.0f, 1.0f);
 
     // 🔍 调试日志：每 5 秒打印一次状态
     // Debug logging: Print status every 5 seconds
@@ -80,8 +90,8 @@ void UMetabolismComponent::TickComponent(float DeltaTime, ELevelTick TickType, F
     if (CurrentTime - LastDebugLogTime > 5.0f)
     {
         float HungerDelta = State->Hunger - OldHunger;
-        UE_LOG(LogTemp, Warning, TEXT("[Metabolism] %s - Hunger: %.3f (Delta: %+.4f/frame, Rate: %.4f/s), Fatigue: %.3f"), 
-               *CachedController->GetName(), State->Hunger, HungerDelta, HungerRate, State->Fatigue);
+        UE_LOG(LogTemp, Warning, TEXT("[Metabolism] %s - Hg:%.2f Ft:%.2f Bd:%.2f Ln:%.2f"), 
+               *CachedController->GetName(), State->Hunger, State->Fatigue, State->Boredom, State->Loneliness);
         LastDebugLogTime = CurrentTime;
     }
 
@@ -108,17 +118,11 @@ void UMetabolismComponent::TickComponent(float DeltaTime, ELevelTick TickType, F
         }
     };
 
-    // 愤怒 (Anger)
-    ApplyDecay(State->Anger, TEXT("Anger"), EmotionalDecayRate);
+    // 屈辱 (Indignity) -> 愤怒
+    ApplyDecay(State->Indignity, TEXT("Indignity"), EmotionalDecayRate);
 
     // 威胁感 (Perceived_Threat) - 消失得比较快，因为如果没有持续威胁，你就安全了
     ApplyDecay(State->Perceived_Threat, TEXT("Perceived_Threat"), ThreatDecayRate);
-
-    // 资源焦虑 (Resource_Anxiety)
-    ApplyDecay(State->Resource_Anxiety, TEXT("Resource_Anxiety"), EmotionalDecayRate * 0.5f); // 焦虑消失得慢一点
-
-    // 好奇心 (Curiosity) - 也会随时间消退
-    ApplyDecay(State->Curiosity, TEXT("Curiosity"), EmotionalDecayRate);
 
     // === 3. 长期状态 (Long-term States) ===
     // Trust, Social_Status, Loneliness, Duty_Urgency

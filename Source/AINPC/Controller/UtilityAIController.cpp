@@ -8,6 +8,7 @@
 #include "Components/EmotionDisplayComponent.h"
 #include "Components/MetabolismComponent.h"
 #include "UtilityAI/UNPCMentalState.h" 
+#include "UtilityAI/EmotionEvaluator.h" // Add this 
 
 // 感知相关头文件
 #include "Engine/DamageEvents.h"
@@ -211,10 +212,29 @@ void AUtilityAIController::OnMindUpdated(const FMentalState& NewState)
     {
         MentalState->UpdateFromStruct(NewState);
         
-        // 打印所有关键情绪字段
-        /*UE_LOG(LogTemp, Log, TEXT("[Controller] Mental State Updated: Anger=%.2f, Fear=%.2f, Confidence=%.2f"), 
-               MentalState->Anger, MentalState->Fear, MentalState->Confidence);
-               */
+        // 重新计算情绪状态
+        // Recalculate Emotion State
+        if (PersonalityComp)
+        {
+            // 使用 EmotionEvaluator 计算当前情绪
+            CurrentEmotion = UEmotionEvaluator::CalculateEmotion(MentalState, PersonalityComp->MaslowWeights);
+            
+            // 更新情绪显示
+            if (EmotionDisplayComp)
+            {
+                // 将枚举转换为字符串 (EEmotionState::Angry -> Angry)
+                FString EmotionStr = UEnum::GetValueAsString(CurrentEmotion);
+                FString CleanEmotionStr;
+                if (EmotionStr.Split(TEXT("::"), nullptr, &CleanEmotionStr))
+                {
+                    EmotionDisplayComp->ShowEmotion(CleanEmotionStr);
+                }
+                else
+                {
+                    EmotionDisplayComp->ShowEmotion(EmotionStr);
+                }
+            }
+        }
         
         // UtilityComponent 不需要通知，它会在自己的 Tick 里自动读这个 MentalState
     }

@@ -251,6 +251,27 @@ AINPC/
 
 ## 🎉 最新更新 / Latest Updates
 
+### v0.5.0 - Hybrid V3 架构: 匮乏模型与意图覆盖 (2026-01-15)
+		
+#### 🎉 重大改进 / Major Improvements
+		
+##### 1. Deficit Model (匮乏模型) 统一
+- **Variable Rename**: `Anger` → `Indignity`, `Curiosity` → `Boredom`.
+- **Logic**: 
+  - **Needs (增长)**: Hunger, Fatigue, Boredom, Loneliness.
+  - **Reactions (衰减)**: Indignity, Perceived_Threat.
+		
+##### 2. Emotion Matrix System (情绪矩阵)
+- **Filters**: 7 种情绪对不同行为有不同的乘数 (e.g., Scared -> Flee x5.0).
+- **Data-Driven**: 完全由 `DT_EmotionMatrix` 数据表控制.
+		
+##### 3. Intention Override (意图覆盖)
+- **Strategic Layer**: LLM 的 `Intention` 输出拥有最终否决权.
+- **Rules**: 如果 LLM Intention 匹配 Action Tag, 分数 **x3.0**.
+- **Benefit**: 即使性格胆小 (Fear)，只要 LLM 决定殊死一搏 (Intention: Attack)，AI 就会执行攻击.
+		
+---
+
 ### v0.4.0 - OCEAN + Maslow + 语义映射系统 (2026-01-08)
 
 #### 🎉 重大改进 / Major Improvements

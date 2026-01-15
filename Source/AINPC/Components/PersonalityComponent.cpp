@@ -138,57 +138,37 @@ void UPersonalityComponent::RecalculateWeights()
 
 float UPersonalityComponent::GetWeightForVariable(const FString& VariableName) const
 {
-	// 使用 if-else 链来匹配变量名
-	// Use if-else chain to match variable name
+	// 使用 if-else 链来匹配变量名并映射到马斯洛层级权重
+	// Use if-else chain to match variable name and map to Maslow layer weights
 	
 	// 生理层 (Physiological)
-	if (VariableName == TEXT("Hunger"))
+	if (VariableName == TEXT("Hunger") || VariableName == TEXT("Fatigue"))
 	{
-		return MaslowWeights.HungerWeight;
-	}
-	else if (VariableName == TEXT("Energy"))
-	{
-		return MaslowWeights.EnergyWeight;
+		return MaslowWeights.Physiological;
 	}
 	// 安全层 (Safety)
 	else if (VariableName == TEXT("Perceived_Threat"))
 	{
-		return MaslowWeights.ThreatWeight;
+		return MaslowWeights.Safety;
 	}
-	else if (VariableName == TEXT("Resource_Anxiety"))
+	// 社交层 (Belonging)
+	else if (VariableName == TEXT("Loneliness") || VariableName == TEXT("Trust")) // Trust 保留兼容,映射到Belonging
 	{
-		return MaslowWeights.ResourceAnxietyWeight;
-	}
-	// 社交层 (Social)
-	else if (VariableName == TEXT("Loneliness"))
-	{
-		return MaslowWeights.LonelinessWeight;
-	}
-	else if (VariableName == TEXT("Trust"))
-	{
-		return MaslowWeights.TrustWeight;
+		return MaslowWeights.Belonging;
 	}
 	// 尊严层 (Esteem)
-	else if (VariableName == TEXT("Anger"))
+	else if (VariableName == TEXT("Indignity") || VariableName == TEXT("Anger")) // Anger 保留兼容
 	{
-		return MaslowWeights.AngerWeight;
-	}
-	else if (VariableName == TEXT("Social_Status"))
-	{
-		return MaslowWeights.SocialStatusWeight;
+		return MaslowWeights.Esteem;
 	}
 	// 自我实现层 (Self-Actualization)
-	else if (VariableName == TEXT("Duty_Urgency"))
+	else if (VariableName == TEXT("Boredom") || VariableName == TEXT("Curiosity")) // Curiosity 保留兼容
 	{
-		return MaslowWeights.DutyWeight;
-	}
-	else if (VariableName == TEXT("Curiosity"))
-	{
-		return MaslowWeights.CuriosityWeight;
+		return MaslowWeights.SelfActualization;
 	}
 	else
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[PersonalityComponent] Unknown variable name: %s"), *VariableName);
+		UE_LOG(LogTemp, Warning, TEXT("[PersonalityComponent] Unknown variable name: %s, returning default weight 1.0"), *VariableName);
 		return 1.0f;  // 默认权重
 	}
 }
@@ -240,22 +220,12 @@ void UPersonalityComponent::DebugPrintPersonality() const
 	UE_LOG(LogTemp, Log, TEXT("  Neuroticism (神经质):       %.2f"), Personality.Neuroticism);
 	
 	UE_LOG(LogTemp, Log, TEXT(""));
-	UE_LOG(LogTemp, Log, TEXT("Maslow Weights:"));
-	UE_LOG(LogTemp, Log, TEXT("  [Physiological]"));
-	UE_LOG(LogTemp, Log, TEXT("    Hunger:          %.2f"), MaslowWeights.HungerWeight);
-	UE_LOG(LogTemp, Log, TEXT("    Energy:          %.2f"), MaslowWeights.EnergyWeight);
-	UE_LOG(LogTemp, Log, TEXT("  [Safety]"));
-	UE_LOG(LogTemp, Log, TEXT("    Threat:          %.2f"), MaslowWeights.ThreatWeight);
-	UE_LOG(LogTemp, Log, TEXT("    ResourceAnxiety: %.2f"), MaslowWeights.ResourceAnxietyWeight);
-	UE_LOG(LogTemp, Log, TEXT("  [Social]"));
-	UE_LOG(LogTemp, Log, TEXT("    Loneliness:      %.2f"), MaslowWeights.LonelinessWeight);
-	UE_LOG(LogTemp, Log, TEXT("    Trust:           %.2f"), MaslowWeights.TrustWeight);
-	UE_LOG(LogTemp, Log, TEXT("  [Esteem]"));
-	UE_LOG(LogTemp, Log, TEXT("    Anger:           %.2f"), MaslowWeights.AngerWeight);
-	UE_LOG(LogTemp, Log, TEXT("    SocialStatus:    %.2f"), MaslowWeights.SocialStatusWeight);
-	UE_LOG(LogTemp, Log, TEXT("  [Self-Actualization]"));
-	UE_LOG(LogTemp, Log, TEXT("    Duty:            %.2f"), MaslowWeights.DutyWeight);
-	UE_LOG(LogTemp, Log, TEXT("    Curiosity:       %.2f"), MaslowWeights.CuriosityWeight);
+	UE_LOG(LogTemp, Log, TEXT("Maslow Weights (5-Layer Model):"));
+	UE_LOG(LogTemp, Log, TEXT("  Physiological (Body):    %.2f"), MaslowWeights.Physiological);
+	UE_LOG(LogTemp, Log, TEXT("  Safety (Threat):         %.2f"), MaslowWeights.Safety);
+	UE_LOG(LogTemp, Log, TEXT("  Belonging (Social):      %.2f"), MaslowWeights.Belonging);
+	UE_LOG(LogTemp, Log, TEXT("  Esteem (Dignity):        %.2f"), MaslowWeights.Esteem);
+	UE_LOG(LogTemp, Log, TEXT("  Self-Actualization:      %.2f"), MaslowWeights.SelfActualization);
 	
 	UE_LOG(LogTemp, Log, TEXT("========================================"));
 }

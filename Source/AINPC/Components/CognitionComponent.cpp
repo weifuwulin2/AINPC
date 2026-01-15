@@ -87,16 +87,15 @@ void UCognitionComponent::BeginPlay()
 	SlowConfig.PerturbationRange = 0.03f;
 	
 	// 应用配置 / Apply configurations
-	Interpolator->SetInterpConfig("Anger", FastConfig);           // 愤怒：快速 (5.0)
+	Interpolator->SetInterpConfig("Indignity", FastConfig);        // 屈辱：快速 (5.0)
 	Interpolator->SetInterpConfig("Perceived_Threat", FastConfig); // 威胁：快速
 	
 	Interpolator->SetInterpConfig("Hunger", MediumConfig);         // 饥饿：中速 (2.0)
-	Interpolator->SetInterpConfig("Energy", MediumConfig);         // 精力：中速
+	Interpolator->SetInterpConfig("Fatigue", MediumConfig);        // 疲劳：中速
 	Interpolator->SetInterpConfig("Loneliness", MediumConfig);     // 孤独：中速
 	
-	Interpolator->SetInterpConfig("Trust", SlowConfig);            // 信任：慢速 (0.5)
-	Interpolator->SetInterpConfig("Social_Status", SlowConfig);    // 社会地位：慢速
-	Interpolator->SetInterpConfig("Curiosity", SlowConfig);        // 好奇心：慢速
+	Interpolator->SetInterpConfig("Trust", SlowConfig);            // 信任：慢速 (0.5) (兼容)
+	Interpolator->SetInterpConfig("Boredom", SlowConfig);          // 无聊：慢速
 	
 	UE_LOG(LogTemp, Log, TEXT("[Cognition] Interpolator initialized with custom speeds"));
 }
@@ -259,15 +258,11 @@ void UCognitionComponent::ProcessStimulus(FString SituationDescription)
 		"type Tag = \"None\" | \"Slight\" | \"Moderate\" | \"Strong\" | \"Extreme\";\n"
 		"interface Response {\n"
 		"  Hunger: \"None\";\n"
-		"  Energy: \"None\";\n"
+		"  Fatigue: \"None\";\n"
 		"  Perceived_Threat: Tag;\n"
-		"  Resource_Anxiety: Tag;\n"
 		"  Loneliness: Tag;\n"
-		"  Trust: Tag;\n"
-		"  Anger: Tag;\n"
-		"  Social_Status: Tag;\n"
-		"  Duty_Urgency: Tag;\n"
-		"  Curiosity: Tag;\n"
+		"  Indignity: Tag;\n"
+		"  Boredom: Tag;\n"
 		"  Intention: \"Attack\" | \"Flee\" | \"Idle\" | \"Talk\";\n"
 		"  Emotion: \"Scared\" | \"Anxious\" | \"Sad\" | \"Suspicious\" | \"Happy\" | \"Angry\" | \"Proud\" | \"Curious\" | \"Determined\" | \"Confused\" | \"Excited\" | \"Neutral\";\n"
 		"  Speech: string; // approx 5 words, match personality\n"
@@ -302,8 +297,8 @@ void UCognitionComponent::OnLLMReply(bool bSuccess, const FMentalState& NewState
 			#undef SET_TARGET_VALUE
 			
 			UE_LOG(LogTemp, Log, TEXT("[Cognition] Target values set from LLM"));
-			UE_LOG(LogTemp, Log, TEXT("  Anger target: %.2f, Trust target: %.2f"), 
-			       NewState.Anger, NewState.Trust);
+			UE_LOG(LogTemp, Log, TEXT("  Indignity target: %.2f, Boredom target: %.2f"), 
+			       NewState.Indignity, NewState.Boredom);
 			
 			// 注意：实际的 MentalState 更新在 TickComponent 中通过插值完成
 			// Note: Actual MentalState update happens in TickComponent via interpolation

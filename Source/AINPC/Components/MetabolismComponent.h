@@ -36,6 +36,16 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Metabolism|Physiological")
 	float EnergyRate = 0.008f;
 
+	// 无聊增长速率 (每秒增加多少)
+	// Boredom rate per second
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Metabolism|SelfActualization")
+	float BoredomRate = 0.02f; // Get bored faster than hungry
+
+	// 孤独增长速率 (每秒增加多少)
+	// Loneliness rate per second
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Metabolism|Social")
+	float LonelinessRate = 0.005f; // Get lonely slowly
+
 	// 情绪冷却速率 (每秒减少多少)
 	// Emotional decay rate (Cool down) per second
 	// Example: 0.05 = Takes 20 seconds to go from Furious(1.0) to Calm(0.0)

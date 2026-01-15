@@ -4,6 +4,30 @@ This file contains a log of commit messages for the AINPC project.
 
 ---
 
+## [2026-01-15] Hybrid V3 Architecture - Deficit Model & Emotion Matrix
+**Type**: feat/refactor
+**Scope**: Architecture, UtilityAI, Metabolism, Emotions
+
+**Description**:
+- **Deficit Model**: Unified mental state variables. `Boredom`/`Loneliness` grow (needs), `Indignity`/`Threat` decay (reactions).
+- **Variable Rename**: `Anger` -> `Indignity`, `Curiosity` -> `Boredom`.
+- **Emotion Matrix**: Implemented `Score *= Matrix[Emotion][Activity]` logic to filter actions based on emotional state.
+- **Intention Override**: Implemented `Score *= 3.0` when LLM `Intention` matches `Action.IntentionTag`, giving LLM strategic control.
+- **Cleanup**: Removed obsolete variables (`Energy`, `Trust`) and simplified `UNPCMentalState`.
+- **Docs**: Updated `5_Stage_AI_Pipeline_Design.md` to be the source of truth.
+
+**Files Changed**:
+- `Source/AINPC/Public/UtilityAI/MentalStateFields.h`
+- `Source/AINPC/Public/UtilityAI/EmotionTypes.h`
+- `Source/AINPC/Components/MetabolismComponent.cpp`
+- `Source/AINPC/Private/UtilityAI/EmotionEvaluator.cpp`
+- `Source/AINPC/Private/Base/UtilityActionBase.cpp`
+- `Source/AINPC/Public/Base/UtilityActionBase.h`
+- `Source/AINPC/Controller/UtilityAIController.h`
+- `docs/design/5_Stage_AI_Pipeline_Design.md`
+
+---
+
 ## [2026-01-13] Metabolism System Overhaul - Engine Variable Protection
 
 **Type**: fix/refactor

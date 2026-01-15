@@ -11,6 +11,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.5.0] - 2026-01-15
+
+### 🏛️ Major Architecture Update: Hybrid V3
+
+#### 1. Deficit Model & Variable Renaming
+- **Refined Mental State Variables**: Transitioned to a unified "Deficit Model" where needs grow and reactions decay.
+  - `Anger` → `Indignity` (Reactive: Decays over time)
+  - `Curiosity` → `Boredom` (Need: Grows over time)
+- **Metabolism Logic Update**:
+  - `Hunger`, `Fatigue`, `Boredom`, `Loneliness`: **Grow over time** (Need based).
+  - `Indignity`, `Perceived_Threat`: **Decay over time** (Reaction based).
+  - Configurable rates added: `BoredomRate`, `LonelinessRate`.
+
+#### 2. Emotion Matrix System
+- **New Component**: `EmotionMatrixConfig` and `EmotionTypes`.
+- **Logic**: Implemented 7 Core Emotions (`Neutral`, `Angry`, `Scared`, `Sad`, `Happy`, `Curious`, `Disgust`).
+- **Matrix Multiplier**: `Score *= Matrix[Emotion][ActivityTag]`
+  - Example: `Scared` emotion multiplies `Activity.Flee` score by 5.0x and `Activity.Combat` by 0.1x.
+- **Data-Driven**: Configurable via `DT_EmotionMatrix` DataTable.
+
+#### 3. Intention Override Mechanism
+- **Strategic Control**: LLM's `Intention` output now serves as a "Veto" or "Super Vote".
+- **Logic**: If `LLM.Intention` matches `Action.IntentionTag`, score is multiplied by **3.0x**.
+  - Solves the "Cowardly Warrior" problem: Warrior can attack even if `Perceived_Threat` is high, if LLM explicitly intends to `Attack`.
+  - Preserves Physical Context: 0 score (impossible actions) remains 0.
+
+### 🔧 Technical Changes
+- **UtilityActionBase**: Added `ActivityTag` (for Matrix) and `IntentionTag` (for Override).
+- **UtilityAIController**: Added central `CurrentEmotion` calculation using `EmotionEvaluator`.
+- **LLM Prompt**: Updated to output `Intention` string and use new variable names.
+- **Cleaned Up**: Removed obsolete variables (`Trust`, `social_battery`, `Energy`) and unused MaslowWeights dynamic calculation.
+
+### 📝 Documentation
+- **Updated**: `docs/design/5_Stage_AI_Pipeline_Design.md` to reflect the final V3 architecture.
+
+---
+
 ## [0.4.7] - 2026-01-13
 
 ### 🔧 Changed - Metabolism System Overhaul

@@ -2,11 +2,16 @@
 
 namespace AINPCTags
 {
-	// Activity
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Activity_Rest, "Activity.Rest", "Resting behavior");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Activity_Work, "Activity.Work", "Working behavior");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Activity_Eat, "Activity.Eat", "Eating behavior");
+	// Activity - Core Categories for Emotion Matrix
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Activity_Rest, "Activity.Rest", "Resting: Sleep, Sit, Idle (Sad/Tired)");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Activity_Work, "Activity.Work", "Working: Patrol, Craft, Guard (Neutral)");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Activity_Eat, "Activity.Eat", "Eating: Eat, Drink (Hungry)");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Activity_Mundane, "Activity.Mundane", "Mundane background activity");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Activity_Combat, "Activity.Combat", "Combat: Attack, Shoot, Chase (Angry)");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Activity_Flee, "Activity.Flee", "Flee: RunAway, Hide, Beg (Scared)");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Activity_Social, "Activity.Social", "Social: Chat, Greet, Trade (Happy)");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Activity_Investigate, "Activity.Investigate", "Investigate: LookAt, Approach (Curious)");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Activity_Avoid, "Activity.Avoid", "Avoid: Reject, WalkAway (Disgust)");
 
 	// Social
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Social_Chat, "Social.Chat", "Generic chatting");

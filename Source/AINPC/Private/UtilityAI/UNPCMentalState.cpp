@@ -41,18 +41,14 @@ void UNPCMentalState::UpdateFromStruct(const FMentalState& NewState)
 	UE_LOG(LogTemp, Warning, TEXT("[MentalState] LLM returned Hunger=%.3f, Fatigue=%.3f (SKIPPED - using Engine values: Hunger=%.3f, Fatigue=%.3f)"),
 	       NewState.Hunger, NewState.Fatigue, Hunger, Fatigue);
 	
-	// 只更新 LLM 管辖的字段 / Only update LLM-controlled fields
-	Perceived_Threat = FMath::Clamp(NewState.Perceived_Threat, 0.0f, 1.0f);
-	Resource_Anxiety = FMath::Clamp(NewState.Resource_Anxiety, 0.0f, 1.0f);
-	Loneliness = FMath::Clamp(NewState.Loneliness, 0.0f, 1.0f);
-	Trust = FMath::Clamp(NewState.Trust, 0.0f, 1.0f);
-	Anger = FMath::Clamp(NewState.Anger, 0.0f, 1.0f);
-	Social_Status = FMath::Clamp(NewState.Social_Status, 0.0f, 1.0f);
-	Duty_Urgency = FMath::Clamp(NewState.Duty_Urgency, 0.0f, 1.0f);
-	Curiosity = FMath::Clamp(NewState.Curiosity, 0.0f, 1.0f);
+	// 只更新 LLM 管辖的 4 个字段 (简化后的马斯洛模型)
+	// Only update LLM-controlled 4 fields (simplified Maslow model)
+	Perceived_Threat = FMath::Clamp(NewState.Perceived_Threat, 0.0f, 1.0f);  // 安全层
+	Loneliness = FMath::Clamp(NewState.Loneliness, 0.0f, 1.0f);              // 社交层
+	Indignity = FMath::Clamp(NewState.Indignity, 0.0f, 1.0f);            // 尊严层
+	Boredom = FMath::Clamp(NewState.Boredom, 0.0f, 1.0f);                // 自我实现层
 	
-	// 可选：打印日志用于调试
-	UE_LOG(LogTemp, Verbose, TEXT("[MentalState] Updated from struct (skipped Engine fields: Hunger, Energy)"));
+	UE_LOG(LogTemp, Verbose, TEXT("[MentalState] Updated from struct (skipped Engine fields: Hunger, Fatigue)"));
 }
 
 FMentalState UNPCMentalState::ToStruct() const

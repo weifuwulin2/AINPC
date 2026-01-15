@@ -264,24 +264,24 @@ void ULLMCommunicator::OnResponseReceived(FHttpRequestPtr Request, FHttpResponse
             UE_LOG(LogTemp, Warning, TEXT("[LLM] SUCCESS! Parsed MentalState:"));
             
             // 生理层 (Physiological)
-            UE_LOG(LogTemp, Log, TEXT("  [Physiological] Hunger=%.2f, Energy=%.2f"), 
+            UE_LOG(LogTemp, Log, TEXT("  [Physiological] Hunger=%.2f, Fatigue=%.2f"), 
                    ResultState.Hunger, ResultState.Fatigue);
             
             // 安全层 (Safety)
-            UE_LOG(LogTemp, Log, TEXT("  [Safety] Perceived_Threat=%.2f, Resource_Anxiety=%.2f"), 
-                   ResultState.Perceived_Threat, ResultState.Resource_Anxiety);
+            UE_LOG(LogTemp, Log, TEXT("  [Safety] Perceived_Threat=%.2f"), 
+                   ResultState.Perceived_Threat);
             
             // 社交层 (Love/Belonging)
-            UE_LOG(LogTemp, Log, TEXT("  [Social] Loneliness=%.2f, Trust=%.2f"), 
-                   ResultState.Loneliness, ResultState.Trust);
+            UE_LOG(LogTemp, Log, TEXT("  [Social] Loneliness=%.2f"), 
+                   ResultState.Loneliness);
             
             // 尊严层 (Esteem)
-            UE_LOG(LogTemp, Log, TEXT("  [Esteem] Anger=%.2f, Social_Status=%.2f"), 
-                   ResultState.Anger, ResultState.Social_Status);
+            UE_LOG(LogTemp, Log, TEXT("  [Esteem] Indignity=%.2f"), 
+                   ResultState.Indignity);
             
             // 自我实现层 (Self-Actualization)
-            UE_LOG(LogTemp, Log, TEXT("  [Self-Actualization] Duty_Urgency=%.2f, Curiosity=%.2f"), 
-                   ResultState.Duty_Urgency, ResultState.Curiosity);
+            UE_LOG(LogTemp, Log, TEXT("  [Self-Actualization] Boredom=%.2f"), 
+                   ResultState.Boredom);
             
             UE_LOG(LogTemp, Warning, TEXT("========================================"));
             Callback.ExecuteIfBound(true, ResultState);

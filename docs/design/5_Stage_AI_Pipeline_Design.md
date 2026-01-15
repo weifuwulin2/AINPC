@@ -149,20 +149,20 @@ graph TB
 在 `UtilityActionBase` 中，我们计算 Motivation Score 时会乘以权重：
 `Score = Drive_Value * Weight`
 
-**映射表 (Mapping Table)**:
+**映射表 (Mapping Table - Deficit Model)**:
 | Maslow Layer | Driver | Primary Trait Influence (Formula) |
 | :--- | :--- | :--- |
-| **Safety** | `Perceived_Threat` | `1.0 + (Neuroticism * 1.5)` <br> *神经质越高，越怕死* |
-| **Physiological** | `Hunger/Fatigue` | `1.0` (Fixed) <br> *生物本能，人人平等* |
-| **Love/Belonging**| `Loneliness` | `0.5 + (Extraversion * 1.5)` <br> *外向者不仅爱社交，而且不社交会死* |
-| **Esteem** | `Anger/Insult` | `1.0 + (Neuroticism * 0.5) - (Agreeableness * 0.8)` <br> *神经质易怒，宜人者难怒* |
-| **Self-Actualization** | `Curiosity` | `0.5 + (Openness * 2.0)` <br> *只有开放者才会作死探索* |
+| **Safety** | `Perceived_Threat` (Decays) | `1.0 + (Neuroticism * 1.5)` <br> *神经质越高，越容易感到威胁* |
+| **Physiological** | `Hunger/Fatigue` (Grows) | `1.0` (Fixed) <br> *生物本能，人人平等* |
+| **Love/Belonging**| `Loneliness` (Grows) | `0.5 + (Extraversion * 1.5)` <br> *外向者不仅爱社交，而且不社交会死 (孤独增长快)* |
+| **Esteem** | `Indignity` (Decays) | `1.0 + (Neuroticism * 0.5) - (Agreeableness * 0.8)` <br> *神经质易感屈辱，宜人者宽容* |
+| **Self-Actualization** | `Boredom` (Grows) | `0.5 + (Openness * 2.0)` <br> *只有开放者才会觉得无聊 (Boredom 增长快)* |
 
 **Example**:
 *   Gary (Low N, High E): Safety Weight = 1.0, Social Weight = 2.0.
-*   当 Danger=50, Loneliness=50 时：
-    *   Safety Score = 50 * 1.0 = 50.
-    *   Social Score = 50 * 2.0 = **100**.
+*   当 Danger=0.5, Loneliness=0.8 时：
+    *   Safety Score = 0.5 * 1.0 = 0.5.
+    *   Social Score = 0.8 * 2.0 = **1.6**.
     *   **Result**: Gary 即使在危险中也想找人说话 (话痨)。
 
 ---
@@ -279,12 +279,12 @@ $$
     *   例如：`HasFood(1.0) * IsSafe(0.0)` -> 结果为 0。**这是硬逻辑过滤。**
 *   **4. Emotion Matrix (乘积)**: $\text{Multiplier}[\text{EmotionState}][\text{ActionTag}]$。
     *   例如：状态是 `Fear`，动作是 `Attack` -> 系数 `0.1`。**这是情绪对行为的压制/放大。**
-*   **5. LLM Intention (加法)**: 如果 `Start.Intention == ActionName` -> `+0.3`。
-    *   **为什么是加法？** 因为 LLM 只是一个"建议" (Nudge)。
-    *   如果 Context 为 0（没子弹），即使 LLM 加 0.3，结果还是 0.3（极低分），不会触发攻击。
-    *   如果 Context 正常，这 0.3 分可能就是压死骆驼的最后一根稻草，让它优先于发呆。
+*   **5. LLM Intention (乘法 Override)**: 如果 `State.Intention` matches `Action.IntentionTag` -> `Score *= 3.0`。
+    *   **为什么由加法改为乘法？** 为了确保 LLM 的意图能拥有 "一票否决权" (Veto Power) 但又不违反物理限制。
+    *   如果 Context 为 0（没子弹），`0 * 3.0 = 0`。物理现实依然生效。
+    *   如果 Context 正常，`Score * 3.0` 足以让该行为在任何情绪下由于其他行为（突破性格限制）。
 
-**结论**: Engine 负责做乘法（决定可行性），LLM 负责做加法（决定倾向性）。
+**结论**: Engine 负责做基础乘法（可行性），LLM 负责做最终乘法（战略覆盖）。
 
 ---
 

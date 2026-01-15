@@ -9,7 +9,7 @@
 #include "UtilityAI/MentalStateInterpolation.h"
 #include "Social/SocialGameplayTags.h"
 #include "Actions/Action_SmartObject.h"
-
+#include "UtilityAI/EmotionMatrixConfig.h"
 
 
 UUtilityActionBase::UUtilityActionBase()
@@ -23,8 +23,10 @@ void UUtilityActionBase::InitFromConfig(const FUtilityActionConfig& Config)
     Considerations = Config.Considerations;
     BaseReward = Config.BaseReward;
     CooldownTime = Config.CooldownTime;
-    InertiaBonus = Config.InertiaBonus; // 接收配置的惯性值
-    SmartObjectTag = Config.SmartObjectTag; // 接收智能对象标签
+    InertiaBonus = Config.InertiaBonus;
+    SmartObjectTag = Config.SmartObjectTag;
+    ActivityTag = Config.ActivityTag; // 用于 Emotion Matrix 查表
+    IntentionTag = Config.IntentionTag; // 用于 LLM Intention 匹配
 
     if (ActionName.Equals("BaseAction") || ActionName.IsEmpty())
     {
@@ -231,11 +233,61 @@ float UUtilityActionBase::CalculateScore(UNPCMentalState* MentalState, AAIContro
     //   Score = 3.0 × 0.96 × 1.0 = 2.88
     float FinalScore = BaseReward * MotivationSum * ContextProduct;
 
+    // 5. 应用情绪矩阵乘数 / Apply Emotion Matrix Multiplier
+    // ---------------------------------------------------------
+    // 根据当前情绪和动作类型（ActivityTag）调整分数
+    // Adjust score based on current emotion and action type
+    
+    float EmotionMultiplier = 1.0f;
+    
+    if (AUtilityAIController* UtilityController = Cast<AUtilityAIController>(Controller))
+    {
+        if (UtilityController->EmotionMatrixTable)
+        {
+            // 获取当前情绪名 (e.g., "Angry", "Scared")
+            // Get current emotion name
+            FString EmotionName = UEnum::GetValueAsString(UtilityController->CurrentEmotion);
+            FString CleanEmotionName;
+            EmotionName.Split(TEXT("::"), nullptr, &CleanEmotionName);
+            FName RowName = FName(*CleanEmotionName);
+
+            // 查找矩阵行
+            // Find matrix row
+            static const FString ContextString(TEXT("UtilityActionBase::CalculateScore"));
+            FEmotionMatrixRow* MatrixRow = UtilityController->EmotionMatrixTable->FindRow<FEmotionMatrixRow>(RowName, ContextString);
+            
+            if (MatrixRow)
+            {
+                // 获取特定 Activity 的乘数
+                // Get multiplier for specific Activity
+                EmotionMultiplier = MatrixRow->GetMultiplier(ActivityTag);
+                
+                FinalScore *= EmotionMultiplier;
+            }
+        }
+    }
+
+    // 6. 应用 LLM 意图奖励 / Apply LLM Intention Bonus
+    // ---------------------------------------------------------
+    // 如果 LLM 明确指示了该意图，给予巨大加成
+    // If LLM explicitly indicated this intention, give massive bonus
+    
+    float IntentionMultiplier = 1.0f;
+    if (MentalState && !IntentionTag.IsEmpty())
+    {
+        // 忽略大小写检查是否包含 (e.g. "Attack" matches "Prioritize Attack")
+        if (MentalState->Intention.Contains(IntentionTag, ESearchCase::IgnoreCase))
+        {
+            IntentionMultiplier = 3.0f; // 3x Score Boost
+            FinalScore *= IntentionMultiplier;
+        }
+    }
+
     // 🔍 调试：打印最终分数
     if (bLogDebug)
     {
-        UE_LOG(LogTemp, Warning, TEXT("    [%s] Final Score: BaseReward(%.2f) × MotivationSum(%.2f) × ContextProduct(%.2f) = %.3f"), 
-               *ActionName, BaseReward, MotivationSum, ContextProduct, FinalScore);
+        UE_LOG(LogTemp, Warning, TEXT("    [%s] Final Score: Base(%.2f) × Mot(%.2f) × Ctx(%.2f) × Emotion(%.2f) × Intention(%.2f) = %.3f"), 
+               *ActionName, BaseReward, MotivationSum, ContextProduct, EmotionMultiplier, IntentionMultiplier, FinalScore);
     }
 
     // 3. 惯性奖励 (Inertia / Momentum)
@@ -280,41 +332,29 @@ float UUtilityActionBase::GetConsiderationValue(EUtilityInputType InputType, UNP
     {
         // === 马斯洛需求层次 (使用 Target 值) ===
         // Maslow's Hierarchy (Use Target Values)
-        // 注意：枚举值是驼峰命名，但字段名可能有下划线
+        // 简化后的 6 个核心字段
         
         // ✅ 生理层 (Physiological) - ENGINE 独裁
-        // Hunger 和 Fatigue 由 MetabolismComponent 管理，直接从 State 读取，不用 Interpolator
-        // Hunger and Fatigue are managed by MetabolismComponent, read directly from State, not Interpolator
         case EUtilityInputType::Hunger:
-            // ✅ ENGINE 独裁：直接从 State 读取
             return State ? State->Hunger : 0.0f;
-        case EUtilityInputType::Energy:
-            // ✅ ENGINE 独裁：直接从 State 读取 (Fatigue)
+        case EUtilityInputType::Fatigue:
             return State ? State->Fatigue : 0.0f;
         
-        // 安全层 (Safety)
+        // ✅ 安全层 (Safety)
         case EUtilityInputType::PerceivedThreat:
             return Interpolator ? Interpolator->GetTargetValue(TEXT("Perceived_Threat")) : (State ? State->Perceived_Threat : 0.0f);
-        case EUtilityInputType::ResourceAnxiety:
-            return Interpolator ? Interpolator->GetTargetValue(TEXT("Resource_Anxiety")) : (State ? State->Resource_Anxiety : 0.0f);
         
-        // 社交层 (Love/Belonging)
+        // ✅ 社交层 (Belonging)
         case EUtilityInputType::Loneliness:
             return Interpolator ? Interpolator->GetTargetValue(TEXT("Loneliness")) : (State ? State->Loneliness : 0.0f);
-        case EUtilityInputType::Trust:
-            return Interpolator ? Interpolator->GetTargetValue(TEXT("Trust")) : (State ? State->Trust : 0.0f);
         
-        // 尊严层 (Esteem)
-        case EUtilityInputType::Anger:
-            return Interpolator ? Interpolator->GetTargetValue(TEXT("Anger")) : (State ? State->Anger : 0.0f);
-        case EUtilityInputType::SocialStatus:
-            return Interpolator ? Interpolator->GetTargetValue(TEXT("Social_Status")) : (State ? State->Social_Status : 0.0f);
+        // ✅ 尊严层 (Esteem)
+        case EUtilityInputType::Indignity:
+            return Interpolator ? Interpolator->GetTargetValue(TEXT("Indignity")) : (State ? State->Indignity : 0.0f);
         
-        // 自我实现层 (Self-Actualization)
-        case EUtilityInputType::DutyUrgency:
-            return Interpolator ? Interpolator->GetTargetValue(TEXT("Duty_Urgency")) : (State ? State->Duty_Urgency : 0.0f);
-        case EUtilityInputType::Curiosity:
-            return Interpolator ? Interpolator->GetTargetValue(TEXT("Curiosity")) : (State ? State->Curiosity : 0.0f);
+        // ✅ 自我实现层 (Self-Actualization)
+        case EUtilityInputType::Boredom:
+            return Interpolator ? Interpolator->GetTargetValue(TEXT("Boredom")) : (State ? State->Boredom : 0.0f);
 
         // --- 自身状态 (Self Status) ---
         case EUtilityInputType::SelfHealth:
@@ -527,17 +567,13 @@ FString UUtilityActionBase::GetVariableNameFromInputType(EUtilityInputType Input
     // Convert enum value to string for PersonalityComponent lookup
     switch (InputType)
     {
-        // 马斯洛需求层次 (Maslow's Hierarchy)
+        // 马斯洛需求层次 - 简化后的 6 个核心字段
         case EUtilityInputType::Hunger:            return TEXT("Hunger");
-        case EUtilityInputType::Energy:            return TEXT("Energy");
+        case EUtilityInputType::Fatigue:           return TEXT("Fatigue");
         case EUtilityInputType::PerceivedThreat:   return TEXT("Perceived_Threat");
-        case EUtilityInputType::ResourceAnxiety:   return TEXT("Resource_Anxiety");
         case EUtilityInputType::Loneliness:        return TEXT("Loneliness");
-        case EUtilityInputType::Trust:             return TEXT("Trust");
-        case EUtilityInputType::Anger:             return TEXT("Anger");
-        case EUtilityInputType::SocialStatus:      return TEXT("Social_Status");
-        case EUtilityInputType::DutyUrgency:       return TEXT("Duty_Urgency");
-        case EUtilityInputType::Curiosity:         return TEXT("Curiosity");
+        case EUtilityInputType::Indignity:         return TEXT("Indignity");
+        case EUtilityInputType::Boredom:           return TEXT("Boredom");
         
         // 环境变量 (Environment variables) - 使用默认权重 1.0
         case EUtilityInputType::SelfHealth:

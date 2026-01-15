@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "UObject/NoExportTypes.h"
 #include "UtilityAI/MentalStateFields.h"  // ✅ 引入字段配置
+#include "UtilityAI/EmotionTypes.h"        // ✅ 引入情绪枚举
 #include "UNPCMentalState.generated.h"
 
 // 前置声明：FMentalState 定义在 LLMCommunicator.h
@@ -38,6 +39,22 @@ public:
 	MENTAL_STATE_FIELDS(DECLARE_PROPERTY)
 	
 	#undef DECLARE_PROPERTY
+
+	// =========================================================
+	// Emotion State (Engine-Driven)
+	// 由 EmotionEvaluator 每帧计算
+	// =========================================================
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Emotion State")
+	EEmotionState CurrentEmotion = EEmotionState::Neutral;
+
+	// =========================================================
+	// Intention (LLM-Driven Strategy Bias)
+	// 由 CognitionComponent 从 LLM 获取
+	// =========================================================
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "LLM State")
+	FString Intention;
 	
 	// =========================================================
 	// 辅助函数

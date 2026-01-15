@@ -9,8 +9,7 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "UtilityAI/PersonalityConfig.h"
-#include "UtilityAI/MaslowWeights.h"
-#include "UtilityAI/PsychologyModel.h"
+#include "UtilityAI/EmotionEvaluator.h" // 引入 FMaslowWeights 和 UPsychologyModel 定义
 #include "PersonalityComponent.generated.h"
 
 /**

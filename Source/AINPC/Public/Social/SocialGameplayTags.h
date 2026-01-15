@@ -9,11 +9,16 @@
  */
 namespace AINPCTags
 {
-	// Activity
-	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Activity_Rest);
-	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Activity_Work);
-	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Activity_Eat);
+	// Activity - Core Categories for Emotion Matrix
+	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Activity_Rest);      // Sad/Tired -> Sleep, Sit, Idle
+	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Activity_Work);      // Neutral -> Patrol, Craft, Guard
+	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Activity_Eat);       // Hungry -> Eat, Drink
 	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Activity_Mundane);
+	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Activity_Combat);    // Angry -> Attack, Shoot, Chase
+	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Activity_Flee);      // Scared -> RunAway, Hide, Beg
+	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Activity_Social);    // Happy -> Chat, Greet, Trade
+	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Activity_Investigate); // Curious -> LookAt, Approach
+	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Activity_Avoid);     // Disgust -> Reject, WalkAway
 
 	// Social
 	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Social_Chat);
