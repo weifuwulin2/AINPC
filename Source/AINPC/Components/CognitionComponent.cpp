@@ -1,5 +1,6 @@
 #include "CognitionComponent.h"
 
+#include "UtilityAIComponent.h"
 #include "Controller/UtilityAIController.h"
 #include "Components/PersonalityComponent.h"
 #include "LLM/LLMCommunicator.h"
@@ -254,18 +255,23 @@ void UCognitionComponent::ProcessStimulus(FString SituationDescription)
 		"%s\n"
 		"Situation: %s\n"
 		"Memories: %s\n\n"
+		"IMPORTANT Instructions:\n"
+		"1. [DEFICIT MODEL] 'Boredom' and 'Loneliness' reflect unmet needs (GROW over time). 'Indignity' and 'Threat' are reactions (DECAY over time).\n"
+		"2. [STRATEGY] You MUST output an 'Intention' that overrides your fear if necessary, OR respects it.\n"
+		"3. [COWARDICE RULE] If you are a COWARD and Threat is 'Strong'/'Extreme', Intention MUST be 'Flee' or 'Beg', unless you are cornered.\n"
+		"4. [JURISDICTION] Do NOT output Hunger/Fatigue (Engine manages them).\n"
+		"5. [EMOTION STRICT] 'Emotion' MUST be EXACTLY one of: Neutral, Angry, Scared, Sad, Happy, Curious, Disgust. NO OTHER VALUES ALLOWED. If unsure, use 'Neutral'.\n"
+		"\n"
 		"Output valid JSON based on this TypeScript definition. ALL strings must be double-quoted.\n"
 		"type Tag = \"None\" | \"Slight\" | \"Moderate\" | \"Strong\" | \"Extreme\";\n"
 		"interface Response {\n"
-		"  Hunger: \"None\";\n"
-		"  Fatigue: \"None\";\n"
 		"  Perceived_Threat: Tag;\n"
-		"  Loneliness: Tag;\n"
-		"  Indignity: Tag;\n"
-		"  Boredom: Tag;\n"
-		"  Intention: \"Attack\" | \"Flee\" | \"Idle\" | \"Talk\";\n"
-		"  Emotion: \"Scared\" | \"Anxious\" | \"Sad\" | \"Suspicious\" | \"Happy\" | \"Angry\" | \"Proud\" | \"Curious\" | \"Determined\" | \"Confused\" | \"Excited\" | \"Neutral\";\n"
-		"  Speech: string; // approx 5 words, match personality\n"
+		"  Loneliness: Tag;     // Need for social contact\n"
+		"  Indignity: Tag;      // Reaction to insult/disrespect\n"
+		"  Boredom: Tag;        // Need for stimulation\n"
+		"  Intention: \"Attack\" | \"Flee\" | \"Idle\" | \"Talk\" | \"Investigate\" | \"Beg\" | \"Work\";\n"
+		"  Emotion: \"Neutral\" | \"Angry\" | \"Scared\" | \"Sad\" | \"Happy\" | \"Curious\" | \"Disgust\";\n"
+		"  Speech: string;      // approx 5 words, match personality\n"
 		"}\n"
 	), *RoleSection, *SituationDescription, *ContextMemory);
 	
@@ -306,6 +312,16 @@ void UCognitionComponent::OnLLMReply(bool bSuccess, const FMentalState& NewState
 			// 仍然广播事件，但现在是"目标值已设置"的通知
 			// Still broadcast event, but now it's a "target values set" notification
 			OnMentalStateChanged.Broadcast(NewState);
+
+			// ✅ 触发 Utility AI 的详细日志
+			// Trigger detailed Utility AI logging
+			if (AAIController* AIController = Cast<AAIController>(GetOwner()))
+			{
+				if (UUtilityAIComponent* UtilityComp = AIController->FindComponentByClass<UUtilityAIComponent>())
+				{
+					UtilityComp->RequestDebugLog();
+				}
+			}
 		}
 		else
 		{

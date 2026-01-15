@@ -20,10 +20,10 @@ Welcome to the AINPC Knowledge Base. This index serves as the central hub for al
 *   [**Utility Action Config**](guides/Utility_AI_Configuration_Guide.md) - How to create and tune Utility AI Actions.
 *   [**Personality Tables**](guides/PersonalityTable_Configuration_Guide.md) - Configuring DataTable assets for different NPC personalities.
 
-### 🐛 Debugging & Maintenance
-*   [**Bug Tracker**](BUG_TRACKER.md) - **(Active)** Track ongoing issues and resolutions.
-*   [**Bug Fix Patches**](guides/BugFixes_Patch.md) - Collection of known fixes and patches.
-*   [**Faction Loading Fix**](troubleshooting/Faction_Not_Loading_Fix.md) - Troubleshooting Faction initialization issues.
+### Troubleshooting
+*   [**Known Bugs List**](troubleshooting/Known_Bugs_List.md) - Active issues and investigation plans
+*   [**Bug Fixes Patch**](guides/BugFixes_Patch.md) - Guide for applying recent fixes
+*   [**Faction Not Loading**](troubleshooting/Faction_Not_Loading_Fix.md) - Troubleshooting Faction initialization issues.
 *   [**Dreaming System Test**](guides/Dreaming_Test_Guide.md) - Validating the memory consolidation system.
 *   [**Commit Log**](../GIT_COMMIT_MESSAGES.md) - History of git commit messages.
 *   [**Changelog**](../CHANGELOG.md) - Version history.

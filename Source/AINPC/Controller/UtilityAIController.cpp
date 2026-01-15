@@ -163,6 +163,19 @@ void AUtilityAIController::BeginPlay()
                    *UEnum::GetValueAsString(Faction));
         }
     }
+
+    // =========================================================
+    // 7. 验证 EmotionMatrixTable 配置
+    // Verify EmotionMatrixTable configuration
+    // =========================================================
+    if (EmotionMatrixTable)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[%s] ✅ EmotionMatrixTable VALID: %s"), *GetName(), *EmotionMatrixTable->GetName());
+    }
+    else
+    {
+        UE_LOG(LogTemp, Error, TEXT("[%s] ❌ EmotionMatrixTable is NULL! Please assign it in the Controller Blueprint."), *GetName());
+    }
 }
 
 // =========================================================
@@ -214,25 +227,58 @@ void AUtilityAIController::OnMindUpdated(const FMentalState& NewState)
         
         // 重新计算情绪状态
         // Recalculate Emotion State
-        if (PersonalityComp)
+        // 优先使用 LLM 返回的显式 emotion (如果不是 Neutral)
+        // Prioritize explicit emotion from LLM (if valid and not Neutral)
+        bool bUseLLMEmotion = false;
+        
+        // 解析 LLM 返回的 Emotion 字符串
+        // Parse Emotion string returned by LLM
+        FString LLMEmotionStr = NewState.Emotion;
+        if (!LLMEmotionStr.IsEmpty() && !LLMEmotionStr.Equals("Neutral", ESearchCase::IgnoreCase) && !LLMEmotionStr.Equals("None", ESearchCase::IgnoreCase))
+        {
+             // 尝试转换字符串为枚举
+             // Try to convert string to enum
+             // UE expects fully qualified name: "EEmotionState::Scared"
+             const UEnum* EmotionEnum = StaticEnum<EEmotionState>();
+             if (EmotionEnum)
+             {
+                 // Prepend enum scope - UE GetValueByName expects "EEmotionState::Scared" not just "Scared"
+                 FString FullEnumName = FString::Printf(TEXT("EEmotionState::%s"), *LLMEmotionStr);
+                 int64 EnumValue = EmotionEnum->GetValueByName(FName(*FullEnumName));
+                 if (EnumValue != INDEX_NONE)
+                 {
+                     CurrentEmotion = (EEmotionState)EnumValue;
+                     bUseLLMEmotion = true;
+                     UE_LOG(LogTemp, Warning, TEXT("[Controller] ⚡ Forced Emotion from LLM: %s"), *LLMEmotionStr);
+                 }
+                 else
+                 {
+                     UE_LOG(LogTemp, Warning, TEXT("[Controller] ⚠️ Failed to parse Emotion: '%s' (tried '%s')"), *LLMEmotionStr, *FullEnumName);
+                 }
+             }
+        }
+
+        // 如果 LLM 没有强制指定，则使用 EmotionEvaluator 基于数值计算
+        // If LLM didn't force emotion, calculate based on stats
+        if (!bUseLLMEmotion && PersonalityComp)
         {
             // 使用 EmotionEvaluator 计算当前情绪
             CurrentEmotion = UEmotionEvaluator::CalculateEmotion(MentalState, PersonalityComp->MaslowWeights);
-            
-            // 更新情绪显示
-            if (EmotionDisplayComp)
+        }
+
+        // 更新情绪显示
+        if (EmotionDisplayComp)
+        {
+            // 将枚举转换为字符串 (EEmotionState::Angry -> Angry)
+            FString EmotionStr = UEnum::GetValueAsString(CurrentEmotion);
+            FString CleanEmotionStr;
+            if (EmotionStr.Split(TEXT("::"), nullptr, &CleanEmotionStr))
             {
-                // 将枚举转换为字符串 (EEmotionState::Angry -> Angry)
-                FString EmotionStr = UEnum::GetValueAsString(CurrentEmotion);
-                FString CleanEmotionStr;
-                if (EmotionStr.Split(TEXT("::"), nullptr, &CleanEmotionStr))
-                {
-                    EmotionDisplayComp->ShowEmotion(CleanEmotionStr);
-                }
-                else
-                {
-                    EmotionDisplayComp->ShowEmotion(EmotionStr);
-                }
+                EmotionDisplayComp->ShowEmotion(CleanEmotionStr);
+            }
+            else
+            {
+                EmotionDisplayComp->ShowEmotion(EmotionStr);
             }
         }
         

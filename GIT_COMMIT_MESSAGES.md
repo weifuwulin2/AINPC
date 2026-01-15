@@ -4,6 +4,28 @@ This file contains a log of commit messages for the AINPC project.
 
 ---
 
+## [2026-01-15] Utility AI Pipeline Fixes & Death Event Handling
+**Type**: fix/feat
+**Scope**: EmotionEvaluator, UtilityActionBase, SensoryComponent, CognitionComponent
+
+**Description**:
+- **EmotionEvaluator**: Refactored from waterfall priority to utility scoring (`Score = Max(0, (Value - Threshold) * Weight)`)
+- **Intention Pipeline**: Fixed `Intention` field not being copied from LLM to MentalState
+- **Emotion Parsing**: Fixed LLM emotion parsing using fully qualified enum name
+- **Detailed Logging**: Added comprehensive score breakdown in `UtilityActionBase::CalculateScore`
+- **Death Perception**: Added `ClearFocus` when target dies, filter dead actors from perception
+- **LLM Prompt**: Added strict emotion validation rule
+
+**Files Changed**:
+- `Source/AINPC/Private/UtilityAI/EmotionEvaluator.cpp`
+- `Source/AINPC/Private/UtilityAI/UNPCMentalState.cpp`
+- `Source/AINPC/Private/Base/UtilityActionBase.cpp`
+- `Source/AINPC/Components/SensoryComponent.cpp`
+- `Source/AINPC/Components/CognitionComponent.cpp`
+- `Source/AINPC/Controller/UtilityAIController.cpp`
+
+---
+
 ## [2026-01-15] Hybrid V3 Architecture - Deficit Model & Emotion Matrix
 **Type**: feat/refactor
 **Scope**: Architecture, UtilityAI, Metabolism, Emotions

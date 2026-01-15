@@ -48,7 +48,11 @@ void UNPCMentalState::UpdateFromStruct(const FMentalState& NewState)
 	Indignity = FMath::Clamp(NewState.Indignity, 0.0f, 1.0f);            // 尊严层
 	Boredom = FMath::Clamp(NewState.Boredom, 0.0f, 1.0f);                // 自我实现层
 	
-	UE_LOG(LogTemp, Verbose, TEXT("[MentalState] Updated from struct (skipped Engine fields: Hunger, Fatigue)"));
+	// ✅ 复制 Intention (LLM 的策略建议)
+	// Copy Intention (LLM's strategic suggestion)
+	Intention = NewState.Intention;
+	
+	UE_LOG(LogTemp, Log, TEXT("[MentalState] Updated: Intention='%s'"), *Intention);
 }
 
 FMentalState UNPCMentalState::ToStruct() const

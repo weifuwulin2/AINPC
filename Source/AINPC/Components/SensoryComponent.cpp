@@ -209,6 +209,32 @@ void USensoryComponent::HandleTargetPerceived(AActor* Actor, FAIStimulus Stimulu
 
     if (Stimulus.WasSuccessfullySensed())
     {
+        // ✅ 死亡检查：如果目标已死亡（布娃娃或有Dead标签），立即清除Focus并忽略
+        // Death Check: If target is dead (ragdoll or has Dead tag), clear Focus and ignore
+        bool bIsDead = Actor->ActorHasTag(TEXT("Dead"));
+        if (ACharacter* Char = Cast<ACharacter>(Actor))
+        {
+            if (Char->GetMesh() && Char->GetMesh()->IsSimulatingPhysics())
+            {
+                bIsDead = true;
+            }
+        }
+        
+        if (bIsDead)
+        {
+            // 如果我们正在攻击这个死掉的目标，清除 Focus
+            // If we were attacking this dead target, clear Focus
+            if (AAIController* AIController = Cast<AAIController>(GetOwner()))
+            {
+                if (AIController->GetFocusActor() == Actor)
+                {
+                    AIController->ClearFocus(EAIFocusPriority::Gameplay);
+                    UE_LOG(LogTemp, Warning, TEXT("[Sensory] ⚰️ Target %s is dead! Cleared FocusActor."), *Actor->GetName());
+                }
+            }
+            return; // 忽略死亡目标的感知
+        }
+
         // ✅ 注意力过滤：检查是否应该感知这个目标
         // Attention Filter: Check if we should perceive this target
         if (!ShouldPerceiveTarget(Actor))
@@ -476,7 +502,18 @@ void USensoryComponent::HandleDeath(AActor* DeadActor, AActor* Killer)
             Killer ? *FString::Printf(TEXT(" (killed by %s)"), *Killer->GetName()) : TEXT(""));
         Magnitude = 0.7f; // 高重要性
         
-        UE_LOG(LogTemp, Log, TEXT("[Sensory] WITNESSED DEATH: %s"), *Desc);
+        UE_LOG(LogTemp, Warning, TEXT("[Sensory] WITNESSED DEATH: %s"), *Desc);
+        
+        // ✅ 如果死者是我们的攻击目标，立即清除 Focus
+        // If the dead actor was our attack target, clear Focus immediately
+        if (AAIController* AIController = Cast<AAIController>(Owner))
+        {
+            if (AIController->GetFocusActor() == DeadActor)
+            {
+                AIController->ClearFocus(EAIFocusPriority::Gameplay);
+                UE_LOG(LogTemp, Warning, TEXT("[Sensory] ⚰️ Target %s is dead! Cleared FocusActor."), *DeadActor->GetName());
+            }
+        }
     }
 
     // ✅ 过滤器: 使用与视觉相同的过滤机制

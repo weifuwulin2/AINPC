@@ -74,49 +74,84 @@ EEmotionState UEmotionEvaluator::CalculateEmotion(const UNPCMentalState* MentalS
 	float LonelinessHighThreshold = FMath::Clamp(BaseLonelinessHigh / FMath::Max(0.5f, Weights.Belonging), 0.3f, 1.0f);
 	float LonelinessLowThreshold = FMath::Clamp(BaseLonelinessLow * Weights.Belonging, 0.05f, 0.5f);
 
-	// ========== 优先级 1: Safety (Survival) ==========
-	if (MentalState->Perceived_Threat > ScaredThreshold)
+	// Helper lambda for score calculation (Winner Takes All)
+	// 辅助Lambda：分数计算 (赢家通吃)
+	// Formula: Score = (Value - AdjustedThreshold) * Weight
+	// 只有当 Value > Threshold 时才有分 (Score > 0)，否则为 0
+	auto GetScore = [](float Value, float Threshold, float Weight) -> float
 	{
-		return EEmotionState::Scared;
+		return FMath::Max(0.0f, (Value - Threshold) * Weight);
+	};
+
+	float MaxScore = 0.0f;
+	EEmotionState BestEmotion = EEmotionState::Neutral;
+
+	// ========== 1. Safety (Survival) -> Scared ==========
+	float ScaredScore = GetScore(MentalState->Perceived_Threat, ScaredThreshold, Weights.Safety);
+	if (ScaredScore > MaxScore)
+	{
+		MaxScore = ScaredScore;
+		BestEmotion = EEmotionState::Scared;
 	}
 
-	// ========== 优先级 2: Physiological (Body) ==========
-	if (MentalState->Hunger > HungerThreshold)
+	// ========== 2. Physiological (Body) -> Angry / Sad ==========
+	// Hunger -> Angry
+	float HungerScore = GetScore(MentalState->Hunger, HungerThreshold, Weights.Physiological);
+	if (HungerScore > MaxScore)
 	{
-		return EEmotionState::Angry;
-	}
-	if (MentalState->Fatigue > FatigueThreshold)
-	{
-		return EEmotionState::Sad;
-	}
-
-	// ========== 优先级 3: Esteem (Ego) ==========
-	// 被侮辱/挑衅 -> 愤怒
-	// 高神经质/低宜人性 = 更容易愤怒
-	if (MentalState->Indignity > IndignityThreshold)
-	{
-		return EEmotionState::Angry;
+		MaxScore = HungerScore;
+		BestEmotion = EEmotionState::Angry;
 	}
 
-	// ========== 优先级 4: Self-Actualization ==========
-	// 好奇心爆棚/无聊 -> 探索欲
-	if (MentalState->Boredom > BoredomThreshold)
+	// Fatigue -> Sad
+	float FatigueScore = GetScore(MentalState->Fatigue, FatigueThreshold, Weights.Physiological);
+	if (FatigueScore > MaxScore)
 	{
-		return EEmotionState::Curious;
+		MaxScore = FatigueScore;
+		BestEmotion = EEmotionState::Sad;
 	}
 
-	// ========== 优先级 5: Belonging (Social) ==========
+	// ========== 3. Esteem (Ego) -> Angry ==========
+	// Indignity -> Angry
+	float IndignityScore = GetScore(MentalState->Indignity, IndignityThreshold, Weights.Esteem);
+	if (IndignityScore > MaxScore)
+	{
+		MaxScore = IndignityScore;
+		BestEmotion = EEmotionState::Angry;
+	}
+
+	// ========== 4. Self-Actualization -> Curious ==========
+	// Boredom -> Curious
+	float BoredomScore = GetScore(MentalState->Boredom, BoredomThreshold, Weights.SelfActualization);
+	if (BoredomScore > MaxScore)
+	{
+		MaxScore = BoredomScore;
+		BestEmotion = EEmotionState::Curious;
+	}
+
+	// ========== 5. Belonging (Social) -> Happy / Sad ==========
+	// Loneliness High -> Sad
+	float LonelinessHighScore = GetScore(MentalState->Loneliness, LonelinessHighThreshold, Weights.Belonging);
+	if (LonelinessHighScore > MaxScore)
+	{
+		MaxScore = LonelinessHighScore;
+		BestEmotion = EEmotionState::Sad;
+	}
+
+	// Loneliness Low -> Happy (Inverted Logic)
+	// 越孤独越不开心，越不孤独(Value < Threshold)越开心
+	// Score = (Threshold - Value) * Weight
 	if (MentalState->Loneliness < LonelinessLowThreshold)
 	{
-		return EEmotionState::Happy;
-	}
-	if (MentalState->Loneliness > LonelinessHighThreshold)
-	{
-		return EEmotionState::Sad;
+		float HappyScore = (LonelinessLowThreshold - MentalState->Loneliness) * Weights.Belonging;
+		if (HappyScore > MaxScore)
+		{
+			MaxScore = HappyScore;
+			BestEmotion = EEmotionState::Happy;
+		}
 	}
 
-	// ========== 默认: Neutral ==========
-	return EEmotionState::Neutral;
+	return BestEmotion;
 }
 
 

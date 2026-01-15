@@ -246,6 +246,19 @@ void ULLMCommunicator::OnResponseReceived(FHttpRequestPtr Request, FHttpResponse
                 ResultState.Emotion = TEXT("Neutral");
                 UE_LOG(LogTemp, Warning, TEXT("  [Emotion] Not provided by LLM, defaulting to 'Neutral'"));
             }
+
+            // 提取 Intention 字段 (字符串类型) - [CRITICAL] Added for V3 Architecture
+            // Extract Intention field (string type)
+            if (InnerJsonObject->HasField(TEXT("Intention")))
+            {
+                ResultState.Intention = InnerJsonObject->GetStringField(TEXT("Intention"));
+                UE_LOG(LogTemp, Log, TEXT("  [Intention] %s"), *ResultState.Intention);
+            }
+            else
+            {
+                ResultState.Intention = TEXT("Idle"); 
+                UE_LOG(LogTemp, Verbose, TEXT("  [Intention] Not provided by LLM, defaulting to 'Idle'"));
+            }
             
             // 提取 Speech 字段 (字符串类型)
             // Extract Speech field (string type)

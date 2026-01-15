@@ -213,81 +213,100 @@ float UUtilityActionBase::CalculateScore(UNPCMentalState* MentalState, AAIContro
             {
                 if (bLogDebug)
                 {
-                    UE_LOG(LogTemp, Warning, TEXT("      ⚠️ Context became 0! Action is impossible."));
+                    UE_LOG(LogTemp, Error, TEXT("      ⛔ ABORTING: Context '%s' is 0! Final Score = 0.0"), 
+                           *GetVariableNameFromInputType(Factor.InputType));
                 }
                 return 0.0f;
             }
         }
     }
 
-    // 4. 最终得分计算 / Final Score Calculation
-    // 公式 / Formula:
-    // Score = BaseReward × (Σ Motivations) × (∏ Contexts)
-    //       = 动作奖励 × 动机总和 × 必要条件乘积
-    //       = ActionReward × MentalState × Personality × Contexts
-    //
-    // 例如 / Example:
-    // Eat 动作: BaseReward=3.0 (吃饭很管饱)
-    //   Motivation: Hunger(0.8) × HungerWeight(1.2) = 0.96
-    //   Context: HasFood(1.0)
-    //   Score = 3.0 × 0.96 × 1.0 = 2.88
-    float FinalScore = BaseReward * MotivationSum * ContextProduct;
-
-    // 5. 应用情绪矩阵乘数 / Apply Emotion Matrix Multiplier
+    // 4. 计算 LLM 意图加成 (Intention Bonus) - [CHANGED to Additive]
     // ---------------------------------------------------------
-    // 根据当前情绪和动作类型（ActivityTag）调整分数
-    // Adjust score based on current emotion and action type
+    // 将意图作为一种"额外的动机" (Extra Motivation)，而不是最终乘数。
+    // Treat Intention as "Extra Motivation" that is added, not multiplied.
+    // 这样做的优点：
+    // 1. Agency: 即使 MotivationSum 为 0 (不饿/不怒)，LLM 也能无中生有驱动行为 ((0 + 1) * Context > 0)。
+    // 2. Safety: 仍然受 Context 制约。如果 Context 为 0 (没子弹)，(Mot + 1) * 0 还是 0。
+    
+    float IntentionBonus = 0.0f;
+    if (MentalState && !IntentionTag.IsEmpty())
+    {
+        if (MentalState->Intention.Contains(IntentionTag, ESearchCase::IgnoreCase))
+        {
+            IntentionBonus = 1.0f; // Additive Bonus as requested
+            
+            // ✅ 调试：显示意图匹配 (Debug: Show Intention Match)
+            if (bLogDebug)
+            {
+                UE_LOG(LogTemp, Warning, TEXT("      [Intention] 🧠 LLM MATCH! ActionTag:'%s' matches MentalState:'%s'. Bonus:+1.0"), 
+                       *IntentionTag, *MentalState->Intention);
+            }
+        }
+    }
+
+    // 5. 最终得分计算 / Final Score Calculation
+    // 公式 / Formula:
+    // Score = BaseReward × (MotivationSum + IntentionBonus) × ContextProduct
+    float EffectiveMotivation = MotivationSum + IntentionBonus;
+    float FinalScore = BaseReward * EffectiveMotivation * ContextProduct;
+
+    // 6. 应用情绪矩阵乘数 / Apply Emotion Matrix Multiplier
+    // ---------------------------------------------------------
     
     float EmotionMultiplier = 1.0f;
+    FString EmotionLogInfo = TEXT("None (1.0)");
     
     if (AUtilityAIController* UtilityController = Cast<AUtilityAIController>(Controller))
     {
+        // 🔍 诊断日志: 检查 EmotionMatrixTable 是否存在
+        if (bLogDebug)
+        {
+            UE_LOG(LogTemp, Log, TEXT("      [Emotion Debug] Controller=%s, EmotionMatrixTable=%s, CurrentEmotion=%s, ActivityTag=%s"),
+                   *UtilityController->GetName(),
+                   UtilityController->EmotionMatrixTable ? TEXT("VALID") : TEXT("NULL"),
+                   *UEnum::GetValueAsString(UtilityController->CurrentEmotion),
+                   *ActivityTag.ToString());
+        }
+        
         if (UtilityController->EmotionMatrixTable)
         {
             // 获取当前情绪名 (e.g., "Angry", "Scared")
-            // Get current emotion name
             FString EmotionName = UEnum::GetValueAsString(UtilityController->CurrentEmotion);
             FString CleanEmotionName;
             EmotionName.Split(TEXT("::"), nullptr, &CleanEmotionName);
             FName RowName = FName(*CleanEmotionName);
 
             // 查找矩阵行
-            // Find matrix row
             static const FString ContextString(TEXT("UtilityActionBase::CalculateScore"));
             FEmotionMatrixRow* MatrixRow = UtilityController->EmotionMatrixTable->FindRow<FEmotionMatrixRow>(RowName, ContextString);
             
             if (MatrixRow)
             {
                 // 获取特定 Activity 的乘数
-                // Get multiplier for specific Activity
                 EmotionMultiplier = MatrixRow->GetMultiplier(ActivityTag);
-                
                 FinalScore *= EmotionMultiplier;
+                
+                if (bLogDebug && FMath::Abs(EmotionMultiplier - 1.0f) > KINDA_SMALL_NUMBER)
+                {
+                    EmotionLogInfo = FString::Printf(TEXT("%s->%s (x%.2f)"), *CleanEmotionName, *ActivityTag.ToString(), EmotionMultiplier);
+                    UE_LOG(LogTemp, Warning, TEXT("      [Emotion] 🎭 Multiplier Applied: %s"), *EmotionLogInfo);
+                }
             }
         }
     }
 
-    // 6. 应用 LLM 意图奖励 / Apply LLM Intention Bonus
-    // ---------------------------------------------------------
-    // 如果 LLM 明确指示了该意图，给予巨大加成
-    // If LLM explicitly indicated this intention, give massive bonus
-    
-    float IntentionMultiplier = 1.0f;
-    if (MentalState && !IntentionTag.IsEmpty())
-    {
-        // 忽略大小写检查是否包含 (e.g. "Attack" matches "Prioritize Attack")
-        if (MentalState->Intention.Contains(IntentionTag, ESearchCase::IgnoreCase))
-        {
-            IntentionMultiplier = 3.0f; // 3x Score Boost
-            FinalScore *= IntentionMultiplier;
-        }
-    }
-
-    // 🔍 调试：打印最终分数
+    // 🔍 调试：打印最终分数详情
     if (bLogDebug)
     {
-        UE_LOG(LogTemp, Warning, TEXT("    [%s] Final Score: Base(%.2f) × Mot(%.2f) × Ctx(%.2f) × Emotion(%.2f) × Intention(%.2f) = %.3f"), 
-               *ActionName, BaseReward, MotivationSum, ContextProduct, EmotionMultiplier, IntentionMultiplier, FinalScore);
+        UE_LOG(LogTemp, Warning, TEXT("    [%s] 📊 Calculation Summary:"), *ActionName);
+        UE_LOG(LogTemp, Log, TEXT("      • Base Reward: %.2f"), BaseReward);
+        UE_LOG(LogTemp, Log, TEXT("      • Motivation Sum: %.2f (Sum of inputs * weights)"), MotivationSum);
+        UE_LOG(LogTemp, Log, TEXT("      • Intention Bonus: %.2f %s"), IntentionBonus, IntentionBonus > 0 ? TEXT("(✅ APPLIED)") : TEXT(""));
+        UE_LOG(LogTemp, Log, TEXT("      • Context Product: %.2f (Multiplier)"), ContextProduct);
+        UE_LOG(LogTemp, Log, TEXT("      • Emotion Multiplier: %.2f (%s)"), EmotionMultiplier, *EmotionLogInfo);
+        UE_LOG(LogTemp, Warning, TEXT("      👉 FINAL SCORE = %.2f * (%.2f + %.2f) * %.2f * %.2f = %.3f"), 
+               BaseReward, MotivationSum, IntentionBonus, ContextProduct, EmotionMultiplier, FinalScore);
     }
 
     // 3. 惯性奖励 (Inertia / Momentum)

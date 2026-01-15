@@ -9,6 +9,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.5.1] - 2026-01-15
+
+### 🔧 Utility AI Fixes & Enhancements
+
+#### Emotion Evaluator Refactored
+- **Algorithm Change**: Switched from "Waterfall Priority" to "Utility Scoring (Winner Takes All)"
+  - New formula: `Score = Max(0, (Value - Threshold) * Weight)`
+  - Highest urgency emotion now wins, preventing low-priority emotions from masking critical ones
+
+#### Intention/Emotion Pipeline Fixed
+- **Intention Transfer**: Fixed `UNPCMentalState::UpdateFromStruct()` to copy `Intention` from LLM
+- **Emotion Parsing**: Fixed LLM emotion parsing to use fully qualified enum name (`EEmotionState::Scared`)
+- **LLM Priority**: Controller now prioritizes LLM's explicit emotion over calculated values
+
+#### Detailed Utility Logging
+- **Score Breakdown**: Added comprehensive logging for action score calculation
+  - Motivation Sum, Intention Bonus, Context Product, Emotion Multiplier
+  - Final formula: `FINAL SCORE = Base * (Mot + Intent) * Ctx * Emo`
+- **Abort Logging**: Clear error log when Context = 0 aborts calculation
+
+#### Death Event Perception
+- **FocusActor Clearing**: When an actor dies, the perception system now clears `FocusActor` if it was targeting the dead actor
+- **Dead Actor Filter**: `HandleTargetPerceived` now ignores actors with `Dead` tag or in ragdoll state
+
+#### LLM Prompt Improvements
+- **Strict Emotion**: Added explicit rule limiting Emotion output to 7 valid values only
+
+### 🐛 Bug Fixes
+- Fixed `EmotionMatrixTable` not being read due to timing issues (added BeginPlay diagnostic)
+- Fixed duplicate death event logs (cooldown filter applied)
+
 ---
 
 ## [0.5.0] - 2026-01-15
