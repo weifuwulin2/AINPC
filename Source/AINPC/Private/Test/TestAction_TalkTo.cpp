@@ -93,20 +93,41 @@ void UTestAction_TalkTo::Execute_Implementation(AAIController* Controller)
 		{
 			LastChatTime = CurrentTime;
 			
+			// ✅ 随机对话内容 (Random dialogue for variety)
+			TArray<FString> DialoguePool = {
+				TEXT("Nice weather today, isn't it?"),
+				TEXT("How are you doing?"),
+				TEXT("Good to see you!"),
+				TEXT("What brings you here?"),
+				TEXT("Any news lately?"),
+				TEXT("Everything alright?")
+			};
+			
+			int32 RandomIndex = FMath::RandRange(0, DialoguePool.Num() - 1);
+			FString RandomDialogue = DialoguePool[RandomIndex];
+			
 			// 触发聊天事件
-			// 注意：这里我们简单打印日志，或者调用 Controller 的接口
-			UE_LOG(LogTemp, Warning, TEXT("[TalkTo] Chatting with %s: 'Hello my friend!'"), *CurrentTarget->GetName());
+			UE_LOG(LogTemp, Warning, TEXT("[TalkTo] Chatting with %s: '%s'"), *CurrentTarget->GetName(), *RandomDialogue);
 
 			// 尝试调用 UtilityAIController 的 ReceiveSpeech (模拟说话)
 			if (AUtilityAIController* UAICon = Cast<AUtilityAIController>(Controller))
 			{
-                // 发送一个 Semantic Event 表示由于聊天产生的互动
-                // 这里我们模拟"听到"自己说话，或者直接让 EmotionDisplay 显示气泡
-                // 暂时用 Log 代替
                 if (UAICon->SensoryComp)
                 {
                     // 让自己发出声音 (Instigator 是自己)
-                    UAICon->SensoryComp->ReceiveSpeech(ControlledPawn, TEXT("Nice weather today, isn't it?"));
+                    UAICon->SensoryComp->ReceiveSpeech(ControlledPawn, RandomDialogue);
+                }
+                
+                // ✅ 降低孤独感，这样动作最终会结束
+                // Decrease Loneliness so the action eventually ends naturally
+                if (UAICon->MentalState)
+                {
+                    float OldLoneliness = UAICon->MentalState->Loneliness;
+                    UAICon->MentalState->Loneliness = FMath::Max(0.0f, UAICon->MentalState->Loneliness - 0.1f);
+                    // Also decrease Boredom a bit
+                    UAICon->MentalState->Boredom = FMath::Max(0.0f, UAICon->MentalState->Boredom - 0.05f);
+                    
+                    UE_LOG(LogTemp, Log, TEXT("[TalkTo] Socializing... Loneliness: %.2f -> %.2f"), OldLoneliness, UAICon->MentalState->Loneliness);
                 }
 			}
 		}

@@ -7,6 +7,7 @@
 #include "Components/PersonalityComponent.h"
 #include "Components/EmotionDisplayComponent.h"
 #include "Components/MetabolismComponent.h"
+#include "Components/GoalComponent.h"
 #include "UtilityAI/UNPCMentalState.h" 
 #include "UtilityAI/EmotionEvaluator.h" // Add this 
 
@@ -29,6 +30,7 @@ AUtilityAIController::AUtilityAIController()
     PersonalityComp = CreateDefaultSubobject<UPersonalityComponent>(TEXT("PersonalityComponent"));
     EmotionDisplayComp = CreateDefaultSubobject<UEmotionDisplayComponent>(TEXT("EmotionDisplayComponent"));
     MetabolismComp = CreateDefaultSubobject<UMetabolismComponent>(TEXT("MetabolismComponent"));
+    GoalComp = CreateDefaultSubobject<UGoalComponent>(TEXT("GoalComponent"));
 
     // =========================================================
     // 2. 创建并配置感知组件 (Perception)
@@ -249,7 +251,16 @@ void AUtilityAIController::OnMindUpdated(const FMentalState& NewState)
                  {
                      CurrentEmotion = (EEmotionState)EnumValue;
                      bUseLLMEmotion = true;
-                     UE_LOG(LogTemp, Warning, TEXT("[Controller] ⚡ Forced Emotion from LLM: %s"), *LLMEmotionStr);
+                     
+                     // ✅ 设置 CurrentEmotionScore 用于衰减
+                     // Set CurrentEmotionScore for decay system
+                     if (MentalState)
+                     {
+                         MentalState->CurrentEmotionScore = 1.0f;
+                         MentalState->CurrentEmotion = CurrentEmotion;
+                     }
+                     
+                     UE_LOG(LogTemp, Warning, TEXT("[Controller] ⚡ Forced Emotion from LLM: %s (Score: 1.0)"), *LLMEmotionStr);
                  }
                  else
                  {
@@ -265,6 +276,9 @@ void AUtilityAIController::OnMindUpdated(const FMentalState& NewState)
             // 使用 EmotionEvaluator 计算当前情绪
             CurrentEmotion = UEmotionEvaluator::CalculateEmotion(MentalState, PersonalityComp->MaslowWeights);
         }
+        
+        // ✅ Store the emotion in MentalState for persistence
+        MentalState->CurrentEmotion = CurrentEmotion;
 
         // 更新情绪显示
         if (EmotionDisplayComp)

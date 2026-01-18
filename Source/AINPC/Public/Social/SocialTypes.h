@@ -63,7 +63,7 @@ struct AINPC_API FSmartObjectSemantics
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Social")
 	FString DescriptionTemplate;
 
-	// The social meaning tag (e.g., Activity.Rest)
+	// The social meaning tag (e.g., Interaction.Rest)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Social")
 	FGameplayTag SocialTag;
 

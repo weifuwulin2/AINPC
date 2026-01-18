@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "MemoryComponent.h"
 #include "Components/ActorComponent.h"
+#include "AI/ContextLODTypes.h"
 #include "CognitionComponent.generated.h"
 
 class ULLMCommunicator;
@@ -27,6 +28,13 @@ public:
 
 	// --- 外部接口 ---
     
+	// Set Context LOD (Called by GoalComponent)
+	UFUNCTION(BlueprintCallable, Category = "AI | Cognition")
+	void SetLOD(EContextLOD NewLOD);
+
+	UFUNCTION(BlueprintPure, Category = "AI | Cognition")
+	EContextLOD GetCurrentLOD() const { return CurrentLOD; }
+
 	// 唯一的输入口：接收外界刺激（"我看见了僵尸"）
 	UFUNCTION(BlueprintCallable, Category = "AI | Cognition")
 	void ProcessStimulus(FString SituationDescription);
@@ -57,8 +65,10 @@ public:
 	UPROPERTY()
 	UMentalStateInterpolator* Interpolator;
 
-	
 protected:
+	UPROPERTY(VisibleAnywhere, Category = "AI | Cognition")
+	EContextLOD CurrentLOD = EContextLOD::Standard;
+
 	// 内部持有的 LLM 服务
 	UPROPERTY()
 	ULLMCommunicator* LLMService;

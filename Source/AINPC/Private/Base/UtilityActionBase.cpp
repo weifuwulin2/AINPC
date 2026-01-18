@@ -5,6 +5,7 @@
 #include "Controller/UtilityAIController.h"
 #include "Components/CognitionComponent.h"
 #include "Components/SensoryComponent.h"
+#include "Components/GoalComponent.h"
 #include "EngineUtils.h"
 #include "UtilityAI/MentalStateInterpolation.h"
 #include "Social/SocialGameplayTags.h"
@@ -27,6 +28,7 @@ void UUtilityActionBase::InitFromConfig(const FUtilityActionConfig& Config)
     SmartObjectTag = Config.SmartObjectTag;
     ActivityTag = Config.ActivityTag; // 用于 Emotion Matrix 查表
     IntentionTag = Config.IntentionTag; // 用于 LLM Intention 匹配
+	DirectiveTag = Config.DirectiveTag; // 用于 Goal Directive 匹配
 
     if (ActionName.Equals("BaseAction") || ActionName.IsEmpty())
     {
@@ -52,19 +54,11 @@ float UUtilityActionBase::CalculateScore(UNPCMentalState* MentalState, AAIContro
     // TODO: 如果需要死亡检查，应该使用专门的死亡标记或动画标签
     // TODO: If death check is needed, use specific death flag or animation tags
 
-    // ✅ 持续时长检查：如果是 Action_SmartObject 且持续时长已到期，得分为 0
-    // Duration Check: If Action_SmartObject and duration expired, score is 0
-    if (UAction_SmartObject* SmartObjectAction = Cast<UAction_SmartObject>(this))
-    {
-        if (SmartObjectAction->ShouldExit(Controller))
-        {
-            if (bLogDebug)
-            {
-                UE_LOG(LogTemp, Warning, TEXT("    [%s] ⏱️ Duration expired, forcing score to 0"), *ActionName);
-            }
-            return 0.0f;
-        }
-    }
+    // ❌ 移除了错误的 Duration 检查
+    // ❌ Removed broken Duration check
+    // ShouldExit 返回 true 的意思是"允许切换"，不是"这个动作不能被选择"
+    // ShouldExit returning true means "allow switching", NOT "disable this action"
+    // 这个检查会导致 SmartObject 动作永远得分 0，因为非活动动作的 ShouldExit 总是返回 true
     
     // ✅ 如果没有 Considerations，直接返回 BaseReward
     if (Considerations.Num() == 0) 
@@ -230,17 +224,29 @@ float UUtilityActionBase::CalculateScore(UNPCMentalState* MentalState, AAIContro
     // 2. Safety: 仍然受 Context 制约。如果 Context 为 0 (没子弹)，(Mot + 1) * 0 还是 0。
     
     float IntentionBonus = 0.0f;
-    if (MentalState && !IntentionTag.IsEmpty())
+    if (MentalState && IntentionTag.IsValid())
     {
-        if (MentalState->Intention.Contains(IntentionTag, ESearchCase::IgnoreCase))
+        // 构造预期 Tag 名：Intention.<String>
+        // Construct expected Tag Name: Intention.<String>
+        FString CurrentIntention = MentalState->Intention;
+        if (!CurrentIntention.IsEmpty())
         {
-            IntentionBonus = 1.0f; // Additive Bonus as requested
+            // 例如：LLM 输出 "Attack" => "Intention.Attack"
+            FString TagNameToCheck = TEXT("Intention.") + CurrentIntention;
             
-            // ✅ 调试：显示意图匹配 (Debug: Show Intention Match)
-            if (bLogDebug)
+            // 简单字符串匹配：检查配置的 Tag 是否与构造的 Tag 名字匹配
+            // Simple string check: Check if configured Tag matches constructed Tag Name
+            // (Using ToString() is safer than RequestGameplayTag for non-existent tags)
+            if (IntentionTag.ToString().Equals(TagNameToCheck, ESearchCase::IgnoreCase))
             {
-                UE_LOG(LogTemp, Warning, TEXT("      [Intention] 🧠 LLM MATCH! ActionTag:'%s' matches MentalState:'%s'. Bonus:+1.0"), 
-                       *IntentionTag, *MentalState->Intention);
+                IntentionBonus = 1.0f; // Additive Bonus
+            
+                // ✅ 调试：显示意图匹配
+                if (bLogDebug)
+                {
+                    UE_LOG(LogTemp, Warning, TEXT("      [Intention] 🧠 LLM MATCH! ActionTag:'%s' matches MentalState:'%s' (via %s). Bonus:+1.0"), 
+                           *IntentionTag.ToString(), *MentalState->Intention, *TagNameToCheck);
+                }
             }
         }
     }
@@ -555,7 +561,7 @@ float UUtilityActionBase::GetConsiderationValue(EUtilityInputType InputType, UNP
         {
             if (USensoryComponent* Sensory = Controller->FindComponentByClass<USensoryComponent>())
             {
-                AActor* Food = Sensory->FindBestSmartObject(AINPCTags::Activity_Eat);
+                AActor* Food = Sensory->FindBestSmartObject(AINPCTags::Interaction_Eat);
                 return Food ? 1.0f : 0.0f;
             }
             return 0.0f;
@@ -566,14 +572,37 @@ float UUtilityActionBase::GetConsiderationValue(EUtilityInputType InputType, UNP
         {
             if (USensoryComponent* Sensory = Controller->FindComponentByClass<USensoryComponent>())
             {
-                 // 使用 AINPCTags::Activity_Rest
-                if (Sensory->FindBestSmartObject(AINPCTags::Activity_Rest))
+                 // 使用 AINPCTags::Interaction_Rest
+                if (Sensory->FindBestSmartObject(AINPCTags::Interaction_Rest))
                 {
                     return 1.0f;
                 }
             }
             return 0.0f;
         }
+
+		// ✅ 新增：检查 Goal Component 指令是否匹配
+		case EUtilityInputType::GoalDirectiveMatch:
+		{
+			// 必须要有 GoalComponent
+			if (BotPawn)
+			{
+				if (UGoalComponent* GoalComp = BotPawn->FindComponentByClass<UGoalComponent>())
+				{
+					// 如果当前动作没有设置需要的 DirectiveTag，默认通过 (1.0) 还是不通过？
+					// 既然选了这个 InputType，就说明它需要匹配。
+					// If Action.DirectiveTag matches Goal.CurrentDirective -> 1.0f
+					// If Goal.CurrentDirective is None -> ? 
+					
+					FGameplayTag CurrentDirective = GoalComp->GetCurrentDirective();
+					if (CurrentDirective.MatchesTag(DirectiveTag))
+					{
+						return 1.0f;
+					}
+				}
+			}
+			return 0.0f;
+		}
 
         default:
             return 0.0f;
@@ -606,6 +635,7 @@ FString UUtilityActionBase::GetVariableNameFromInputType(EUtilityInputType Input
         case EUtilityInputType::HasFriendlyNearby:
         case EUtilityInputType::HasFoodNearby:
         case EUtilityInputType::HasBedNearby:
+		case EUtilityInputType::GoalDirectiveMatch:
             return TEXT("Environment");  // 环境变量不需要性格权重
         
         default:

@@ -1,0 +1,389 @@
+[
+    {
+        "Name": "Farmer",
+        "ProfessionName": "NSLOCTEXT(\"profession [D95C75018698D2C7F6FACDEA1FF7631F]\", \"Farmer_ProfessionName\", \"Farmer\")",
+        "Description": "You are a farmer. You tend to your crops and ensure the harvest is bountiful.",
+        "Schedule": [
+            {
+                "StartTime": 6,
+                "TaskTag": {
+                    "TagName": "Directive.Work"
+                },
+                "ActivityTag": {
+                    "TagName": "Interaction.Work.Farm"
+                }
+            },
+            {
+                "StartTime": 12,
+                "TaskTag": {
+                    "TagName": "Directive.Survival"
+                },
+                "ActivityTag": {
+                    "TagName": "Interaction.Eat"
+                }
+            },
+            {
+                "StartTime": 13,
+                "TaskTag": {
+                    "TagName": "Directive.Work"
+                },
+                "ActivityTag": {
+                    "TagName": "Interaction.Work.Farm"
+                }
+            },
+            {
+                "StartTime": 18,
+                "TaskTag": {
+                    "TagName": "Directive.Social"
+                },
+                "ActivityTag": {
+                    "TagName": "Interaction.Social"
+                }
+            },
+            {
+                "StartTime": 21,
+                "TaskTag": {
+                    "TagName": "Directive.Rest"
+                },
+                "ActivityTag": {
+                    "TagName": "Interaction.Rest"
+                }
+            }
+        ]
+    },
+    {
+        "Name": "Miner",
+        "ProfessionName": "NSLOCTEXT(\"profession [D95C75018698D2C7F6FACDEA1FF7631F]\", \"Miner_ProfessionName\", \"Miner\")",
+        "Description": "You are a miner. You dig deep into the earth to find valuable ores.",
+        "Schedule": [
+            {
+                "StartTime": 8,
+                "TaskTag": {
+                    "TagName": "Directive.Work"
+                },
+                "ActivityTag": {
+                    "TagName": "Interaction.Work.Mine"
+                }
+            },
+            {
+                "StartTime": 12,
+                "TaskTag": {
+                    "TagName": "Directive.Survival"
+                },
+                "ActivityTag": {
+                    "TagName": "Interaction.Eat"
+                }
+            },
+            {
+                "StartTime": 13,
+                "TaskTag": {
+                    "TagName": "Directive.Work"
+                },
+                "ActivityTag": {
+                    "TagName": "Interaction.Work.Mine"
+                }
+            },
+            {
+                "StartTime": 19,
+                "TaskTag": {
+                    "TagName": "Directive.Rest"
+                },
+                "ActivityTag": {
+                    "TagName": "Interaction.Rest"
+                }
+            }
+        ]
+    },
+    {
+        "Name": "Guard_Day",
+        "ProfessionName": "NSLOCTEXT(\"profession [D95C75018698D2C7F6FACDEA1FF7631F]\", \"Guard_Day_ProfessionName\", \"Day Guard\")",
+        "Description": "You are a day guard. You patrol and protect this location during the day.",
+        "Schedule": [
+            {
+                "StartTime": 7,
+                "TaskTag": {
+                    "TagName": "Directive.Work"
+                },
+                "ActivityTag": {
+                    "TagName": "Interaction.Work.Guard"
+                }
+            },
+            {
+                "StartTime": 19,
+                "TaskTag": {
+                    "TagName": "Directive.Rest"
+                },
+                "ActivityTag": {
+                    "TagName": "Interaction.Rest"
+                }
+            }
+        ]
+    },
+    {
+        "Name": "Guard_Night",
+        "ProfessionName": "NSLOCTEXT(\"profession [D95C75018698D2C7F6FACDEA1FF7631F]\", \"Guard_Night_ProfessionName\", \"Night Guard\")",
+        "Description": "You are a night guard. You patrol and protect this location during the night.",
+        "Schedule": [
+            {
+                "StartTime": 0,
+                "TaskTag": {
+                    "TagName": "Directive.Work"
+                },
+                "ActivityTag": {
+                    "TagName": "Interaction.Work.Guard"
+                }
+            },
+            {
+                "StartTime": 7,
+                "TaskTag": {
+                    "TagName": "Directive.Rest"
+                },
+                "ActivityTag": {
+                    "TagName": "Interaction.Rest"
+                }
+            },
+            {
+                "StartTime": 20,
+                "TaskTag": {
+                    "TagName": "Directive.Work"
+                },
+                "ActivityTag": {
+                    "TagName": "Interaction.Work.Guard"
+                }
+            }
+        ]
+    },
+    {
+        "Name": "Merchant",
+        "ProfessionName": "NSLOCTEXT(\"profession [D95C75018698D2C7F6FACDEA1FF7631F]\", \"Merchant_ProfessionName\", \"Merchant\")",
+        "Description": "You are a merchant. You look for customers and trade goods.",
+        "Schedule": [
+            {
+                "StartTime": 8,
+                "TaskTag": {
+                    "TagName": "Directive.Work"
+                },
+                "ActivityTag": {
+                    "TagName": "Interaction.Work.Trade"
+                }
+            },
+            {
+                "StartTime": 12,
+                "TaskTag": {
+                    "TagName": "Directive.Survival"
+                },
+                "ActivityTag": {
+                    "TagName": "Interaction.Eat"
+                }
+            },
+            {
+                "StartTime": 13,
+                "TaskTag": {
+                    "TagName": "Directive.Work"
+                },
+                "ActivityTag": {
+                    "TagName": "Interaction.Work.Trade"
+                }
+            },
+            {
+                "StartTime": 18,
+                "TaskTag": {
+                    "TagName": "Directive.Social"
+                },
+                "ActivityTag": {
+                    "TagName": "Interaction.Social"
+                }
+            },
+            {
+                "StartTime": 22,
+                "TaskTag": {
+                    "TagName": "Directive.Rest"
+                },
+                "ActivityTag": {
+                    "TagName": "Interaction.Rest"
+                }
+            }
+        ]
+    },
+    {
+        "Name": "Scholar",
+        "ProfessionName": "NSLOCTEXT(\"profession [D95C75018698D2C7F6FACDEA1FF7631F]\", \"Scholar_ProfessionName\", \"Scholar\")",
+        "Description": "You are a scholar. You study ancient texts and seek knowledge.",
+        "Schedule": [
+            {
+                "StartTime": 10,
+                "TaskTag": {
+                    "TagName": "Directive.Work"
+                },
+                "ActivityTag": {
+                    "TagName": "Interaction.Work.Study"
+                }
+            },
+            {
+                "StartTime": 14,
+                "TaskTag": {
+                    "TagName": "Directive.Idle"
+                },
+                "ActivityTag": {
+                    "TagName": "Interaction.Investigate"
+                }
+            },
+            {
+                "StartTime": 20,
+                "TaskTag": {
+                    "TagName": "Directive.Work"
+                },
+                "ActivityTag": {
+                    "TagName": "Interaction.Work.Study"
+                }
+            },
+            {
+                "StartTime": 2,
+                "TaskTag": {
+                    "TagName": "Directive.Rest"
+                },
+                "ActivityTag": {
+                    "TagName": "Interaction.Rest"
+                }
+            }
+        ]
+    },
+    {
+        "Name": "Zealot",
+        "ProfessionName": "NSLOCTEXT(\"profession [D95C75018698D2C7F6FACDEA1FF7631F]\", \"Zealot_ProfessionName\", \"Cultist\")",
+        "Description": "You are a cultist. You pray to your dark gods and spread their influence.",
+        "Schedule": [
+            {
+                "StartTime": 5,
+                "TaskTag": {
+                    "TagName": "Directive.Work"
+                },
+                "ActivityTag": {
+                    "TagName": "Interaction.Work.Pray"
+                }
+            },
+            {
+                "StartTime": 9,
+                "TaskTag": {
+                    "TagName": "Directive.Social"
+                },
+                "ActivityTag": {
+                    "TagName": "Interaction.Social"
+                }
+            },
+            {
+                "StartTime": 18,
+                "TaskTag": {
+                    "TagName": "Directive.Work"
+                },
+                "ActivityTag": {
+                    "TagName": "Interaction.Work.Pray"
+                }
+            },
+            {
+                "StartTime": 22,
+                "TaskTag": {
+                    "TagName": "Directive.Rest"
+                },
+                "ActivityTag": {
+                    "TagName": "Interaction.Rest"
+                }
+            }
+        ]
+    },
+    {
+        "Name": "Scavenger",
+        "ProfessionName": "NSLOCTEXT(\"profession [D95C75018698D2C7F6FACDEA1FF7631F]\", \"Scavenger_ProfessionName\", \"Beggar\")",
+        "Description": "You are a beggar. You scavenge for scraps and survive on the streets.",
+        "Schedule": [
+            {
+                "StartTime": 0,
+                "TaskTag": {
+                    "TagName": "Directive.Work"
+                },
+                "ActivityTag": {
+                    "TagName": "Interaction.Work.Scavenge"
+                }
+            },
+            {
+                "StartTime": 6,
+                "TaskTag": {
+                    "TagName": "Directive.Rest"
+                },
+                "ActivityTag": {
+                    "TagName": "Interaction.Rest"
+                }
+            },
+            {
+                "StartTime": 18,
+                "TaskTag": {
+                    "TagName": "Directive.Work"
+                },
+                "ActivityTag": {
+                    "TagName": "Interaction.Work.Scavenge"
+                }
+            }
+        ]
+    },
+    {
+        "Name": "Citizen",
+        "ProfessionName": "NSLOCTEXT(\"profession [D95C75018698D2C7F6FACDEA1FF7631F]\", \"Citizen_ProfessionName\", \"Citizen\")",
+        "Description": "You are a normal citizen. You enjoy your daily life and socializing with others.",
+        "Schedule": [
+            {
+                "StartTime": 7,
+                "TaskTag": {
+                    "TagName": "Directive.Survival"
+                },
+                "ActivityTag": {
+                    "TagName": "Interaction.Eat"
+                }
+            },
+            {
+                "StartTime": 8,
+                "TaskTag": {
+                    "TagName": "Directive.Social"
+                },
+                "ActivityTag": {
+                    "TagName": "Interaction.Social"
+                }
+            },
+            {
+                "StartTime": 12,
+                "TaskTag": {
+                    "TagName": "Directive.Survival"
+                },
+                "ActivityTag": {
+                    "TagName": "Interaction.Eat"
+                }
+            },
+            {
+                "StartTime": 13,
+                "TaskTag": {
+                    "TagName": "Directive.Idle"
+                },
+                "ActivityTag": {
+                    "TagName": "Interaction.Investigate"
+                }
+            },
+            {
+                "StartTime": 18,
+                "TaskTag": {
+                    "TagName": "Directive.Rest"
+                },
+                "ActivityTag": {
+                    "TagName": "Interaction.Rest"
+                }
+            },
+            {
+                "StartTime": 22,
+                "TaskTag": {
+                    "TagName": "Directive.Sleep"
+                },
+                "ActivityTag": {
+                    "TagName": "Interaction.Sleep.Bed"
+                }
+            }
+        ]
+    }
+]

@@ -64,5 +64,8 @@ private:
 	UPROPERTY()
 	AUtilityAIController* CachedController;
 
+	// 调试日志计时器（每个 NPC 独立）
+	// Debug log timer (per-NPC)
+	float LastDebugLogTime = 0.0f;
 	
 };

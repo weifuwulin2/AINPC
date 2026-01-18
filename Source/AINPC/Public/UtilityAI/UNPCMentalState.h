@@ -43,10 +43,14 @@ public:
 	// =========================================================
 	// Emotion State (Engine-Driven)
 	// 由 EmotionEvaluator 每帧计算
-	// =========================================================
-	
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Emotion State")
+	// ===================================================	// === 情绪状态 (Emotional State) ===
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Emotional State")
 	EEmotionState CurrentEmotion = EEmotionState::Neutral;
+
+	// 当前情绪的强度分数 (用于衰减)
+	// Current emotion intensity score (for decay)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Emotional State")
+	float CurrentEmotionScore = 0.0f;
 
 	// =========================================================
 	// Intention (LLM-Driven Strategy Bias)

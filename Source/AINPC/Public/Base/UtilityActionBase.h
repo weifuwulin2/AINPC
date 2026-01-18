@@ -10,6 +10,7 @@
 #include "UtilityAI/MentalStateFields.h"  // ✅ 引入字段配置
 #include "UtilityActionBase.generated.h"
 
+class UUtilityActionBase;
 // 前置声明
 class AAIController;
 class UNPCMentalState;
@@ -53,7 +54,8 @@ enum class EUtilityInputType : uint8
 	HasEnemyNearby,       // 环境：附近是否有敌人 (不依赖 FocusActor)
 	HasFriendlyNearby,    // 环境：附近是否有友军/中立单位 (非 Enemy, 非 Self)
 	HasFoodNearby,        // 环境：附近是否有食物 (Activity.Eat)
-	HasBedNearby          // 环境：附近是否有床 (Activity.Rest)
+	HasBedNearby,         // 环境：附近是否有床 (Activity.Rest)
+	GoalDirectiveMatch    // 目标系统：当前指令是否匹配 (GoalComponent.CurrentDirective)
 };
 
 // 考量类型：动机 vs 必要条件
@@ -176,12 +178,25 @@ struct FUtilityActionConfig : public FTableRowBase
               meta = (DisplayName = "Activity Tag for Emotion Matrix"))
     FGameplayTag ActivityTag;
 
-    // 意图标签：如果 LLM 的 Intention 字段包含此标签，分数大幅增加
-    // Intention Tag: If LLM Intention field contains this tag/string, score is boosted
-    // Example: "Attack", "Flee", "Talk", "Patrol"
+    // LLM Intention Tag
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "LLM Integration",
-              meta = (DisplayName = "Matching Intention Name"))
-    FString IntentionTag;
+              meta = (DisplayName = "Matching Intention Tag"))
+    FGameplayTag IntentionTag;
+
+	// 指令标签：用于 GoalComponent 仲裁匹配
+	// Directive Tag: Used for GoalComponent arbitration matching
+	// Example: "Directive.Work", "Directive.Survival"
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Goal Integration",
+			  meta = (DisplayName = "Required Directive Tag"))
+	FGameplayTag DirectiveTag;
+    
+    UPROPERTY(EditDefaultsOnly, Category = "Action Config")
+    FString ActionName;
+
+	// 职业过滤：如果非 None/Empty，则只有匹配该 Profession ID 的 NPC 才能拥有此动作
+	// Profession Filter: If not None/Empty, only NPCs with this Profession ID can possess this action
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Filtering")
+	FName RequiredProfessionID;
 };
 
 // =========================================================
@@ -218,9 +233,13 @@ public:
 
     // LLM Intention Tag
     UPROPERTY(Transient)
-    FString IntentionTag;
+    FGameplayTag IntentionTag;
 
-    UPROPERTY(EditDefaultsOnly, Category = "Action Config")
+	// Goal Directive Tag
+	UPROPERTY(Transient)
+	FGameplayTag DirectiveTag;
+
+    UPROPERTY(Transient)
     FString ActionName;
 
     // --- 运行时状态 ---
@@ -261,4 +280,11 @@ public:
     UFUNCTION(BlueprintNativeEvent)
     void Exit(AAIController* Controller);
     virtual void Exit_Implementation(AAIController* Controller) {}
+
+    // ✅ 检查动作是否应该退出（允许切换到其他动作）
+    // Check if action should exit (allow switching to other actions)
+    // 默认返回 true（允许切换），SmartObject 等有持续时长的动作会返回 false 阻止切换
+    // Default returns true (allow switching), SmartObject with Duration returns false to block
+    UFUNCTION(BlueprintCallable, Category = "Utility Action")
+    virtual bool ShouldExit(AAIController* Controller) const { return true; }
 };

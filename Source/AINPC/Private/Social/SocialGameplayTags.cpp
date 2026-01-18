@@ -2,16 +2,16 @@
 
 namespace AINPCTags
 {
-	// Activity - Core Categories for Emotion Matrix
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Activity_Rest, "Activity.Rest", "Resting: Sleep, Sit, Idle (Sad/Tired)");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Activity_Work, "Activity.Work", "Working: Patrol, Craft, Guard (Neutral)");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Activity_Eat, "Activity.Eat", "Eating: Eat, Drink (Hungry)");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Activity_Mundane, "Activity.Mundane", "Mundane background activity");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Activity_Combat, "Activity.Combat", "Combat: Attack, Shoot, Chase (Angry)");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Activity_Flee, "Activity.Flee", "Flee: RunAway, Hide, Beg (Scared)");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Activity_Social, "Activity.Social", "Social: Chat, Greet, Trade (Happy)");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Activity_Investigate, "Activity.Investigate", "Investigate: LookAt, Approach (Curious)");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Activity_Avoid, "Activity.Avoid", "Avoid: Reject, WalkAway (Disgust)");
+	// Interaction - Core Categories for Emotion Matrix
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Interaction_Rest, "Interaction.Rest", "Resting: Sleep, Sit, Idle (Sad/Tired)");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Interaction_Work, "Interaction.Work", "Working: Patrol, Craft, Guard (Neutral)");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Interaction_Eat, "Interaction.Eat", "Eating: Eat, Drink (Hungry)");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Interaction_Mundane, "Interaction.Mundane", "Mundane background activity");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Interaction_Combat, "Interaction.Combat", "Combat: Attack, Shoot, Chase (Angry)");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Interaction_Flee, "Interaction.Flee", "Flee: RunAway, Hide, Beg (Scared)");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Interaction_Social, "Interaction.Social", "Social: Chat, Greet, Trade (Happy)");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Interaction_Investigate, "Interaction.Investigate", "Investigate: LookAt, Approach (Curious)");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Interaction_Avoid, "Interaction.Avoid", "Avoid: Reject, WalkAway (Disgust)");
 
 	// Social
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Social_Chat, "Social.Chat", "Generic chatting");
@@ -33,4 +33,30 @@ namespace AINPCTags
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Event_Death, "Event.Death", "Death event (generic)");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Event_Death_Self, "Event.Death.Self", "Self death event");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Event_Death_Witnessed, "Event.Death.Witnessed", "Witnessed another's death");
+
+	// Goal Directives
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Directive_Work, "Directive.Work", "Goal: Go to work");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Directive_Rest, "Directive.Rest", "Goal: Rest or Sleep");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Directive_Survival, "Directive.Survival", "Goal: Survive (Eat, Heal, Flee)");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Directive_Social, "Directive.Social", "Goal: Socialize");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Directive_Idle, "Directive.Idle", "Goal: Idle / Wander");
+
+	// Work Activities
+	// Defining them under Interaction.Work hierarchy so broad filters work
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Work_Mine, "Interaction.Work.Mine", "Work: Mining");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Work_Farm, "Interaction.Work.Farm", "Work: Farming");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Work_Guard, "Interaction.Work.Guard", "Work: Guarding");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Work_Scavenge, "Interaction.Work.Scavenge", "Work: Scavenging");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Work_Pray, "Interaction.Work.Pray", "Work: Praying");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Work_Study, "Interaction.Work.Study", "Work: Studying");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Work_Trade, "Interaction.Work.Trade", "Work: Trading (Merchant)");
+
+	// Intention Tags
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Intention_Attack, "Intention.Attack", "LLM Intention: Attack");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Intention_Flee, "Intention.Flee", "LLM Intention: Flee");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Intention_Idle, "Intention.Idle", "LLM Intention: Idle");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Intention_Talk, "Intention.Talk", "LLM Intention: Talk");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Intention_Investigate, "Intention.Investigate", "LLM Intention: Investigate");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Intention_Beg, "Intention.Beg", "LLM Intention: Beg");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Intention_Work, "Intention.Work", "LLM Intention: Work");
 }

@@ -4,6 +4,29 @@ This file contains a log of commit messages for the AINPC project.
 
 ---
 
+## [2026-01-17] Hybrid V4 - GOAP-Lite Foundation & Subsystems
+**Type**: feat
+**Scope**: Architecture, Subsystems, Components
+**Description**:
+- **SmartObjectManager**: Added subsystem for registry and reservation of world objects.
+- **TimeManager**: Added subsystem for Day/Night cycle and hourly events.
+- **GoalComponent**: Added arbitration layer (Survival vs Social vs Schedule) with LOD integration.
+- **NPCDefinitionComponent**: Added unified ID container for NPC profiles.
+- **UtilityAI**: Added `RequiredProfessionID` filtering for actions.
+- **Refactor**: Profession logic moved to GoalComponent; Schedules now active.
+
+**Files Changed**:
+- `Source/AINPC/Public/Subsystems/SmartObjectManager.h`
+- `Source/AINPC/Private/Subsystems/SmartObjectManager.cpp`
+- `Source/AINPC/Public/Subsystems/TimeManager.h`
+- `Source/AINPC/Private/Subsystems/TimeManager.cpp`
+- `Source/AINPC/Components/GoalComponent.cpp`
+- `Source/AINPC/Components/NPCDefinitionComponent.cpp`
+- `Source/AINPC/Components/UtilityAIComponent.cpp`
+- `Source/AINPC/Public/Base/UtilityActionBase.h`
+
+---
+
 ## [2026-01-15] Utility AI Pipeline Fixes & Death Event Handling
 **Type**: fix/feat
 **Scope**: EmotionEvaluator, UtilityActionBase, SensoryComponent, CognitionComponent

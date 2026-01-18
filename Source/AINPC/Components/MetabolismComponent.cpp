@@ -2,6 +2,9 @@
 #include "Controller/UtilityAIController.h"
 #include "UtilityAI/UNPCMentalState.h"
 #include "Components/CognitionComponent.h"
+#include "Components/PersonalityComponent.h"
+#include "Components/EmotionDisplayComponent.h"
+#include "UtilityAI/EmotionEvaluator.h"
 #include "UtilityAI/MentalStateInterpolation.h"
 
 UMetabolismComponent::UMetabolismComponent()
@@ -85,7 +88,6 @@ void UMetabolismComponent::TickComponent(float DeltaTime, ELevelTick TickType, F
 
     // 🔍 调试日志：每 5 秒打印一次状态
     // Debug logging: Print status every 5 seconds
-    static float LastDebugLogTime = 0.0f;
     float CurrentTime = GetWorld()->GetTimeSeconds();
     if (CurrentTime - LastDebugLogTime > 5.0f)
     {
@@ -93,6 +95,9 @@ void UMetabolismComponent::TickComponent(float DeltaTime, ELevelTick TickType, F
         UE_LOG(LogTemp, Warning, TEXT("[Metabolism] %s - Hg:%.2f Ft:%.2f Bd:%.2f Ln:%.2f"), 
                *CachedController->GetName(), State->Hunger, State->Fatigue, State->Boredom, State->Loneliness);
         LastDebugLogTime = CurrentTime;
+        
+        // Note: Emotion calculation is now only done by LLM + score decay
+        // EmotionEvaluator is NOT called here - LLM controls emotion, score just decays
     }
 
 
@@ -124,7 +129,47 @@ void UMetabolismComponent::TickComponent(float DeltaTime, ELevelTick TickType, F
     // 威胁感 (Perceived_Threat) - 消失得比较快，因为如果没有持续威胁，你就安全了
     ApplyDecay(State->Perceived_Threat, TEXT("Perceived_Threat"), ThreatDecayRate);
 
-    // === 3. 长期状态 (Long-term States) ===
+    // === 3. 情绪分数衰减（简化版）===
+    // Emotion Score Decay (Simplified)
+    // 每 10 秒衰减 0.2，当 Score < 0.3 时变回 Neutral
+    static float LastEmotionDecayTime = 0.0f;
+    float EmotionDecayTime = GetWorld()->GetTimeSeconds();
+    
+    // 5秒迭代一次，每次 -0.2，总共约20秒衰减完毕 (1.0 -> 0.2 需要4次)
+    // Iterate every 5 seconds, -0.2 each time, total decay ~20s
+    if (EmotionDecayTime - LastEmotionDecayTime > 5.0f)
+    {
+        LastEmotionDecayTime = EmotionDecayTime;
+        
+        // 衰减情绪分数
+        if (State->CurrentEmotionScore > 0.0f)
+        {
+            float OldScore = State->CurrentEmotionScore;
+            State->CurrentEmotionScore -= 0.2f;
+            State->CurrentEmotionScore = FMath::Max(State->CurrentEmotionScore, 0.0f);
+            
+            UE_LOG(LogTemp, Warning, TEXT("[Metabolism] 🎭 Emotion Score Decay: %.2f -> %.2f"), OldScore, State->CurrentEmotionScore);
+            
+            // 当分数降到阈值以下，变回 Neutral
+            if (State->CurrentEmotionScore < 0.3f && State->CurrentEmotion != EEmotionState::Neutral)
+            {
+                UE_LOG(LogTemp, Warning, TEXT("[Metabolism] 🎭 Emotion Score %.2f < 0.3, resetting to Neutral"), 
+                       State->CurrentEmotionScore);
+                
+                State->CurrentEmotion = EEmotionState::Neutral;
+                if (CachedController)
+                {
+                    CachedController->CurrentEmotion = EEmotionState::Neutral;
+                    if (CachedController->EmotionDisplayComp)
+                    {
+                        CachedController->EmotionDisplayComp->ShowEmotion("Neutral");
+                    }
+                }
+            }
+        }
+    }
+
+    // === 4. 长期状态 (Long-term States) ===
     // Trust, Social_Status, Loneliness, Duty_Urgency
-    // 这些属性通常具有高惯性，或者在这个版本中我们不让它们自动衰减，完全由 LLM 控制。
+    // 这些属性通常具有高惯性，完全由 LLM 控制。
 }

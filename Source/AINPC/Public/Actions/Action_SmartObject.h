@@ -45,6 +45,10 @@ private:
 	// The object we are currently targeting
 	UPROPERTY(Transient)
 	AActor* TargetSmartObject;
+	
+	// The resource we successfully reserved (may be same as Target)
+	UPROPERTY(Transient)
+	AActor* ReservedResource;
 
 	// Is the interaction currently active? (e.g. eating loop)
 	bool bIsInteracting = false;
@@ -55,6 +59,12 @@ private:
 	// 调试日志时间戳 / Debug log timestamp
 	float LastDebugTime = 0.0f;
 
-	// Helper to restore stats based on the tag
-	void RestoreStats(AAIController* Controller, float DeltaTime);
+	// ✅ 恢复定时器 / Recovery Timer
+	FTimerHandle RecoveryTimerHandle;
+
+	// Helper to setup recovery timer (1 second interval)
+	void SetupRecoveryTimer(AAIController* Controller);
+	
+	// Helper to restore stats based on the tag (called by timer)
+	void RestoreStats(AAIController* Controller);
 };

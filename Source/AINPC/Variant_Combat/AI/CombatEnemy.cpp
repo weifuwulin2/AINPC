@@ -11,7 +11,9 @@
 #include "TimerManager.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Animation/AnimInstance.h"
+#include "Components/NPCDefinitionComponent.h"
 #include "Components/PersonalityComponent.h"
+#include "Components/GoalComponent.h"
 #include "Controller/UtilityAIController.h"
 #include "Components/SensoryComponent.h"
 #include "Kismet/GameplayStatics.h"
@@ -35,6 +37,9 @@ ACombatEnemy::ACombatEnemy()
 	// create the life bar
 	LifeBar = CreateDefaultSubobject<UWidgetComponent>(TEXT("LifeBar"));
 	LifeBar->SetupAttachment(RootComponent);
+
+	// create NPC Definition (Profile)
+	NPCDefinition = CreateDefaultSubobject<UNPCDefinitionComponent>(TEXT("NPCDefinition"));
 
 	// set the collision capsule size
 	GetCapsuleComponent()->SetCapsuleSize(35.0f, 90.0f);
@@ -339,84 +344,34 @@ void ACombatEnemy::BeginPlay()
 	// we top the HP before BeginPlay so StateTree picks it up at the right value
 	Super::BeginPlay();
 
-	// ✅ Configure AI Personality with DELAYED initialization
-	// CombatEnemy::BeginPlay() runs AFTER Controller::BeginPlay()
-	// But we need to wait a bit more for all Controller components to be ready
-	// 延迟配置 AI 性格
-	// CombatEnemy::BeginPlay() 在 Controller::BeginPlay() 之后运行
-	// 但我们需要再等一下让所有 Controller 组件准备好
-	if (!PersonalityID.IsNone())
+	// ✅ Configure AI Personality via NPCDefinition
+	if (NPCDefinition)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"));
-		UE_LOG(LogTemp, Warning, TEXT("[CombatEnemy] BeginPlay: PersonalityID = %s"), *PersonalityID.ToString());
+		UE_LOG(LogTemp, Warning, TEXT("[CombatEnemy] BeginPlay: Applying NPC Definition..."));
 		
 		if (AController* MyController = GetController())
 		{
-			UE_LOG(LogTemp, Warning, TEXT("[CombatEnemy] Controller found: %s"), *MyController->GetName());
-			
-			// Schedule delayed personality initialization (100ms)
-			// 安排延迟性格初始化（100ms）
-			FTimerHandle PersonalityTimerHandle;
-			GetWorld()->GetTimerManager().SetTimer(
-				PersonalityTimerHandle,
-				[this, MyController]()
-				{
-					UE_LOG(LogTemp, Warning, TEXT("[CombatEnemy] ━━━ Delayed Personality Init Starting ━━━"));
-					
-					// Find PersonalityComponent
-					if (UPersonalityComponent* PersonalityComp = MyController->FindComponentByClass<UPersonalityComponent>())
+			if (AAIController* AICon = Cast<AAIController>(MyController))
+			{
+				// Schedule delayed initialization (100ms) to ensure Controller components are ready
+				FTimerHandle ProfileTimerHandle;
+				GetWorld()->GetTimerManager().SetTimer(
+					ProfileTimerHandle,
+					[this, AICon]()
 					{
-						// Call SetPersonalityByID() - this will load from DataTable and set Faction
-						PersonalityComp->SetPersonalityByID(PersonalityID);
-						UE_LOG(LogTemp, Warning, TEXT("[CombatEnemy] ✅ Called SetPersonalityByID(%s)"), *PersonalityID.ToString());
-					}
-					else
-					{
-						UE_LOG(LogTemp, Error, TEXT("[CombatEnemy] ❌ PersonalityComponent not found!"));
-					}
-					
-					UE_LOG(LogTemp, Warning, TEXT("[CombatEnemy] ━━━ Delayed Personality Init Complete ━━━"));
-				},
-				0.1f,  // 100ms delay
-				false  // Don't loop
-			);
-			
-			UE_LOG(LogTemp, Warning, TEXT("[CombatEnemy] ⏰ Scheduled delayed personality init (100ms)"));
-			
-			// Add faction tag based on PersonalityID for fallback detection
-			// 基于 PersonalityID 添加阵营标签作为后备检测
-			if (PersonalityID == TEXT("Zombie") || 
-			    PersonalityID == TEXT("Bandit") || 
-			    PersonalityID.ToString().Contains(TEXT("Monster")))
-			{
-				Tags.AddUnique(TEXT("Zombie")); // Tag for Monster faction
-				UE_LOG(LogTemp, Warning, TEXT("[CombatEnemy] ✅ Added 'Zombie' tag (Monster faction)"));
+						if (NPCDefinition)
+						{
+							NPCDefinition->ApplyDefinition(AICon);
+						}
+					},
+					0.1f, 
+					false
+				);
 			}
-			else if (PersonalityID == TEXT("BraveWarrior") || 
-			         PersonalityID == TEXT("CautiousGuard") || 
-			         PersonalityID.ToString().Contains(TEXT("Warrior")) ||
-			         PersonalityID.ToString().Contains(TEXT("Guard")))
-			{
-				Tags.AddUnique(TEXT("Human")); // Tag for Human faction
-				UE_LOG(LogTemp, Warning, TEXT("[CombatEnemy] ✅ Added 'Human' tag"));
-			}
-			else if (PersonalityID == TEXT("FriendlyMerchant") || 
-			         PersonalityID.ToString().Contains(TEXT("Merchant")))
-			{
-				Tags.AddUnique(TEXT("Human")); // Merchants are usually human
-				UE_LOG(LogTemp, Warning, TEXT("[CombatEnemy] ✅ Added 'Human' tag (Merchant)"));
-			}
-		}
-		else
-		{
-			UE_LOG(LogTemp, Error, TEXT("[CombatEnemy] ❌ No Controller found!"));
 		}
 		
 		UE_LOG(LogTemp, Warning, TEXT("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"));
-	}
-	else
-	{
-		UE_LOG(LogTemp, Warning, TEXT("[CombatEnemy] ⚠️ PersonalityID is None, skipping configuration"));
 	}
 
 	// get the life bar widget from the widget comp

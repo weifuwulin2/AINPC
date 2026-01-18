@@ -151,6 +151,21 @@ EEmotionState UEmotionEvaluator::CalculateEmotion(const UNPCMentalState* MentalS
 		}
 	}
 
+	// ✅ 更新 MentalState 的情绪分数 (用于后续衰减)
+	// Update MentalState's emotion score (for decay)
+	if (UNPCMentalState* WritableState = const_cast<UNPCMentalState*>(MentalState))
+	{
+		WritableState->CurrentEmotionScore = MaxScore;
+	}
+
+	// ✅ 如果情绪分数太低，返回 Neutral（需求基本满足）
+	// If emotion score is too low, return Neutral (needs are mostly satisfied)
+	const float MinEmotionThreshold = 0.3f;
+	if (MaxScore < MinEmotionThreshold)
+	{
+		return EEmotionState::Neutral;
+	}
+
 	return BestEmotion;
 }
 

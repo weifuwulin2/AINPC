@@ -31,12 +31,22 @@ public:
 	// 缓存 Controller 引用
 	UPROPERTY()
 	AUtilityAIController* OwnerController;
+	
+    // ✅ NEW: Current Profession ID (Pushed by NPCDefinitionComponent)
+    // 职业 ID：由 NPCDefinitionComponent 推送
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI Config")
+    FName CurrentProfessionID;
 
 protected:
 	virtual void BeginPlay() override;
 
 public:	
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+    
+    // ✅ NEW: Explicitly set Profession (Fixes Initialization Order)
+    // 显式设置职业（修复初始化顺序问题）
+    UFUNCTION(BlueprintCallable, Category = "AI Config")
+    void SetProfession(FName NewProfessionID);
 
 private:
 	// 内部函数：加载表格

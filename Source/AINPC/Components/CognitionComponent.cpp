@@ -3,6 +3,8 @@
 #include "UtilityAIComponent.h"
 #include "Controller/UtilityAIController.h"
 #include "Components/PersonalityComponent.h"
+#include "Components/GoalComponent.h"
+#include "Social/ProfessionTypes.h"
 #include "LLM/LLMCommunicator.h"
 #include "UtilityAI/SentimentMapping.h"
 #include "UtilityAI/MentalStateInterpolation.h"
@@ -120,14 +122,18 @@ void UCognitionComponent::TickComponent(float DeltaTime, ELevelTick TickType, FA
 	}
 }
 
+void UCognitionComponent::SetLOD(EContextLOD NewLOD)
+{
+	if (CurrentLOD != NewLOD)
+	{
+		CurrentLOD = NewLOD;
+		// Optional: Log LOD change
+		// UE_LOG(LogTemp, Log, TEXT("[Cognition] 🧠 Switched to %s"), *UEnum::GetValueAsString(CurrentLOD));
+	}
+}
+
 void UCognitionComponent::ProcessStimulus(FString SituationDescription)
 {
-	// 🔍 关键日志：确认 ProcessStimulus 被调用
-	UE_LOG(LogTemp, Warning, TEXT("[Cognition] Processing Stimulus: %s"), *SituationDescription);
-	
-	// 1. 存入新记忆 (交给 MemoryComponent 处理，它会自己决定是否触发反思)
-	// Phase 4: Memory System handles storage and reflection trigger internally
-	// We don't manually AddMemory here anymore using string, we expect Controller to have called CommitEvent.
 	// However, ProcessStimulus is called by Controller::RelaySensoryToCognition.
 	// Wait, RelaySensoryToCognition is legacy?
 	// The new path is: Event -> Sensory -> Memory.
@@ -190,6 +196,23 @@ void UCognitionComponent::ProcessStimulus(FString SituationDescription)
 		}
 	}
 	
+    // ✅ Retrieve Profession Description (Job) from GoalComponent
+    FString ProfessionDescription = "";
+    FString ProfessionNameStr = "";
+    
+    // Check Controller first
+    if (AAIController* AICon = Cast<AAIController>(GetOwner()))
+    {
+        if (UGoalComponent* GoalComp = AICon->FindComponentByClass<UGoalComponent>())
+        {
+             if (!GoalComp->ProfessionConfig.Description.IsEmpty())
+             {
+                 ProfessionDescription = GoalComp->ProfessionConfig.Description;
+                 ProfessionNameStr = GoalComp->ProfessionConfig.ProfessionName.ToString();
+             }
+        }
+    }
+	
 	// ⚠️ 关键修复：如果 Personality 还没初始化（ID为None），不要发送请求，避免 LLM 产生幻觉
 	// Critical Fix: If Personality is not initialized (ID is None), do not send request to avoid LLM hallucinations
 	if (PersonalityIDStr == "None" || PersonalityIDStr == "Default" || PersonalityIDStr.IsEmpty())
@@ -226,6 +249,12 @@ void UCognitionComponent::ProcessStimulus(FString SituationDescription)
 	FString RoleSection = FString::Printf(TEXT(
 		"You are: %s (Faction: %s)\n"
 		"Role: %s\n"), *PersonalityIDStr, *FactionStr, *ActualRoleDescription);
+
+    // Append Profession / Job Description
+    if (!ProfessionDescription.IsEmpty())
+    {
+        RoleSection += FString::Printf(TEXT("Job (%s): %s\n"), *ProfessionNameStr, *ProfessionDescription);
+    }
 	
 	// 如果有行为准则，添加到角色部分 / If there are behavioral guidelines, add to role section
 	if (!ActualBehavioralGuidelines.IsEmpty())
@@ -260,7 +289,7 @@ void UCognitionComponent::ProcessStimulus(FString SituationDescription)
 		"2. [STRATEGY] You MUST output an 'Intention' that overrides your fear if necessary, OR respects it.\n"
 		"3. [COWARDICE RULE] If you are a COWARD and Threat is 'Strong'/'Extreme', Intention MUST be 'Flee' or 'Beg', unless you are cornered.\n"
 		"4. [JURISDICTION] Do NOT output Hunger/Fatigue (Engine manages them).\n"
-		"5. [EMOTION STRICT] 'Emotion' MUST be EXACTLY one of: Neutral, Angry, Scared, Sad, Happy, Curious, Disgust. NO OTHER VALUES ALLOWED. If unsure, use 'Neutral'.\n"
+		"5. [EMOTION STRICT] 'Emotion' MUST be EXACTLY one of: Neutral, Angry, Scared, Sad, Happy, Curious, Disgust. ABSOLUTELY NO OTHER VALUES (e.g., 'Suspicious', 'Confused', 'Anxious'). If you feel 'suspicious', use 'Curious'. If uncertain, use 'Neutral'.\n"
 		"\n"
 		"Output valid JSON based on this TypeScript definition. ALL strings must be double-quoted.\n"
 		"type Tag = \"None\" | \"Slight\" | \"Moderate\" | \"Strong\" | \"Extreme\";\n"

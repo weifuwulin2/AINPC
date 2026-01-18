@@ -9,6 +9,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+---
+
+## [0.5.2] - 2026-01-17
+
+### 🎉 New Subsystems (GOAP-Lite Foundation)
+
+#### 1. Smart Object Manager
+- **Central Registry**: `USmartObjectManager` tracks all interactive objects by `FGameplayTag` (e.g., `Activity.Eat`, `Activity.Sleep`).
+- **Reservation System**: Prevents multiple NPCs from using the same exclusive object (e.g., a single bed).
+- **Spatial Queries**: Efficient `FindBestSmartObject` based on distance and availability.
+
+#### 2. Time Manager
+- **Day/Night Cycle**: `UTimeManager` handles game time advancement (`RealSecondsPerGameHour` configurable).
+- **Event System**: Broadcasts `OnHourChanged` for schedule-based behaviors.
+- **Schedules**: NPCs can now follow daily routines (Work, Sleep, Wander) defined in `DT_Professions`.
+
+#### 3. Goal Component (Arbitration Layer)
+- **Priority System**: Dynamically selects the current `Directive` based on context priority:
+  1.  **Survival** (Highest): Thirst, Hunger, Health (Critical LOD)
+  2.  **Social** (Medium): Interactions, Conversations
+  3.  **Schedule** (Lowest): Default daily routine (Standard LOD)
+- **LOD Integration**: Automatically lowers Context LOD when in "Schedule" mode to save performance.
+
+### Fixed
+- **Action Switching Logic**: Fixed `UUtilityActionBase::ShouldExit` default return value from `false` to `true`, allowing NPCs to correctly switch from Idle/Move actions to higher priority actions.
+- **SmartObject Action Blocking**: Fixed a critical bug where `Action_SmartObject`'s duration check was misinterpreted as "disable selection" (`return 0.0f`), causing actions like Eat/Sleep to be permanently disabled after one use. Now correctly interprets `ShouldExit` as "allow switching".
+- **Emotion Decay System**: Fixed LLM-set emotions not decaying by ensuring `CurrentEmotionScore` is initialized to 1.0f when set by LLM. Adjusted decay rate to -0.2 every 5s (approx 20s total duration).
+- **Movement Switching**: Modified `Action_SmartObject` to allow switching to better actions while still moving to the target (before interaction starts).
+
+### ✨ Features
+- **NPC Definition Component**: Unified "ID Card" component (`UNPCDefinitionComponent`) to manage PersonalityID, ProfessionID, etc.
+- **Profession-Based Action Filtering**: Implemented `RequiredProfessionID` in `UtilityActionBase` to strictly limit actions to specific roles.
+
+### 🔧 Configuration
+- **New Tables**:
+  - `DT_Professions`: Defines daily schedules for roles (Merchant, Scholar, etc.).
+- **Updated Tables**:
+  - `DT_UtilityActions`: Added `RequiredProfessionID` column.
+
+
+
 ## [0.5.1] - 2026-01-15
 
 ### 🔧 Utility AI Fixes & Enhancements

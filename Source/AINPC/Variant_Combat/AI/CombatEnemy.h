@@ -47,9 +47,9 @@ protected:
 	UPROPERTY(EditAnywhere, Category="Damage")
 	float MaxHP = 3.0f;
 
-	/** Personality ID for this NPC (e.g., "Zombie", "BraveWarrior", "FriendlyMerchant") */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="AI Personality", meta = (DisplayName = "Personality ID"))
-	FName PersonalityID = NAME_None;
+	// Unified NPC Profile (Personality, Profession, etc.)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	class UNPCDefinitionComponent* NPCDefinition;
 
 
 public:

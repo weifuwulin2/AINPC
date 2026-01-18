@@ -1,6 +1,7 @@
 #include "Components/SensoryComponent.h"
 #include "Components/SmartObjectComponent.h"
 #include "Components/PersonalityComponent.h"
+#include "Components/NPCDefinitionComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Social/SocialGameplayTags.h"
 
@@ -152,7 +153,7 @@ bool USensoryComponent::ProcessEventFilter(FSemanticEvent& Event)
 
 	// Rule 2: Mundane Activity Filter
 	// If it's a "Mundane" activity with low intensity, maybe ignore it?
-	if (Event.Verb.MatchesTag(AINPCTags::Activity_Mundane) && Event.Magnitude < 0.2f)
+	if (Event.Verb.MatchesTag(AINPCTags::Interaction_Mundane) && Event.Magnitude < 0.2f)
 	{
 		return false; // Ignore trivial background noise
 	}
@@ -451,6 +452,24 @@ void USensoryComponent::HandleDamageTaken(AActor* DamagedActor, float Damage, co
 
 void USensoryComponent::ReceiveSpeech(AActor* Speaker, FString Message)
 {
+    // ✅ Filter: Don't hear yourself speak
+    // 过滤：不要听到自己说话
+    AActor* Owner = GetOwner();
+    
+    // Check if Speaker is either the Owner (Controller) or the controlled Pawn
+    if (Speaker == Owner)
+    {
+        return;
+    }
+    
+    if (AAIController* OwnerController = Cast<AAIController>(Owner))
+    {
+        if (Speaker == OwnerController->GetPawn())
+        {
+            return;
+        }
+    }
+
     FString Extra = FString::Printf(TEXT("saying: \"%s\""), *Message);
     FString Desc = FormatDescription("heard", Speaker, Extra);
 
@@ -550,6 +569,7 @@ void USensoryComponent::HandleDeath(AActor* DeadActor, AActor* Killer)
 FString USensoryComponent::FormatDescription(FString Verb, AActor* Target, FString ExtraInfo)
 {
     FString TargetName = "Unknown";
+    FString ProfessionInfo = "";
     
     if (Target)
     {
@@ -557,6 +577,7 @@ FString USensoryComponent::FormatDescription(FString Verb, AActor* Target, FStri
         {
             if (AController* TargetController = TargetPawn->GetController())
             {
+                // 1. Try UtilityAIController (Personality)
                 if (AUtilityAIController* UtilityController = Cast<AUtilityAIController>(TargetController))
                 {
                     if (UtilityController->PersonalityComp && !UtilityController->PersonalityComp->PersonalityID.IsNone())
@@ -564,6 +585,27 @@ FString USensoryComponent::FormatDescription(FString Verb, AActor* Target, FStri
                         TargetName = UtilityController->PersonalityComp->PersonalityID.ToString();
                     }
                 }
+
+                // 2. Try NPCDefinition (Profession) - Check Controller first
+                if (UNPCDefinitionComponent* NPCDef = TargetController->FindComponentByClass<UNPCDefinitionComponent>())
+                {
+                    if (!NPCDef->ProfessionID.IsNone())
+                    {
+                        ProfessionInfo = FString::Printf(TEXT(" (%s)"), *NPCDef->ProfessionID.ToString());
+                    }
+                }
+            }
+            
+            // 3. Try NPCDefinition on Pawn (CombatEnemy case)
+            if (ProfessionInfo.IsEmpty())
+            {
+                 if (UNPCDefinitionComponent* NPCDef = TargetPawn->FindComponentByClass<UNPCDefinitionComponent>())
+                 {
+                    if (!NPCDef->ProfessionID.IsNone())
+                    {
+                        ProfessionInfo = FString::Printf(TEXT(" (%s)"), *NPCDef->ProfessionID.ToString());
+                    }
+                 }
             }
         }
         
@@ -578,10 +620,13 @@ FString USensoryComponent::FormatDescription(FString Verb, AActor* Target, FStri
         }
     }
     
+    // Append Profession to Name if available
+    FString DisplayName = TargetName + ProfessionInfo;
+    
     if (ExtraInfo.IsEmpty())
-        return FString::Printf(TEXT("I %s %s"), *Verb, *TargetName);
+        return FString::Printf(TEXT("I %s %s"), *Verb, *DisplayName);
     else
-        return FString::Printf(TEXT("I %s %s %s"), *Verb, *TargetName, *ExtraInfo);
+        return FString::Printf(TEXT("I %s %s %s"), *Verb, *DisplayName, *ExtraInfo);
 }
 
 // ✅ NEW: Enhanced description with faction/hostility context for LLM
@@ -589,6 +634,7 @@ FString USensoryComponent::FormatDescription(FString Verb, AActor* Target, FStri
 FString USensoryComponent::FormatDescriptionWithContext(FString Verb, AActor* Target, FName SelfFaction, FName TargetFaction, bool bIsHostile)
 {
     FString TargetName = "Unknown";
+    FString ProfessionInfo = "";
     
     if (Target)
     {
@@ -603,6 +649,27 @@ FString USensoryComponent::FormatDescriptionWithContext(FString Verb, AActor* Ta
                         TargetName = UtilityController->PersonalityComp->PersonalityID.ToString();
                     }
                 }
+
+                // Try NPCDefinition (Profession)
+                if (UNPCDefinitionComponent* NPCDef = TargetController->FindComponentByClass<UNPCDefinitionComponent>())
+                {
+                    if (!NPCDef->ProfessionID.IsNone())
+                    {
+                        ProfessionInfo = FString::Printf(TEXT(" (%s)"), *NPCDef->ProfessionID.ToString());
+                    }
+                }
+            }
+
+            // Try NPCDefinition on Pawn
+            if (ProfessionInfo.IsEmpty())
+            {
+                 if (UNPCDefinitionComponent* NPCDef = TargetPawn->FindComponentByClass<UNPCDefinitionComponent>())
+                 {
+                    if (!NPCDef->ProfessionID.IsNone())
+                    {
+                        ProfessionInfo = FString::Printf(TEXT(" (%s)"), *NPCDef->ProfessionID.ToString());
+                    }
+                 }
             }
         }
         
@@ -619,7 +686,9 @@ FString USensoryComponent::FormatDescriptionWithContext(FString Verb, AActor* Ta
     
     // ✅ Build context-aware description
     // 构建包含上下文的描述
-    FString Description = FString::Printf(TEXT("I %s %s"), *Verb, *TargetName);
+    // Append Profession Info
+    FString DisplayName = TargetName + ProfessionInfo;
+    FString Description = FString::Printf(TEXT("I %s %s"), *Verb, *DisplayName);
     
     // Add faction information
     // 添加阵营信息

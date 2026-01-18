@@ -26,18 +26,60 @@ void UUtilityAIComponent::BeginPlay()
     LoadActionsFromTable();
 }
 
+// ✅ Explicit Setter for Initialization Flow
+void UUtilityAIComponent::SetProfession(FName NewProfessionID)
+{
+    if (CurrentProfessionID == NewProfessionID && AvailableActions.Num() > 0)
+    {
+        return; // Already set and loaded
+    }
+
+    CurrentProfessionID = NewProfessionID;
+    UE_LOG(LogTemp, Log, TEXT("[UtilityComp] SetProfession called: %s. Reloading actions..."), *CurrentProfessionID.ToString());
+    
+    // Reload actions with new profession filter
+    LoadActionsFromTable();
+}
+
 void UUtilityAIComponent::LoadActionsFromTable()
 {
     if (!ActionDataTable) return;
+
+    // Clear existing actions (important for re-initialization)
+    AvailableActions.Empty();
 
     static const FString ContextString(TEXT("UtilityAI Actions Load"));
     TArray<FUtilityActionConfig*> Rows;
     ActionDataTable->GetAllRows(ContextString, Rows);
 
+    // Note: CurrentProfessionID is now set via SetProfession() by NPCDefinitionComponent
+    // Fallback: If None (e.g. old blueprint setup), try to assume from Personality (Legacy)
+    if (CurrentProfessionID.IsNone() && OwnerController && OwnerController->PersonalityComp)
+    {
+        // Warn about legacy fallback
+        // UE_LOG(LogTemp, Warning, TEXT("[UtilityComp] ProfessionID not set! Falling back to PersonalityID. Please update initialization flow."));
+        // CurrentProfessionID = OwnerController->PersonalityComp->PersonalityID;
+    }
+
+    UE_LOG(LogTemp, Log, TEXT("[UtilityComp] Loading Actions for Profession: %s"), *CurrentProfessionID.ToString());
+
     for (FUtilityActionConfig* Row : Rows)
     {
         if (Row && Row->ActionClass)
         {
+            // --- 职业过滤逻辑 (Profession Filtering) ---
+            // 1. 如果配置了 RequiredProfessionID，且不为 None
+            if (!Row->RequiredProfessionID.IsNone())
+            {
+                // 2. 如果当前 NPC 的 ID 与配置的不匹配，则跳过
+                if (Row->RequiredProfessionID != CurrentProfessionID)
+                {
+                    // (可选) 增加更智能的匹配（如果你有继承逻辑）
+                    // 暂时使用严格匹配
+                    continue; 
+                }
+            }
+            
             // 注意：Action 的 Outer 设为 this (Component)，方便管理生命周期
             UUtilityActionBase* NewAction = NewObject<UUtilityActionBase>(this, Row->ActionClass);
             NewAction->InitFromConfig(*Row);
@@ -52,6 +94,7 @@ void UUtilityAIComponent::LoadActionsFromTable()
             }
 
             AvailableActions.Add(NewAction);
+            UE_LOG(LogTemp, Verbose, TEXT("  + Loaded Action: %s"), *Row->ActionName);
         }
     }
 }
@@ -72,15 +115,25 @@ void UUtilityAIComponent::TickComponent(float DeltaTime, ELevelTick TickType, FA
     }
 
     // 🔍 定期打印当前动作状态（每 5 秒）
+    // Periodic debug logging (every 5 seconds, synced with Metabolism)
     static float LastStatusLog = 0.0f;
     float CurrentTime = GetWorld()->GetTimeSeconds();
     if (CurrentTime - LastStatusLog > 5.0f)
     {
         if (CurrentAction)
         {
-            UE_LOG(LogTemp, Warning, TEXT("[UtilityAI] Current Action: %s"), *CurrentAction->ActionName);
+            UE_LOG(LogTemp, Warning, TEXT("[UtilityAI] %s - Current Action: %s"), 
+                   *OwnerController->GetName(), *CurrentAction->ActionName);
+        }
+        else
+        {
+            UE_LOG(LogTemp, Warning, TEXT("[UtilityAI] %s - No Action"), 
+                   *OwnerController->GetName());
         }
         LastStatusLog = CurrentTime;
+        
+        // Force a detailed log on next evaluation
+        bPendingDebugLog = true;
     }
 }
 
@@ -202,8 +255,37 @@ void UUtilityAIComponent::EvaluateAndDecide()
     }
 
     // --- 状态切换 ---
+    // 只有当最佳动作不同于当前动作时才考虑切换
     if (BestAction && BestAction != CurrentAction)
     {
+        // ✅ 如果当前 Action 不想退出（比如 SmartObject Duration 还没到），检查是否有紧急情况
+        // If current action doesn't want to exit (e.g., SmartObject Duration not expired), check for emergencies
+        if (CurrentAction && !CurrentAction->ShouldExit(OwnerController))
+        {
+            // 紧急打断条件：高威胁（被攻击时惊醒）
+            // Emergency interrupt: High threat (wake up when attacked)
+            bool bEmergencyInterrupt = false;
+            
+            AUtilityAIController* UtilController = Cast<AUtilityAIController>(OwnerController);
+            if (UtilController && UtilController->MentalState)
+            {
+                // 如果威胁感知很高（Perceived_Threat > 0.5），允许打断
+                if (UtilController->MentalState->Perceived_Threat > 0.5f)
+                {
+                    bEmergencyInterrupt = true;
+                    UE_LOG(LogTemp, Warning, TEXT("[UtilityAI|%s] ⚠️ Emergency interrupt! Threat: %.2f"), 
+                           *PersonalityID, UtilController->MentalState->Perceived_Threat);
+                }
+            }
+            
+            if (!bEmergencyInterrupt)
+            {
+                // 没有紧急情况，当前动作仍在进行中，不切换
+                // No emergency, current action still in progress, don't switch
+                return;
+            }
+        }
+        
         // 退出旧的
         if (CurrentAction)
         {

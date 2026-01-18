@@ -65,6 +65,10 @@ public:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI Components")
     UMetabolismComponent* MetabolismComp;
 
+    // 目标仲裁组件 (Goal/LOD)
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI Components")
+    class UGoalComponent* GoalComp;
+
     // =========================================================
     // 2. 感知配置 (Config)
     // =========================================================

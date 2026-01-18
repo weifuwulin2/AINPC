@@ -2,6 +2,7 @@
 #include "Controller/UtilityAIController.h"
 #include "Components/SensoryComponent.h"
 #include "Components/SmartObjectComponent.h"
+#include "Subsystems/SmartObjectManager.h"
 #include "Social/SocialGameplayTags.h"
 #include "Navigation/PathFollowingComponent.h"
 
@@ -13,11 +14,16 @@ void UAction_SmartObject::Enter_Implementation(AAIController* Controller)
 	bIsInteracting = false;
 	ActionStartTime = 0.0f;
 
-	// 1. Get Sensory Component
-	USensoryComponent* SensoryComp = Controller->FindComponentByClass<USensoryComponent>();
-	if (!SensoryComp)
+	// 1. Get SmartObject Manager
+	USmartObjectManager* SmartObjectMgr = nullptr;
+	if (UWorld* World = Controller->GetWorld())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[%s] Failed: No SensoryComponent"), *ActionName);
+		SmartObjectMgr = World->GetSubsystem<USmartObjectManager>();
+	}
+
+	if (!SmartObjectMgr) 
+	{
+		UE_LOG(LogTemp, Error, TEXT("[%s] Failed: SmartObjectManager not found!"), *ActionName);
 		return;
 	}
 
@@ -28,31 +34,41 @@ void UAction_SmartObject::Enter_Implementation(AAIController* Controller)
 		return;
 	}
 
-	TargetSmartObject = SensoryComp->FindBestSmartObject(SmartObjectTag);
+	// Use Manager to find Unreserved object
+	TargetSmartObject = SmartObjectMgr->FindBestSmartObject(Controller->GetPawn(), SmartObjectTag);
 
 	if (TargetSmartObject)
 	{
-		// 3. Move to it - 检查返回值
-		// 使用 200cm 的 acceptance radius，因为床/桌子的中心点可能不在 Nav Mesh 上
-		EPathFollowingRequestResult::Type MoveResult = Controller->MoveToActor(TargetSmartObject, 200.0f);
-		
-		if (MoveResult == EPathFollowingRequestResult::RequestSuccessful)
+		// 3. Try Reserve
+		if (SmartObjectMgr->TryReserveSmartObject(TargetSmartObject, Controller->GetPawn()))
 		{
-			UE_LOG(LogTemp, Log, TEXT("[%s] Moving to Smart Object: %s"), *ActionName, *TargetSmartObject->GetName());
-		}
-		else if (MoveResult == EPathFollowingRequestResult::AlreadyAtGoal)
-		{
-			UE_LOG(LogTemp, Log, TEXT("[%s] Already at Smart Object: %s"), *ActionName, *TargetSmartObject->GetName());
+			ReservedResource = TargetSmartObject;
+			UE_LOG(LogTemp, Log, TEXT("[%s] Reserved Resource: %s"), *ActionName, *ReservedResource->GetName());
+			
+			// 4. Move to it
+			EPathFollowingRequestResult::Type MoveResult = Controller->MoveToActor(ReservedResource, 150.0f); // 1.5m radius
+			
+			if (MoveResult == EPathFollowingRequestResult::RequestSuccessful)
+			{
+				UE_LOG(LogTemp, Log, TEXT("[%s] Moving to Smart Object: %s"), *ActionName, *ReservedResource->GetName());
+			}
+			else if (MoveResult == EPathFollowingRequestResult::AlreadyAtGoal)
+			{
+				UE_LOG(LogTemp, Log, TEXT("[%s] Already at Smart Object: %s"), *ActionName, *ReservedResource->GetName());
+			}
+			
+			// ✅ 5. Setup Recovery Timer (1 second interval)
+			SetupRecoveryTimer(Controller);
 		}
 		else
 		{
-			UE_LOG(LogTemp, Error, TEXT("[%s] MoveToActor FAILED! Result: %d. Check Nav Mesh!"), *ActionName, (int)MoveResult);
+			UE_LOG(LogTemp, Warning, TEXT("[%s] Failed to reserve resource: %s (Was taken?)"), *ActionName, *TargetSmartObject->GetName());
+			TargetSmartObject = nullptr; // Reset to fail gracefully
 		}
 	}
 	else
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[%s] No valid Smart Object found for tag: %s"), *ActionName, *SmartObjectTag.ToString());
-		// Ideally, we should fail or exit here, but UtilityAI usually just runs Execute next.
+		UE_LOG(LogTemp, Warning, TEXT("[%s] No valid unreserved Smart Object found for tag: %s"), *ActionName, *SmartObjectTag.ToString());
 	}
 }
 
@@ -106,6 +122,13 @@ void UAction_SmartObject::Execute_Implementation(AAIController* Controller)
 				bIsInteracting = true;
 				ActionStartTime = Controller->GetWorld()->GetTimeSeconds();
 
+				// ✅ 确保 Timer 已设置（可能 Enter 失败了）
+				// Ensure timer is set up (Enter might have failed)
+				if (!RecoveryTimerHandle.IsValid())
+				{
+					SetupRecoveryTimer(Controller);
+				}
+
 				// ✅ 播放动画 / Play animation
 				if (InteractionMontage && Controller->GetPawn())
 				{
@@ -129,11 +152,8 @@ void UAction_SmartObject::Execute_Implementation(AAIController* Controller)
 				}
 			}
 			
-			// 2. Perform Restore (Simulate Interaction)
-			// In a real game, potential animation trigger here
-			
-			float DeltaTime = Controller->GetWorld()->GetDeltaSeconds();
-			RestoreStats(Controller, DeltaTime);
+			// 2. Timer handles recovery now (no need for per-frame calls)
+			// Recovery is handled by the 1-second timer set up in Enter
 
 			// 3. 检查是否超过持续时长 / Check if duration expired
 			if (ActionDuration > 0.0f)
@@ -160,6 +180,12 @@ void UAction_SmartObject::Exit_Implementation(AAIController* Controller)
 {
 	bIsInteracting = false;
 	
+	// ✅ Clear Recovery Timer
+	if (Controller && Controller->GetWorld())
+	{
+		Controller->GetWorld()->GetTimerManager().ClearTimer(RecoveryTimerHandle);
+	}
+	
 	// ✅ 停止动画 / Stop animation
 	if (InteractionMontage && Controller && Controller->GetPawn())
 	{
@@ -179,7 +205,22 @@ void UAction_SmartObject::Exit_Implementation(AAIController* Controller)
 
 	// ✅ 重置状态 / Reset state
 	bIsInteracting = false;
+	
+	// Release Reservation
+	if (ReservedResource && Controller)
+	{
+		if (UWorld* World = Controller->GetWorld())
+		{
+			if (USmartObjectManager* SmartObjectMgr = World->GetSubsystem<USmartObjectManager>())
+			{
+				SmartObjectMgr->ReleaseReservation(ReservedResource, Controller->GetPawn());
+				UE_LOG(LogTemp, Log, TEXT("[%s] Released Reservation on %s"), *ActionName, *ReservedResource->GetName());
+			}
+		}
+	}
+
 	TargetSmartObject = nullptr;
+	ReservedResource = nullptr;
 	
 	if (Controller)
 	{
@@ -191,42 +232,100 @@ void UAction_SmartObject::Exit_Implementation(AAIController* Controller)
 
 bool UAction_SmartObject::ShouldExit(AAIController* Controller) const
 {
-	// 如果没有设置持续时长，永不主动退出
-	// If no duration is set, never exit on its own
-	if (ActionDuration <= 0.0f)
+	// ✅ 1. 持续时长检查（仅在交互时阻止切换）
+	// Duration check (only block switching when actually interacting)
+	if (ActionDuration > 0.0f)
 	{
+		// 如果还没开始交互（正在走路），允许切换到更好的动作
+		// If not yet interacting (still moving), allow switching to better action
+		if (!bIsInteracting)
+		{
+			return true;  // Allow switching during movement phase
+		}
+		
+		// 正在交互中，检查是否超过持续时长
+		// Currently interacting, check if duration expired
+		if (Controller && Controller->GetWorld())
+		{
+			float ElapsedTime = Controller->GetWorld()->GetTimeSeconds() - ActionStartTime;
+			// 只有时长到期才退出
+			return ElapsedTime >= ActionDuration;
+		}
 		return false;
 	}
-
-	// 如果还没开始交互，不退出
-	// If not yet interacting, don't exit
-	if (!bIsInteracting)
+	
+	// ✅ 2. 需求满足检查（仅当没有设置 Duration 时）
+	// Need satisfaction check (only when Duration is not set)
+	AUtilityAIController* UtilController = Cast<AUtilityAIController>(Controller);
+	if (UtilController && UtilController->MentalState)
 	{
-		return false;
-	}
-
-	// 检查是否超过持续时长
-	// Check if duration has expired
-	if (Controller && Controller->GetWorld())
-	{
-		float ElapsedTime = Controller->GetWorld()->GetTimeSeconds() - ActionStartTime;
-		return ElapsedTime >= ActionDuration;
+		UNPCMentalState* State = UtilController->MentalState;
+		
+		// Eat -> Check Hunger
+		if (SmartObjectTag == AINPCTags::Interaction_Eat)
+		{
+			if (State->Hunger < 0.2f) // Well-fed threshold
+			{
+				return true;
+			}
+		}
+		// Sleep -> Check Fatigue
+		else if (SmartObjectTag == AINPCTags::Interaction_Rest)
+		{
+			if (State->Fatigue < 0.2f) // Well-rested threshold
+			{
+				return true;
+			}
+		}
 	}
 
 	return false;
 }
 
-void UAction_SmartObject::RestoreStats(AAIController* Controller, float DeltaTime)
+void UAction_SmartObject::SetupRecoveryTimer(AAIController* Controller)
+{
+	if (!Controller || !Controller->GetWorld()) return;
+
+	// ✅ Read RestoreValue from SmartObject
+	float RestoreRate = 0.2f; // Default fallback
+	if (TargetSmartObject)
+	{
+		if (USmartObjectComponent* SmartComp = TargetSmartObject->FindComponentByClass<USmartObjectComponent>())
+		{
+			RestoreRate = SmartComp->RestoreValue;
+			UE_LOG(LogTemp, Warning, TEXT("[%s] ✅ Read RestoreValue from SmartObject '%s': %.2f/s"), 
+			       *ActionName, *TargetSmartObject->GetName(), RestoreRate);
+		}
+		else
+		{
+			UE_LOG(LogTemp, Error, TEXT("[%s] ❌ SmartObject '%s' has NO SmartObjectComponent! Using default %.2f/s"), 
+			       *ActionName, *TargetSmartObject->GetName(), RestoreRate);
+		}
+	}
+
+	// ✅ Setup Timer (1 second interval, repeat)
+	Controller->GetWorld()->GetTimerManager().SetTimer(
+		RecoveryTimerHandle,
+		[this, Controller]()
+		{
+			RestoreStats(Controller);
+		},
+		1.0f,  // 每1秒执行一次
+		true   // 重复执行
+	);
+
+	UE_LOG(LogTemp, Log, TEXT("[%s] ✅ Recovery Timer Started (Rate: %.2f/s)"), *ActionName, RestoreRate);
+}
+
+void UAction_SmartObject::RestoreStats(AAIController* Controller)
 {
 	AUtilityAIController* UtilController = Cast<AUtilityAIController>(Controller);
 	if (!UtilController) return;
 
-	// ✅ ARCHITECTURE FIX: Access MentalState directly from the Controller (Source of Truth)
-	// Instead of depending on MetabolismComponent to find the state.
 	UNPCMentalState* State = UtilController->MentalState;
 	if (!State) return;
 
-	// ✅ NEW: Read RestoreValue from the SmartObjectComponent
+	// ✅ Read RestoreValue from SmartObject
 	float RestoreRate = 0.2f; // Default fallback
 	if (TargetSmartObject)
 	{
@@ -236,19 +335,22 @@ void UAction_SmartObject::RestoreStats(AAIController* Controller, float DeltaTim
 		}
 	}
 
-	if (SmartObjectTag == AINPCTags::Activity_Eat)
+	// ✅ Directly apply RestoreRate (no DeltaTime multiplication needed - timer runs every 1 second)
+	if (SmartObjectTag == AINPCTags::Interaction_Eat)
 	{
-		// Eat -> Decrease Hunger (Hunger = 饥饿度，吃饭减少饥饿度)
-		// Eat -> Decrease Hunger (Hunger = hunger level, eating decreases hunger)
-		State->Hunger = FMath::Clamp(State->Hunger - (RestoreRate * DeltaTime), 0.0f, 1.0f);
-		UE_LOG(LogTemp, Log, TEXT("[%s] Eating... Hunger: %.2f (Rate: %.2f/s)"), *ActionName, State->Hunger, RestoreRate);
+		float OldHunger = State->Hunger;
+		State->Hunger = FMath::Clamp(State->Hunger - RestoreRate, 0.0f, 1.0f);
+		float Delta = OldHunger - State->Hunger;
+		UE_LOG(LogTemp, Warning, TEXT("[%s] Eating... Hunger: %.2f (-%0.2f this tick, Rate: %.2f/s)"), 
+		       *ActionName, State->Hunger, Delta, RestoreRate);
 	}
-	else if (SmartObjectTag == AINPCTags::Activity_Rest)
+	else if (SmartObjectTag == AINPCTags::Interaction_Rest)
 	{
-		// Sleep -> Decrease Fatigue (Fatigue = 疲劳度，睡觉减少疲劳度)
-		// Sleep -> Decrease Fatigue (Fatigue = fatigue level, sleeping decreases fatigue)
-		State->Fatigue = FMath::Clamp(State->Fatigue - (RestoreRate * DeltaTime), 0.0f, 1.0f);
-		UE_LOG(LogTemp, Log, TEXT("[%s] Sleeping... Fatigue: %.2f (Rate: %.2f/s)"), *ActionName, State->Fatigue, RestoreRate);
+		float OldFatigue = State->Fatigue;
+		State->Fatigue = FMath::Clamp(State->Fatigue - RestoreRate, 0.0f, 1.0f);
+		float Delta = OldFatigue - State->Fatigue;
+		UE_LOG(LogTemp, Warning, TEXT("[%s] Sleeping... Fatigue: %.2f (-%0.2f this tick, Rate: %.2f/s)"), 
+		       *ActionName, State->Fatigue, Delta, RestoreRate);
 	}
     // Add more cases here as needed (e.g. Socializing -> Reduce Loneliness)
 }

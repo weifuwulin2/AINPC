@@ -251,6 +251,27 @@ AINPC/
 
 ## 🎉 最新更新 / Latest Updates
 
+### v0.5.2 - GOAP-Lite Subsystems (2026-01-17)
+
+#### 🎉 新增子系统 / New Subsystems
+
+- **✅ Smart Object Manager (智能对象管理)**
+  - Central registry for `Activity.Eat`, `Activity.Sleep` tagged objects.
+  - Reservation system to prevent NPC overcrowding.
+
+- **✅ Time Manager (时间管理)**
+  - Controls Day/Night cycle and broadcasts hourly events.
+  - Drives NPC daily schedules (Work, Rest, Wander).
+
+- **✅ Goal Component (目标仲裁)**
+  - **GOAP-Lite Layer**: Arbitrates between `Survival` (Critical), `Social`, and `Schedule` directives.
+  - **LOD System**: Automatically adjusts logic update frequency based on context.
+
+- **✅ NPC Definition (统一身份)**
+  - `UNPCDefinitionComponent` acts as the "Passport" containing PersonalityID and ProfessionID.
+
+---
+
 ### v0.5.0 - Hybrid V3 架构: 匮乏模型与意图覆盖 (2026-01-15)
 		
 #### 🎉 重大改进 / Major Improvements

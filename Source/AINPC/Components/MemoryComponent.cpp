@@ -54,7 +54,7 @@ float UMemoryComponent::CalculateImportance(const FSemanticEvent& Event)
 	{
 		BaseScore += 3.0f; // Conflict is memorable
 	}
-	else if (Event.Verb.MatchesTag(AINPCTags::Activity_Mundane))
+	else if (Event.Verb.MatchesTag(AINPCTags::Interaction_Mundane))
 	{
 		BaseScore *= 0.1f; // Mundane things fade fast
 	}
