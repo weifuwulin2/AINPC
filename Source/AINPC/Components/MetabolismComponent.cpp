@@ -101,11 +101,11 @@ void UMetabolismComponent::TickComponent(float DeltaTime, ELevelTick TickType, F
     }
 
 
-    // === 2. 情绪冷却 (Cool Down) ===
-    // 只有当 LLM 没有设定"高目标值"时，情绪才会消退
-    // Only decay if LLM is not actively pushing it higher
+    // === 2. 情绪冷却与平滑过渡 (Cool Down & Smooth Transition) ===
+    // 负责将当前状态平滑过渡到 LLM 设定的目标值（向上增长或向下衰减）
+    // Responsible for smoothly transitioning current state to LLM's target value (growth or decay)
 
-    auto ApplyDecay = [&](float& CurrentValue, const FString& VariableName, float DecayRate)
+    auto ApplyStateTransition = [&](float& CurrentValue, const FString& VariableName, float DecayRate)
     {
         float TargetValue = 0.0f;
         if (Interpolator)
@@ -113,21 +113,30 @@ void UMetabolismComponent::TickComponent(float DeltaTime, ELevelTick TickType, F
             TargetValue = Interpolator->GetTargetValue(VariableName);
         }
 
-        // 如果当前值比目标值大（说明正在气头上，或者 LLM 已经撤销了目标），就开始衰减
-        // 或者是 LLM 设定的目标值很低
-        // 关键逻辑：我们只做"向下衰减"。如果 LLM 想要拉高，由 Interpolator 负责。
-        if (CurrentValue > TargetValue)
+        // 修正后的逻辑：
+        // 1. 只有当目标值 > 当前值时（新的刺激），才去追赶目标。
+        // 2. 否则（没有刺激，或者刺激比当前状态弱），就自然向 0 衰减。
+        // This fixes the "stuck at high value" or "decay too fast" issue.
+        
+        if (TargetValue > CurrentValue)
         {
-            // 使用 FInterpTo 模拟指数衰减 (自然冷却)
-            CurrentValue = FMath::FInterpTo(CurrentValue, TargetValue, DeltaTime, DecayRate);
+            // 上升期：极速追赶目标 (Reaction)
+            // Rising: Rush to target instantly
+            CurrentValue = FMath::FInterpTo(CurrentValue, TargetValue, DeltaTime, 10.0f);
+        }
+        else
+        {
+            // 下降期：忽略那个可能还卡在高位的 Target，直接向 0 衰减 (Recovery)
+            // Falling: Ignore stale target, decay naturally to 0.0
+            CurrentValue = FMath::FInterpTo(CurrentValue, 0.0f, DeltaTime, DecayRate);
         }
     };
 
     // 屈辱 (Indignity) -> 愤怒
-    ApplyDecay(State->Indignity, TEXT("Indignity"), EmotionalDecayRate);
+    ApplyStateTransition(State->Indignity, TEXT("Indignity"), EmotionalDecayRate);
 
     // 威胁感 (Perceived_Threat) - 消失得比较快，因为如果没有持续威胁，你就安全了
-    ApplyDecay(State->Perceived_Threat, TEXT("Perceived_Threat"), ThreatDecayRate);
+    ApplyStateTransition(State->Perceived_Threat, TEXT("Perceived_Threat"), ThreatDecayRate);
 
     // === 3. 情绪分数衰减（简化版）===
     // Emotion Score Decay (Simplified)

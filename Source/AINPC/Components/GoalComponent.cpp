@@ -67,6 +67,23 @@ void UGoalComponent::BeginPlay()
 	{
 		InitializeProfession(ProfessionID);
 	}
+	
+	// 5. ✅ Initialize Directive immediately to avoid 'None' state
+	// This ensures Directive is set before first Utility AI evaluation
+	if (UWorld* World = GetWorld())
+	{
+		if (UGameInstance* GameInstance = World->GetGameInstance())
+		{
+			if (UTimeManager* TimeMgr = GameInstance->GetSubsystem<UTimeManager>())
+			{
+				CheckSchedule();
+				UpdateArbitration();  // Set initial directive
+				
+				UE_LOG(LogTemp, Log, TEXT("[GoalComponent] Initial Directive set to: %s"), 
+				       *CurrentDirective.ToString());
+			}
+		}
+	}
 }
 
 void UGoalComponent::InitializeProfession(FName NewProfessionID)
@@ -116,6 +133,32 @@ void UGoalComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorC
 
 void UGoalComponent::UpdateArbitration()
 {
+	// ✅ Lazy initialization: Retry fetching MentalState if it's null
+	// This handles cases where GoalComponent::BeginPlay runs before Controller initialization
+	if (!MentalState)
+	{
+		AActor* Owner = GetOwner();
+		if (Owner)
+		{
+			AUtilityAIController* Controller = Cast<AUtilityAIController>(Owner);
+			APawn* Pawn = Cast<APawn>(Owner);
+			
+			if (!Controller && Pawn)
+			{
+				Controller = Cast<AUtilityAIController>(Pawn->GetController());
+			}
+			
+			if (Controller)
+			{
+				MentalState = Controller->MentalState;
+				if (MentalState)
+				{
+					UE_LOG(LogTemp, Warning, TEXT("[GoalComponent] ✅ MentalState acquired (delayed initialization)"));
+				}
+			}
+		}
+	}
+	
 	// 1. Survival Layer (Highest Priority)
 	bool bSurvivalTriggered = false;
 
@@ -143,6 +186,17 @@ void UGoalComponent::UpdateArbitration()
 		if (MentalState->Hunger > CriticalHungerThreshold || MentalState->Fatigue > CriticalHungerThreshold) 
 		{
 			bSurvivalTriggered = true;
+			UE_LOG(LogTemp, Warning, TEXT("[GoalComponent] ⚠️ SURVIVAL TRIGGERED: Hunger=%.2f, Fatigue=%.2f (Threshold=%.2f)"),
+			       MentalState->Hunger, MentalState->Fatigue, CriticalHungerThreshold);
+		}
+	}
+	else
+	{
+		// Only log once every 100 frames to avoid spam
+		static int32 NullStateLogCounter = 0;
+		if (NullStateLogCounter++ % 100 == 0)
+		{
+			UE_LOG(LogTemp, Error, TEXT("[GoalComponent] ❌ MentalState is NULL! Cannot check Survival needs!"));
 		}
 	}
 
@@ -156,10 +210,40 @@ void UGoalComponent::UpdateArbitration()
     	return;
     }
 
-	// 2. Social Layer (Medium Priority)
-	// TODO: Check if in conversation
+	// 🧟 Monster Check: Monsters only have Survival instincts, no Social/Work
+	// Zombies, beasts, etc. should not have schedules or social needs
+	EFactionType OwnerFaction = USensoryComponent::GetFaction(GetOwner());
+	if (OwnerFaction == EFactionType::Monster)
+	{
+		// Monsters are always in "Survival" mode
+		// This gives bonus to Attack/Flee/Eat/Sleep, but penalizes Work/Social
+		SetDirective(FGameplayTag::RequestGameplayTag("Directive.Survival"));
+		SetLOD(EContextLOD::Standard);
+		return;
+	}
 
-	// 3. Schedule Layer (Lowest Priority)
+	// 2. Social Layer (Medium Priority) - Only for Human/Neutral NPCs
+	// Trigger Social directive if NPC is lonely
+	// Note: We don't check for actual friendly NPCs here. The Talk action itself has
+	// HasFriendlyNearby as a Context, so if no friends are nearby, Talk score will be 0.
+	// The directive just indicates "I want to socialize", the action decides if it's possible.
+	bool bSocialTriggered = false;
+	
+	if (MentalState && MentalState->Loneliness > 0.5f)
+	{
+		bSocialTriggered = true;
+		UE_LOG(LogTemp, Log, TEXT("[GoalComponent] 💬 SOCIAL TRIGGERED: Loneliness=%.2f"),
+		       MentalState->Loneliness);
+	}
+	
+	if (bSocialTriggered)
+	{
+		SetDirective(FGameplayTag::RequestGameplayTag("Directive.Social"));
+		SetLOD(EContextLOD::Standard);
+		return;
+	}
+
+	// 3. Schedule Layer (Lowest Priority) - Only for Human/Neutral NPCs
 	SetDirective(CachedScheduleDirective);
 	SetLOD(EContextLOD::Standard);
 }
@@ -202,6 +286,8 @@ void UGoalComponent::SetDirective(FGameplayTag NewDirective)
 	if (CurrentDirective != NewDirective)
 	{
 		CurrentDirective = NewDirective;
+		UE_LOG(LogTemp, Warning, TEXT("[GoalComponent] 🎯 Directive Changed: %s (LOD: %d)"), 
+			   *CurrentDirective.ToString(), (int)CurrentLOD);
 		// Optional: Broadcast change
 	}
 }

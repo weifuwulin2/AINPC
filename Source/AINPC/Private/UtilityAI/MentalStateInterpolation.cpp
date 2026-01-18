@@ -16,6 +16,16 @@ UMentalStateInterpolator::UMentalStateInterpolator()
 
 void UMentalStateInterpolator::SetTargetValue(const FString& VariableName, float TargetValue)
 {
+    // ✅ CRITICAL: Skip Engine-exclusive fields (Hunger, Fatigue)
+    // These are managed by MetabolismComponent and should NOT have target values set by LLM
+    // Note: Perceived_Threat is allowed here as LLM can trigger reactions.
+    if (VariableName == TEXT("Hunger") || 
+        VariableName == TEXT("Fatigue"))
+    {
+        // Skip - Engine manages these fields exclusively
+        return;
+    }
+
     // 获取配置
     // Get configuration
     const FMentalStateInterpConfig* ConfigPtr = InterpConfigs.Find(VariableName);
@@ -43,49 +53,25 @@ void UMentalStateInterpolator::SetTargetValue(const FString& VariableName, float
 
 void UMentalStateInterpolator::UpdateInterpolation(UNPCMentalState* MentalState, float DeltaTime)
 {
-    if (!MentalState)
-    {
-        UE_LOG(LogTemp, Error, TEXT("[MentalStateInterpolator] MentalState is null!"));
-        return;
-    }
+    // ✅ NEW ARCHITECTURE:
+    // The Interpolator now ONLY manages the "Intention" (TargetValues).
+    // It NO LONGER writes directly to the MentalState fields.
+    // This allows MetabolismComponent to be the sole master of the NPC's actual physical state.
 
-    // 遍历所有目标值
-    // Iterate through all target values
-    for (const TPair<FString, float>& Pair : TargetValues)
+    // 遍历所有目标值，只更新内部 TargetValues 字典
+    // Iterate through target values and only update the internal dictionary
+    for (auto& Pair : TargetValues)
     {
         const FString& VariableName = Pair.Key;
-        const float TargetValue = Pair.Value;
+        float& TargetValue = Pair.Value;
 
-        // 获取当前值
-        // Get current value
-        float CurrentValue = GetCurrentValue(MentalState, VariableName);
-
-        // 获取插值配置
-        // Get interpolation configuration
-        const FMentalStateInterpConfig* ConfigPtr = InterpConfigs.Find(VariableName);
-        const FMentalStateInterpConfig& Config = ConfigPtr ? *ConfigPtr : DefaultConfig;
-
-        // 检查是否需要插值
-        // Check if interpolation is needed
-        float Difference = FMath::Abs(TargetValue - CurrentValue);
-        
-        if (Difference < Config.SnapThreshold)
+        // ✅ Step 0: Target Decay
+        // All LLM intentions (threat, boredom, etc.) should naturally fade over time.
+        // This prevents an NPC from being stuck in "Scared" mode forever if the LLM stops responding.
+        if (VariableName != TEXT("Hunger") && VariableName != TEXT("Fatigue"))
         {
-            // 差距太小，直接设置为目标值
-            // Difference too small, directly set to target value
-            SetCurrentValue(MentalState, VariableName, TargetValue);
-        }
-        else
-        {
-            // 使用 FInterpTo 平滑过渡
-            // Use FInterpTo for smooth transition
-            float NewValue = FMath::FInterpTo(CurrentValue, TargetValue, DeltaTime, Config.InterpSpeed);
-            SetCurrentValue(MentalState, VariableName, NewValue);
-
-            // 调试日志（可选）
-            // Debug log (optional)
-            // UE_LOG(LogTemp, Verbose, TEXT("[MentalStateInterpolator] %s: %.3f -> %.3f (target: %.3f)"), 
-            //        *VariableName, CurrentValue, NewValue, TargetValue);
+            // The Target itself drifts back to zero.
+            TargetValue = FMath::FInterpTo(TargetValue, 0.0f, DeltaTime, 0.2f); // Slow drift
         }
     }
 }
@@ -166,7 +152,9 @@ void UMentalStateInterpolator::SetCurrentValue(UNPCMentalState* MentalState, con
 {
     // ✅ CRITICAL: Skip Engine-exclusive fields (Hunger, Fatigue)
     // These are managed by MetabolismComponent and should NOT be overwritten by Interpolator
-    if (VariableName == TEXT("Hunger") || VariableName == TEXT("Fatigue"))
+    // Perceived_Threat is now managed by both: LLM can "jump" it, and Metabolism can "decay" it.
+    if (VariableName == TEXT("Hunger") || 
+        VariableName == TEXT("Fatigue"))
     {
         // Skip - these are Engine-exclusive fields
         return;

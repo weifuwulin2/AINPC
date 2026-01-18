@@ -18,6 +18,9 @@ public:
 	
 	/** Constructor */
 	AAINPCGameMode();
+
+	// Receive tick
+	virtual void Tick(float DeltaSeconds) override;
 };
 
 

@@ -35,6 +35,6 @@ void UTimeManager::AdvanceTime(float DeltaSeconds)
 		OnHourChanged.Broadcast((float)CurrentIntegerHour);
 		
 		// Optional: Log time change
-		// UE_LOG(LogTemp, Log, TEXT("[TimeManager] 🕰️ Hour Changed: %d:00"), CurrentIntegerHour);
+		UE_LOG(LogTemp, Log, TEXT("[TimeManager] 🕰️ Hour Changed: %d:00"), CurrentIntegerHour);
 	}
 }

@@ -30,7 +30,12 @@ void UUtilityActionBase::InitFromConfig(const FUtilityActionConfig& Config)
     IntentionTag = Config.IntentionTag; // 用于 LLM Intention 匹配
 	DirectiveTag = Config.DirectiveTag; // 用于 Goal Directive 匹配
 
-    if (ActionName.Equals("BaseAction") || ActionName.IsEmpty())
+    // Fix: Assign name from config if available
+    if (!Config.ActionName.IsEmpty())
+    {
+        ActionName = Config.ActionName;
+    }
+    else if (ActionName.Equals("BaseAction") || ActionName.IsEmpty())
     {
         ActionName = GetName();
     }
@@ -103,7 +108,7 @@ float UUtilityActionBase::CalculateScore(UNPCMentalState* MentalState, AAIContro
         const FUtilityConsideration& Factor = Considerations[i];
         
         // A. 获取原始数据 (0~1 或 实际值)
-        float RawValue = GetConsiderationValue(Factor.InputType, MentalState, Controller);
+        float RawValue = GetConsiderationValue(Factor.InputType, MentalState, Controller, bLogDebug);
 
         // A2. 应用响应曲线 (Response Curve)
         float CurveValue = RawValue;
@@ -315,6 +320,74 @@ float UUtilityActionBase::CalculateScore(UNPCMentalState* MentalState, AAIContro
                BaseReward, MotivationSum, IntentionBonus, ContextProduct, EmotionMultiplier, FinalScore);
     }
 
+    // 7. 应用 Directive 加成/限制 / Apply Directive Bonus/Restriction
+    // ---------------------------------------------------------
+    // Directive 既是"加成"也是"开关"：
+    // - 匹配时：2.0x 分数加成（鼓励在正确时间做正确的事）
+    // - 不匹配时：0.0x 分数（完全禁止）
+    // Directive acts as both "bonus" and "gate":
+    // - When matched: 2.0x score bonus (encourage doing the right thing at the right time)
+    // - When not matched: 0.0x score (completely forbidden)
+    
+    if (DirectiveTag.IsValid())
+    {
+        float DirectiveMultiplier = 0.0f; // Default: forbidden
+        
+        // Find GoalComponent (check Controller first, then Pawn)
+        UGoalComponent* GoalComp = nullptr;
+        if (Controller)
+        {
+            GoalComp = Controller->FindComponentByClass<UGoalComponent>();
+        }
+        
+        if (!GoalComp)
+        {
+            APawn* BotPawn = Controller ? Controller->GetPawn() : nullptr;
+            if (BotPawn)
+            {
+                GoalComp = BotPawn->FindComponentByClass<UGoalComponent>();
+            }
+        }
+        
+        if (GoalComp)
+        {
+            FGameplayTag CurrentDirective = GoalComp->GetCurrentDirective();
+            
+            if (CurrentDirective.MatchesTag(DirectiveTag))
+            {
+                DirectiveMultiplier = 1.5f; // 1.5x bonus when directive matches (encouragement)
+                
+                if (bLogDebug)
+                {
+                    UE_LOG(LogTemp, Warning, TEXT("      [Directive] ✅ MATCHED! '%s' grants 1.5x bonus"), 
+                           *DirectiveTag.ToString());
+                }
+            }
+            else
+            {
+                DirectiveMultiplier = 0.3f; // Discouraged but not forbidden when directive doesn't match
+                
+                if (bLogDebug)
+                {
+                    UE_LOG(LogTemp, Warning, TEXT("      [Directive] ⚠️ MISMATCH! Action '%s' requires '%s', but current is '%s'. Score *= 0.3"), 
+                           *ActionName, *DirectiveTag.ToString(), *CurrentDirective.ToString());
+                }
+            }
+        }
+        else if (bLogDebug)
+        {
+            UE_LOG(LogTemp, Warning, TEXT("      [Directive] ⚠️ GoalComponent not found, no directive multiplier applied"));
+        }
+        
+        FinalScore *= DirectiveMultiplier;
+        
+        if (bLogDebug && DirectiveMultiplier > 0.0f)
+        {
+            UE_LOG(LogTemp, Warning, TEXT("      👉 AFTER Directive Multiplier: %.3f * %.2f = %.3f"), 
+                   FinalScore / DirectiveMultiplier, DirectiveMultiplier, FinalScore);
+        }
+    }
+
     // 3. 惯性奖励 (Inertia / Momentum)
     // 这里的逻辑假设你会在 Controller 或 Component 里记录 CurrentAction
     // 如果没有这个机制，可以先注释掉下面这段
@@ -337,7 +410,7 @@ void UUtilityActionBase::MarkExecutionTime(float CurrentTime)
     LastExecutedTime = CurrentTime;
 }
 
-float UUtilityActionBase::GetConsiderationValue(EUtilityInputType InputType, UNPCMentalState* State, AAIController* Controller)
+float UUtilityActionBase::GetConsiderationValue(EUtilityInputType InputType, UNPCMentalState* State, AAIController* Controller, bool bLogDebug)
 {
     APawn* BotPawn = Controller ? Controller->GetPawn() : nullptr;
     if (!BotPawn) return 0.0f;
@@ -379,7 +452,9 @@ float UUtilityActionBase::GetConsiderationValue(EUtilityInputType InputType, UNP
         
         // ✅ 自我实现层 (Self-Actualization)
         case EUtilityInputType::Boredom:
-            return Interpolator ? Interpolator->GetTargetValue(TEXT("Boredom")) : (State ? State->Boredom : 0.0f);
+            // Boredom grows passively via MetabolismComponent, not controlled by LLM
+            // So we read directly from State, not Interpolator
+            return State ? State->Boredom : 0.0f;
 
         // --- 自身状态 (Self Status) ---
         case EUtilityInputType::SelfHealth:
@@ -589,29 +664,6 @@ float UUtilityActionBase::GetConsiderationValue(EUtilityInputType InputType, UNP
             return 0.0f;
         }
 
-		// ✅ 新增：检查 Goal Component 指令是否匹配
-		case EUtilityInputType::GoalDirectiveMatch:
-		{
-			// 必须要有 GoalComponent
-			if (BotPawn)
-			{
-				if (UGoalComponent* GoalComp = BotPawn->FindComponentByClass<UGoalComponent>())
-				{
-					// 如果当前动作没有设置需要的 DirectiveTag，默认通过 (1.0) 还是不通过？
-					// 既然选了这个 InputType，就说明它需要匹配。
-					// If Action.DirectiveTag matches Goal.CurrentDirective -> 1.0f
-					// If Goal.CurrentDirective is None -> ? 
-					
-					FGameplayTag CurrentDirective = GoalComp->GetCurrentDirective();
-					if (CurrentDirective.MatchesTag(DirectiveTag))
-					{
-						return 1.0f;
-					}
-				}
-			}
-			return 0.0f;
-		}
-
         default:
             return 0.0f;
     }
@@ -631,20 +683,18 @@ FString UUtilityActionBase::GetVariableNameFromInputType(EUtilityInputType Input
         case EUtilityInputType::Indignity:         return TEXT("Indignity");
         case EUtilityInputType::Boredom:           return TEXT("Boredom");
         
-        // 环境变量 (Environment variables) - 使用默认权重 1.0
-        case EUtilityInputType::SelfHealth:
-        case EUtilityInputType::TargetHealth:
-        case EUtilityInputType::DistanceToTarget:
-        case EUtilityInputType::AmmoCount:
-        case EUtilityInputType::HasCover:
-        case EUtilityInputType::IsTargetPlayer:
-        case EUtilityInputType::HasAttackTarget:
-        case EUtilityInputType::HasEnemyNearby:
-        case EUtilityInputType::HasFriendlyNearby:
-        case EUtilityInputType::HasFoodNearby:
-        case EUtilityInputType::HasBedNearby:
-		case EUtilityInputType::GoalDirectiveMatch:
-            return TEXT("Environment");  // 环境变量不需要性格权重
+        // 环境变量 (Environment variables)
+        case EUtilityInputType::SelfHealth:        return TEXT("SelfHealth");
+        case EUtilityInputType::TargetHealth:      return TEXT("TargetHealth");
+        case EUtilityInputType::DistanceToTarget:  return TEXT("DistanceToTarget");
+        case EUtilityInputType::AmmoCount:         return TEXT("AmmoCount");
+        case EUtilityInputType::HasCover:          return TEXT("HasCover");
+        case EUtilityInputType::IsTargetPlayer:    return TEXT("IsTargetPlayer");
+        case EUtilityInputType::HasAttackTarget:   return TEXT("HasAttackTarget");
+        case EUtilityInputType::HasEnemyNearby:    return TEXT("HasEnemyNearby");
+        case EUtilityInputType::HasFriendlyNearby: return TEXT("HasFriendlyNearby");
+        case EUtilityInputType::HasFoodNearby:     return TEXT("HasFoodNearby");
+        case EUtilityInputType::HasBedNearby:      return TEXT("HasBedNearby");
         
         default:
             return TEXT("Unknown");

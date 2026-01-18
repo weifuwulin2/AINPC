@@ -250,10 +250,19 @@ void ACombatEnemy::HandleDeath()
 	TArray<AActor*> NearbyControllers;
 	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AUtilityAIController::StaticClass(), NearbyControllers);
 
+	AController* MyController = GetController();
+	
 	for (AActor* ControllerActor : NearbyControllers)
 	{
 		if (AUtilityAIController* AICon = Cast<AUtilityAIController>(ControllerActor))
 		{
+			// ⚰️ Skip self - dead NPCs don't perceive their own death!
+			// 跳过自己 - 死者不应该感知自己的死亡！
+			if (AICon == MyController)
+			{
+				continue;
+			}
+			
 			// Check distance (Sensory Range check, approx 30m)
 			if (AICon->GetPawn() && FVector::DistSquared(GetActorLocation(), AICon->GetPawn()->GetActorLocation()) < 3000.0f * 3000.0f)
 			{

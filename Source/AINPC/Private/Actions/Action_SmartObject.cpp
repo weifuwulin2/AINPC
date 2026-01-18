@@ -232,6 +232,22 @@ void UAction_SmartObject::Exit_Implementation(AAIController* Controller)
 
 bool UAction_SmartObject::ShouldExit(AAIController* Controller) const
 {
+	// ✅ 0. 紧急情况检查（Critical Needs - Always Allow Exit）
+	// Emergency check - allow exit even during ActionDuration
+	AUtilityAIController* UtilController = Cast<AUtilityAIController>(Controller);
+	if (UtilController && UtilController->MentalState)
+	{
+		UNPCMentalState* State = UtilController->MentalState;
+		
+		// Critical hunger, fatigue, or threat - allow immediate exit
+		if (State->Hunger > 0.8f || State->Fatigue > 0.8f || State->Perceived_Threat > 0.5f)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[%s] ⚠️ EMERGENCY EXIT: Hunger=%.2f, Fatigue=%.2f, Threat=%.2f"), 
+			       *ActionName, State->Hunger, State->Fatigue, State->Perceived_Threat);
+			return true;  // Emergency exit allowed
+		}
+	}
+
 	// ✅ 1. 持续时长检查（仅在交互时阻止切换）
 	// Duration check (only block switching when actually interacting)
 	if (ActionDuration > 0.0f)
@@ -256,7 +272,7 @@ bool UAction_SmartObject::ShouldExit(AAIController* Controller) const
 	
 	// ✅ 2. 需求满足检查（仅当没有设置 Duration 时）
 	// Need satisfaction check (only when Duration is not set)
-	AUtilityAIController* UtilController = Cast<AUtilityAIController>(Controller);
+	// Reuse UtilController from emergency check above
 	if (UtilController && UtilController->MentalState)
 	{
 		UNPCMentalState* State = UtilController->MentalState;
@@ -273,6 +289,14 @@ bool UAction_SmartObject::ShouldExit(AAIController* Controller) const
 		else if (SmartObjectTag == AINPCTags::Interaction_Rest)
 		{
 			if (State->Fatigue < 0.2f) // Well-rested threshold
+			{
+				return true;
+			}
+		}
+		// Work -> Check Boredom
+		else if (SmartObjectTag.MatchesTag(FGameplayTag::RequestGameplayTag("Interaction.Work")))
+		{
+			if (State->Boredom < 0.2f) // Fulfilled/satisfied threshold
 			{
 				return true;
 			}
@@ -352,6 +376,14 @@ void UAction_SmartObject::RestoreStats(AAIController* Controller)
 		UE_LOG(LogTemp, Warning, TEXT("[%s] Sleeping... Fatigue: %.2f (-%0.2f this tick, Rate: %.2f/s)"), 
 		       *ActionName, State->Fatigue, Delta, RestoreRate);
 	}
+	// ✅ Work actions reduce Boredom (work provides purpose and fulfillment)
+	else if (SmartObjectTag.MatchesTag(FGameplayTag::RequestGameplayTag("Interaction.Work")))
+	{
+		float OldBoredom = State->Boredom;
+		State->Boredom = FMath::Clamp(State->Boredom - RestoreRate, 0.0f, 1.0f);
+		float Delta = OldBoredom - State->Boredom;
+		UE_LOG(LogTemp, Warning, TEXT("[%s] Working... Boredom: %.2f (-%0.2f this tick, Rate: %.2f/s)"), 
+		       *ActionName, State->Boredom, Delta, RestoreRate);
+	}
     // Add more cases here as needed (e.g. Socializing -> Reduce Loneliness)
 }
-

@@ -39,6 +39,9 @@ void UUtilityAIComponent::SetProfession(FName NewProfessionID)
     
     // Reload actions with new profession filter
     LoadActionsFromTable();
+    
+    // Force debug log for next tick to see why actions are scored/rejected
+    bPendingDebugLog = true;
 }
 
 void UUtilityAIComponent::LoadActionsFromTable()
@@ -95,7 +98,7 @@ void UUtilityAIComponent::LoadActionsFromTable()
             }
 
             AvailableActions.Add(NewAction);
-            UE_LOG(LogTemp, Verbose, TEXT("  + Loaded Action: %s"), *Row->ActionName);
+            UE_LOG(LogTemp, Warning, TEXT("  + Loaded Action: %s"), *Row->ActionName);
         }
     }
 }
@@ -193,18 +196,18 @@ void UUtilityAIComponent::EvaluateAndDecide()
                    *PersonalityID, *Action->ActionName, Score, Action->BaseReward, Action->Considerations.Num());
         }
 
-        // 惯性奖励 (Momentum) - 只有当基础分数 > 0 时才添加
-        // Only add inertia bonus when base score > 0
-        // 这样当 Hunger = 0 时，Action_Eat 不会因为 InertiaBonus 而继续执行
+        // 惯性奖励 (Momentum) - 百分比加成而非固定值
+        // Percentage-based bonus instead of fixed value
+        // 这样可以避免在极端分数时的不均衡影响
         if (Action == CurrentAction && Score > 0.0f)
         {
             float OldScore = Score;
-            Score += Action->InertiaBonus; // 或者直接写死 +0.1f
+            Score *= (1.0f + Action->InertiaBonus * 0.2f); // 20% of InertiaBonus value
             
             if (bShouldLog)
             {
-                UE_LOG(LogTemp, Log, TEXT("    ↳ [%s] Inertia Bonus: +%.2f (%.3f -> %.3f)"), 
-                       *PersonalityID, Action->InertiaBonus, OldScore, Score);
+                UE_LOG(LogTemp, Log, TEXT("    ↳ [%s] Inertia Bonus: +%.1f%% (%.3f -> %.3f)"), 
+                       *PersonalityID, Action->InertiaBonus * 20.0f, OldScore, Score);
             }
         }
 

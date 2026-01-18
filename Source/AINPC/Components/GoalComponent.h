@@ -42,7 +42,7 @@ public:
 	FProfessionConfig ProfessionConfig;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Goal | Arbitration")
-	float CriticalHungerThreshold = 0.9f;
+	float CriticalHungerThreshold = 0.6f;  // Trigger Survival when Hunger/Fatigue > 0.6
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Goal | Arbitration")
 	float CriticalHealthThreshold = 0.3f;

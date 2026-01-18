@@ -1,0 +1,19 @@
+Feature: Fix & Refactor Mental State Decay System
+
+- **Impact**: Resolved issue where threat/emotion states would either get stuck (too slow) or decay prematurely (too fast), and ensured LLM intentions drive immediate reactions without lingering indefinitely.
+
+- **Changes**:
+    - **MetabolismComponent**: Implemented **Asymmetric State Transition** logic.
+        - **Reaction (Spike)**: `Target > Current` uses `10.0f` speed (0.1s) for instant emotional response (e.g., Fear).
+        - **Recovery (Decay)**: `Target <= Current` ignores Target and decays towards 0.0f using `DecayRate` (e.g., 0.02) for natural cooldown.
+    - **MentalStateInterpolator**:
+        - Reduced to a simple **Target Intent Cache**. No longer writes directly to mental state values.
+        - Implemented **Intention Decay**: Target values fade towards zero over time (0.2f speed), ensuring LLM commands act as "pulses" rather than permanent state changes.
+    - **Jurisdiction**:
+        - `Perceived_Threat`, `Indignity`, `Boredom` etc. are now allowed in `SetTargetValue` (LLM Pulse).
+        - `Hunger`, `Fatigue` remain strictly Engine-controlled (Metabolism Growth).
+
+- **Result**:
+    - NPCs react instantly to threats (LLM: "Threat 1.0" -> NPC: "Threat 1.0" in 0.1s).
+    - NPCs calm down naturally over time (Threat matches `ThreatDecayRate` curve) even if LLM stops updating.
+    - Eliminated conflict between Interpolator and Metabolism updating the same values.

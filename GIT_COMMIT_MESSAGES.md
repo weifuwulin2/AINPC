@@ -4,6 +4,59 @@ This file contains a log of commit messages for the AINPC project.
 
 ---
 
+## [2026-01-18] Work System & Maslow's Hierarchy Directive Implementation
+**Type**: feat/fix
+**Scope**: GoalComponent, UtilityActionBase, Action_SmartObject, Metabolism, TimeManager
+
+**Description**:
+- **Directive System Upgrade**: Changed from binary switch to 2.0x bonus multiplier system
+  - Matching directive grants 2.0x score bonus (encouragement)
+  - Mismatching directive sets score to 0.0 (forbidden)
+  - Removed `GoalDirectiveMatch` consideration (moved to code-level multiplier)
+- **Maslow's Hierarchy Implementation**: Complete priority system in `GoalComponent::UpdateArbitration()`
+  - Priority 1: Survival (Hunger/Fatigue > 0.6, Threat > 0.5)
+  - Priority 2: Social (Loneliness > 0.5 + HasFriendlyNearby)
+  - Priority 3: Schedule (Work/Idle based on time)
+- **Social Directive**: NPCs now proactively seek social interaction when lonely
+  - Uses proximity detection via `SensoryComponent::GetPerceivedActors()`
+  - Interrupts work if lonely and friends nearby
+- **Work Action System**: Implemented Boredom reduction during Work
+  - Work actions decrease Boredom via SmartObject `RestoreValue`
+  - Creates fulfillment loop (Boredom → Work → Reduced Boredom)
+- **Boredom Reading Fix**: Changed from `Interpolator->GetTargetValue()` to `State->Boredom`
+  - Boredom is engine-managed (passive growth), not LLM-controlled
+- **Emergency Exit**: Critical needs (Hunger/Fatigue/Threat) override ActionDuration
+  - Allows NPCs to interrupt work for survival
+- **TimeManager Activation**: Added `TickTimeManager()` in GameMode to enable time flow
+- **GoalComponent Initialization**: 
+  - Added lazy initialization to handle delayed MentalState acquisition
+  - Initial directive setup in BeginPlay to avoid 'None' state
+- **Idle Fallback**: Changed Idle's DirectiveTag to None (universal availability)
+- **Metabolism Tuning**:
+  - CriticalHungerThreshold: 0.9 → 0.6 (earlier Survival trigger)
+  - HungerRate: 0.01/s → 0.002/s (5× slower, ~5 min to 0.6)
+  - EnergyRate: 0.008/s → 0.0016/s (5× slower, ~6.25 min to 0.6)
+
+**Files Changed**:
+- `Source/AINPC/Private/Base/UtilityActionBase.cpp` - Directive multiplier, Boredom fix
+- `Source/AINPC/Components/GoalComponent.cpp` - Maslow hierarchy, lazy init, Social layer
+- `Source/AINPC/Components/GoalComponent.h` - CriticalHungerThreshold adjustment
+- `Source/AINPC/Components/MetabolismComponent.h` - Hunger/Fatigue rate rebalancing
+- `Source/AINPC/Private/Actions/Action_SmartObject.cpp` - Boredom reduction, emergency exit
+- `Source/AINPC/AINPCGameMode.cpp` - TimeManager tick activation
+- `Content/AINPC/Datatable/DT_UtilityActions.json` - Removed GoalDirectiveMatch, Idle DirectiveTag
+- `CHANGELOG.md` - Comprehensive update documentation
+
+**Impact**:
+- NPCs now follow complete Maslow's Hierarchy of Needs
+- Work behaviors feel natural (work reduces boredom, creates fulfillment)
+- Social interactions are proactive (not just schedule-based)
+- Emergency survival needs correctly interrupt all activities
+- NPCs can work 4-5 minutes before needing to eat/sleep
+
+---
+
+
 ## [2026-01-18] Action Switching & Physiological Priority Fixes
 **Type**: fix
 **Scope**: UtilityAI, Action_SmartObject, Sensory, Metabolism
@@ -142,3 +195,13 @@ This file contains a log of commit messages for the AINPC project.
 - `Source/AINPC/Public/Actions/Action_SmartObject.h`
 - `Source/AINPC/LLM/LLMCommunicator.cpp`
 - `CHANGELOG.md`
+
+## [2026-01-19] Refactor Mental State & Metabolism system for natural emotional decay
+**Type**: feat/refactor
+**Scope**: Metabolism, MentalStateInterpolation
+
+**Description**:
+- **MetabolismComponent**: Implemented Asymmetric State Transition (Spike vs Decay). Instant reaction (10.0f) for threats, natural decay for recovery.
+- **MentalStateInterpolator**: Changed to only cache/decay target intentions. No longer writes to state directly.
+- **Fix**: Solved conflict preventing Perceived_Threat from decaying naturally.
+

@@ -506,8 +506,11 @@ void USensoryComponent::HandleDeath(AActor* DeadActor, AActor* Killer)
     {
         // 自己死亡 - 极其重要的事件
         DeathTag = AINPCTags::Event_Death_Self;
-        Desc = FString::Printf(TEXT("I have died%s"), 
-            Killer ? *FString::Printf(TEXT(" (killed by %s)"), *Killer->GetName()) : TEXT(""));
+        
+        // Use FormatDescription for clarity
+        FString KillerDesc = Killer ? FormatDescription("was killed by", Killer, "") : TEXT("I have died");
+        Desc = KillerDesc.IsEmpty() ? TEXT("I have died") : KillerDesc;
+        
         Magnitude = 1.0f; // 最高重要性
         
         UE_LOG(LogTemp, Warning, TEXT("[Sensory] SELF DEATH EVENT: %s"), *Desc);
@@ -516,9 +519,46 @@ void USensoryComponent::HandleDeath(AActor* DeadActor, AActor* Killer)
     {
         // 目睹他人死亡 - 重要但不如自己死亡
         DeathTag = AINPCTags::Event_Death_Witnessed;
-        Desc = FString::Printf(TEXT("I witnessed %s die%s"), 
-            *DeadActor->GetName(),
-            Killer ? *FString::Printf(TEXT(" (killed by %s)"), *Killer->GetName()) : TEXT(""));
+        
+        // ✅ Use FormatDescription to show meaningful names (Personality/Profession)
+        // Instead of "BP_NPC_C_123", show "Cautious (Miner)"
+        FString DeadActorDesc = FormatDescription("witnessed the death of", DeadActor, "");
+        
+        if (Killer)
+        {
+            FString KillerName = "Unknown";
+            
+            // Get killer's meaningful name
+            if (APawn* KillerPawn = Cast<APawn>(Killer))
+            {
+                if (AController* KillerController = KillerPawn->GetController())
+                {
+                    if (UPersonalityComponent* PersonalityComp = KillerController->FindComponentByClass<UPersonalityComponent>())
+                    {
+                        if (!PersonalityComp->PersonalityID.IsNone())
+                        {
+                            KillerName = PersonalityComp->PersonalityID.ToString();
+                        }
+                    }
+                }
+            }
+            else if (Killer->ActorHasTag("Player"))
+            {
+                KillerName = "Player";
+            }
+            
+            if (KillerName == "Unknown")
+            {
+                KillerName = Killer->GetName();
+            }
+            
+            Desc = DeadActorDesc + FString::Printf(TEXT(" (killed by %s)"), *KillerName);
+        }
+        else
+        {
+            Desc = DeadActorDesc;
+        }
+        
         Magnitude = 0.7f; // 高重要性
         
         UE_LOG(LogTemp, Warning, TEXT("[Sensory] WITNESSED DEATH: %s"), *Desc);

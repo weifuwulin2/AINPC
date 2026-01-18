@@ -259,7 +259,7 @@ public:
 
 protected:
     // 辅助函数：统一获取输入值
-    float GetConsiderationValue(EUtilityInputType InputType, UNPCMentalState* State, AAIController* Controller);
+    float GetConsiderationValue(EUtilityInputType InputType, UNPCMentalState* State, AAIController* Controller, bool bLogDebug = false);
 
     // 辅助函数：将枚举值转换为变量名字符串
     // Helper function: Convert enum value to variable name string
