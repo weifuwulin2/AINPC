@@ -74,8 +74,8 @@ void UUtilityAIComponent::LoadActionsFromTable()
                 // 2. 如果当前 NPC 的 ID 与配置的不匹配，则跳过
                 if (Row->RequiredProfessionID != CurrentProfessionID)
                 {
-                    // (可选) 增加更智能的匹配（如果你有继承逻辑）
-                    // 暂时使用严格匹配
+                    UE_LOG(LogTemp, Warning, TEXT("[UtilityComp] 🚫 Skipped Action %s (Requires: %s, Current: %s)"), 
+                           *Row->ActionName, *Row->RequiredProfessionID.ToString(), *CurrentProfessionID.ToString());
                     continue; 
                 }
             }
@@ -91,6 +91,7 @@ void UUtilityAIComponent::LoadActionsFromTable()
                 SmartObjectAction->InteractionMontage = Row->InteractionMontage;
                 SmartObjectAction->bLoopAnimation = Row->bLoopAnimation;
                 SmartObjectAction->ActionDuration = Row->ActionDuration;
+                
             }
 
             AvailableActions.Add(NewAction);

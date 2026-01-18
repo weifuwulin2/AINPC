@@ -573,7 +573,15 @@ float UUtilityActionBase::GetConsiderationValue(EUtilityInputType InputType, UNP
             if (USensoryComponent* Sensory = Controller->FindComponentByClass<USensoryComponent>())
             {
                  // 使用 AINPCTags::Interaction_Rest
-                if (Sensory->FindBestSmartObject(AINPCTags::Interaction_Rest))
+                AActor* Bed = Sensory->FindBestSmartObject(AINPCTags::Interaction_Rest);
+                
+                // 暂时强制打印调试，确认为什么找不到床
+                if (State->Fatigue > 0.4f)
+                {
+                     // UE_LOG(LogTemp, Warning, TEXT("💤 [Debug] Checking Bed... Found: %s (Radius: 150m)"), Bed ? *Bed->GetName() : TEXT("NULL"));
+                }
+                
+                if (Bed)
                 {
                     return 1.0f;
                 }

@@ -6,6 +6,8 @@
 #include "EngineUtils.h"
 #include "Components/SensoryComponent.h" 
 #include "Controller/UtilityAIController.h"
+#include "Components/CognitionComponent.h"
+#include "UtilityAI/MentalStateInterpolation.h"
 
 UTestAction_TalkTo::UTestAction_TalkTo()
 {
@@ -126,6 +128,14 @@ void UTestAction_TalkTo::Execute_Implementation(AAIController* Controller)
                     UAICon->MentalState->Loneliness = FMath::Max(0.0f, UAICon->MentalState->Loneliness - 0.1f);
                     // Also decrease Boredom a bit
                     UAICon->MentalState->Boredom = FMath::Max(0.0f, UAICon->MentalState->Boredom - 0.05f);
+                    
+                    // ✅ 同步更新 Interpolator 的目标值，防止被拉回原值
+                    // Sync with Interpolator target values to prevent resetting
+                    if (UAICon->CognitionComp && UAICon->CognitionComp->Interpolator)
+                    {
+                        UAICon->CognitionComp->Interpolator->SetTargetValue(TEXT("Loneliness"), UAICon->MentalState->Loneliness);
+                        UAICon->CognitionComp->Interpolator->SetTargetValue(TEXT("Boredom"), UAICon->MentalState->Boredom);
+                    }
                     
                     UE_LOG(LogTemp, Log, TEXT("[TalkTo] Socializing... Loneliness: %.2f -> %.2f"), OldLoneliness, UAICon->MentalState->Loneliness);
                 }

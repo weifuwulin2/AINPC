@@ -36,7 +36,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Action Switching Logic**: Fixed `UUtilityActionBase::ShouldExit` default return value from `false` to `true`, allowing NPCs to correctly switch from Idle/Move actions to higher priority actions.
 - **SmartObject Action Blocking**: Fixed a critical bug where `Action_SmartObject`'s duration check was misinterpreted as "disable selection" (`return 0.0f`), causing actions like Eat/Sleep to be permanently disabled after one use. Now correctly interprets `ShouldExit` as "allow switching".
 - **Emotion Decay System**: Fixed LLM-set emotions not decaying by ensuring `CurrentEmotionScore` is initialized to 1.0f when set by LLM. Adjusted decay rate to -0.2 every 5s (approx 20s total duration).
-- **Movement Switching**: Modified `Action_SmartObject` to allow switching to better actions while still moving to the target (before interaction starts).
+- **Talk Action Exit**: Fixed `Test_TalkTo` not reducing `Loneliness`/`Boredom`, causing infinite loops. Now naturally exits when social needs are met.
+- **Action Animation**: Restored missing `InteractionMontage` assignment in `UtilityAIComponent`, fixing Eat/Sleep animations not playing.
+- **SmartObject Detection**: Increased `SensoryComponent` fallback scan radius from 30m to 150m to ensuring NPCs can find beds/food even after wandering far.
+- **Physiological Priority**: Increased BaseReward for Eat/Sleep actions (2.0 -> 4.0) to prevent Emotion Penalties (e.g., Curious) from suppressing survival needs.
 
 ### ✨ Features
 - **NPC Definition Component**: Unified "ID Card" component (`UNPCDefinitionComponent`) to manage PersonalityID, ProfessionID, etc.

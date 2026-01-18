@@ -897,9 +897,10 @@ AActor* USensoryComponent::FindBestSmartObject(FGameplayTag ActivityTag)
              if (!IsValid(Candidate)) continue;
              if (Candidate == GetOwner()) continue;
              
-             // 距离检查 (例如 3000 cm 内)
+             // 距离检查 (放宽到 15000 cm / 150m，防止跑远了找不到床)
+             // Distance check (Relaxed to 15000cm / 150m to find bed even if far)
              float DistSq = FVector::DistSquared(MyLoc, Candidate->GetActorLocation());
-             if (DistSq > 3000.0f * 3000.0f) continue;
+             if (DistSq > 15000.0f * 15000.0f) continue;
 
              USmartObjectComponent* SmartComp = Candidate->FindComponentByClass<USmartObjectComponent>();
              if (SmartComp && SmartComp->Semantics.SocialTag.MatchesTag(ActivityTag))

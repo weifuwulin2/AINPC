@@ -4,6 +4,26 @@ This file contains a log of commit messages for the AINPC project.
 
 ---
 
+## [2026-01-18] Action Switching & Physiological Priority Fixes
+**Type**: fix
+**Scope**: UtilityAI, Action_SmartObject, Sensory, Metabolism
+
+**Description**:
+- **Talk Action Exit**: Implemented need satisfaction (reducing Loneliness/Boredom) in `Test_TalkTo` to allow natural action exit.
+- **Mental State Sync**: Fixed `MentalStateInterpolator` resetting values every frame by syncing target values when modified by actions.
+- **SmartObject Detection**: Increased `SensoryComponent` fallback scan radius (30m -> 150m) to ensure beds/food are found even after running far.
+- **Physiological Priority**: Increased BaseReward for Eat/Sleep (4.0) to prevent Emotion Penalties (e.g. Curiosity) from overriding survival needs.
+- **Animation Fix**: Restored missing `InteractionMontage` assignment in `UtilityAIComponent`.
+
+**Files Changed**:
+- `Source/AINPC/Private/Test/TestAction_TalkTo.cpp`
+- `Source/AINPC/Components/SensoryComponent.cpp`
+- `Source/AINPC/Components/UtilityAIComponent.cpp`
+- `Source/AINPC/Private/Base/UtilityActionBase.cpp`
+- `CHANGELOG.md`
+
+---
+
 ## [2026-01-17] Hybrid V4 - GOAP-Lite Foundation & Subsystems
 **Type**: feat
 **Scope**: Architecture, Subsystems, Components
