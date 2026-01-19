@@ -148,8 +148,8 @@ struct FUtilityActionConfig : public FTableRowBase
 
     // 智能对象标签：指定该动作针对哪种类型的智能对象
     // Smart Object Tag: Specifies which type of smart object this action targets
-    // Example: "Activity.Eat", "Activity.Rest"
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Smart Object")
+    // Example: "Interaction.Eat", "Interaction.Rest" (Fixed comment)
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Smart Object", meta = (Categories = "Interaction"))
     FGameplayTag SmartObjectTag;
 
     // === 动画配置 (Animation Configuration) ===
@@ -171,23 +171,22 @@ struct FUtilityActionConfig : public FTableRowBase
 
     // === Emotion Matrix 配置 ===
 
-    // Activity 标签：用于 Emotion Matrix 查表
-    // Activity Tag: Used for Emotion Matrix lookup
-    // Example: "Activity.Combat", "Activity.Flee", "Activity.Social"
+    // Interaction Tag: Used for Emotion Matrix lookup
+    // Example: "Interaction.Combat", "Interaction.Flee", "Interaction.Social"
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Emotion Matrix",
-              meta = (DisplayName = "Activity Tag for Emotion Matrix"))
+              meta = (DisplayName = "Activity Tag for Emotion Matrix", Categories = "Interaction"))
     FGameplayTag ActivityTag;
 
     // LLM Intention Tag
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "LLM Integration",
-              meta = (DisplayName = "Matching Intention Tag"))
+              meta = (DisplayName = "Matching Intention Tag", Categories = "Intention"))
     FGameplayTag IntentionTag;
 
 	// 指令标签：用于 GoalComponent 仲裁匹配
 	// Directive Tag: Used for GoalComponent arbitration matching
 	// Example: "Directive.Work", "Directive.Survival"
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Goal Integration",
-			  meta = (DisplayName = "Required Directive Tag"))
+			  meta = (DisplayName = "Required Directive Tag", Categories = "Directive"))
 	FGameplayTag DirectiveTag;
     
     UPROPERTY(EditDefaultsOnly, Category = "Action Config")

@@ -2,6 +2,7 @@
 #include "Controller/UtilityAIController.h"
 #include "UtilityAI/UNPCMentalState.h"
 #include "Components/PersonalityComponent.h"
+#include "Components/CognitionComponent.h"
 #include "LLM/LLMCommunicator.h"
 #include "Actions/Action_SmartObject.h"
 
@@ -147,6 +148,10 @@ void UUtilityAIComponent::EvaluateAndDecide()
 
     UUtilityActionBase* BestAction = nullptr;
     float BestScore = -1.0f;
+    
+    UUtilityActionBase* RunnerUpAction = nullptr;
+    float RunnerUpScore = -1.0f;
+
     UNPCMentalState* State = OwnerController->MentalState;
     
     // 获取 PersonalityID 用于日志
@@ -237,8 +242,28 @@ void UUtilityAIComponent::EvaluateAndDecide()
 
         if (Score > BestScore)
         {
+            // Demote current Best to RunnerUp
+            RunnerUpScore = BestScore;
+            RunnerUpAction = BestAction;
+
             BestScore = Score;
             BestAction = Action;
+        }
+        else if (Score > RunnerUpScore)
+        {
+            // New RunnerUp found
+            RunnerUpScore = Score;
+            RunnerUpAction = Action;
+        }
+    }
+
+    // 🧠 Report Decision Context (Conflict) to Cognition
+    if (OwnerController && BestAction && RunnerUpAction && BestScore > 0.0f)
+    {
+        if (UCognitionComponent* CognitionComp = OwnerController->FindComponentByClass<UCognitionComponent>())
+        {
+            float ConflictMetric = (BestScore - RunnerUpScore) / BestScore;
+            CognitionComp->ReportDecisionContext(BestAction->ActionName, RunnerUpAction->ActionName, ConflictMetric);
         }
     }
 

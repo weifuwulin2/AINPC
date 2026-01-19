@@ -103,7 +103,7 @@
     },
     {
         "Name": "Talk",
-        "ActionClass": "/Script/CoreUObject.Class'/Script/AINPC.TestAction_TalkTo'",
+        "ActionClass": "/Script/CoreUObject.Class'/Script/AINPC.Action_TalkTo'",
         "Considerations": [
             {
                 "ConsiderationType": "Motivation",

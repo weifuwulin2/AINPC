@@ -2,6 +2,7 @@
 #include "Components/SmartObjectComponent.h"
 #include "Components/PersonalityComponent.h"
 #include "Components/NPCDefinitionComponent.h"
+#include "Components/EmotionDisplayComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Social/SocialGameplayTags.h"
 
@@ -452,39 +453,66 @@ void USensoryComponent::HandleDamageTaken(AActor* DamagedActor, float Damage, co
 
 void USensoryComponent::ReceiveSpeech(AActor* Speaker, FString Message)
 {
-    // ✅ Filter: Don't hear yourself speak
-    // 过滤：不要听到自己说话
+    // Filter: Don't hear yourself speak
     AActor* Owner = GetOwner();
-    
-    // Check if Speaker is either the Owner (Controller) or the controlled Pawn
-    if (Speaker == Owner)
-    {
-        return;
-    }
-    
+    if (Speaker == Owner) return;
     if (AAIController* OwnerController = Cast<AAIController>(Owner))
     {
-        if (Speaker == OwnerController->GetPawn())
+        if (Speaker == OwnerController->GetPawn()) return;
+    }
+
+    // Validate
+    if (!Speaker || Message.IsEmpty()) return;
+
+    // 1. Get Speaker Name (try for better name)
+    FString SpeakerName = Speaker->GetName();
+    if (APawn* SpeakerPawn = Cast<APawn>(Speaker))
+    {
+         if (UNPCDefinitionComponent* DefComp = SpeakerPawn->FindComponentByClass<UNPCDefinitionComponent>())
+         {
+             FNPCNameDef NameDef;
+             if (DefComp->GetNameDef(NameDef))
+             {
+                 SpeakerName = NameDef.FirstName; 
+             }
+         }
+    }
+    
+    UE_LOG(LogTemp, Warning, TEXT("[Sensory] 💬 SPEECH RECEIVED from %s: \"%s\""), *SpeakerName, *Message);
+
+    // 2. Broadcast Legacy Event
+    FString FormattedMsg = FString::Printf(TEXT("%s: %s"), *SpeakerName, *Message);
+    OnStimulusProduced.Broadcast(FormattedMsg);
+
+    // 3. Trigger EmotionDisplayComponent
+    if (AActor* ActorToCheck = Cast<AActor>(Speaker))
+    {
+        UEmotionDisplayComponent* EmotionComp = ActorToCheck->FindComponentByClass<UEmotionDisplayComponent>();
+        if (!EmotionComp)
         {
-            return;
+            if (APawn* P = Cast<APawn>(ActorToCheck))
+            {
+               if (AController* C = P->GetController())
+               {
+                   EmotionComp = C->FindComponentByClass<UEmotionDisplayComponent>();
+               }
+            }
+        }
+
+        if (EmotionComp)
+        {
+            EmotionComp->ShowSpeechBubble(Message);
         }
     }
 
-    FString Extra = FString::Printf(TEXT("saying: \"%s\""), *Message);
-    FString Desc = FormatDescription("heard", Speaker, Extra);
-
-    // Legacy: Broadcast text
-    OnStimulusProduced.Broadcast(Desc);
-
-    // New: Generate Semantic Event
+    // 4. Generate Semantic Event
     FSemanticEvent Event;
     Event.Instigator = Speaker;
     Event.Target = GetOwner();
-    Event.Verb = AINPCTags::Social_Chat; // Speech is social interaction
-    Event.Content = Desc;
-    Event.Magnitude = 0.5f; // Medium importance
+    Event.Verb = AINPCTags::Social_Chat;
+    Event.Content = FString::Printf(TEXT("%s said: \"%s\""), *SpeakerName, *Message);
+    Event.Magnitude = 0.8f; 
 
-    // Filter and broadcast
     if (ProcessEventFilter(Event))
     {
         OnSemanticEventSensed.Broadcast(Event);
@@ -956,3 +984,5 @@ AActor* USensoryComponent::FindBestSmartObject(FGameplayTag ActivityTag)
 
     return BestCandidate;
 }
+
+

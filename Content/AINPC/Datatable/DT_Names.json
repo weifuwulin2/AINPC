@@ -1,0 +1,26 @@
+[
+    {
+        "Name": "Male_Thorne",
+        "FirstName": "Thorne",
+        "Surname": "Blackwood",
+        "Gender": "Male"
+    },
+    {
+        "Name": "Female_Elara",
+        "FirstName": "Elara",
+        "Surname": "Vance",
+        "Gender": "Female"
+    },
+    {
+        "Name": "Male_Alistair",
+        "FirstName": "Alistair",
+        "Surname": "Sterling",
+        "Gender": "Male"
+    },
+    {
+        "Name": "Female_Mara",
+        "FirstName": "Mara",
+        "Surname": "Ironheart",
+        "Gender": "Female"
+    }
+]

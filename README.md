@@ -215,6 +215,8 @@ AINPC/
 │   │   ├── SensoryComponent.h/cpp         # 感官翻译
 │   │   ├── CognitionComponent.h/cpp       # 认知处理
 │   │   └── UtilityAIComponent.h/cpp       # 决策执行
+│   ├── UI/
+│   │   └── PlayerDialogueWidget.h/cpp     # 对话 UI 基类
 │   ├── LLM/
 │   │   └── LLMCommunicator.h/cpp          # LLM 通信
 │   ├── UtilityAI/
@@ -226,6 +228,7 @@ AINPC/
 │   ├── Blueprints/
 │   │   ├── AI/                            # AI 蓝图
 │   │   └── Actions/                       # 动作蓝图
+│   ├── Widgets/                           # UI 控件
 │   └── Maps/                              # 测试地图
 ├── docs/
 │   ├── guides/                            # 📖 使用指南
@@ -250,6 +253,22 @@ AINPC/
 ---
 
 ## 🎉 最新更新 / Latest Updates
+
+### v0.5.3 - Phase 3: Player Interaction & Modular Identity (2026-01-19)
+
+#### 🎉 新增特性 / New Features
+- **✅ Action_TalkTo (自主对话)**
+  - NPCs now initiate conversations when lonely using LLM-generated speech.
+- **✅ Player Dialogue UI (玩家对话)**
+  - Real-time chat widget allowing players to type messages to nearby NPCs.
+  - Automatic focus and input mode switching (Game/UI).
+- **✅ Enhanced Perception (对话感知)**
+  - Speech events now have high priority (Magnitude 0.8) and trigger visual speech bubbles.
+- **✅ Modular Identity Refactor (身份模块化)**
+  - **Modular Prompting**: Name + Past Event + Social Profile (Role/Motivation).
+  - **Prompt LOD**: Automatic context window optimization based on distance.
+
+---
 
 ### v0.5.2 - GOAP-Lite Subsystems (2026-01-17)
 
@@ -436,16 +455,17 @@ AINPC/
 - [x] 单点配置系统
 - [x] Dreaming 记忆整理
 - [x] 并发请求管理
+- [x] **Phase 3: 玩家交互与身份模块化**
 - [x] 完整文档体系
 
 ### 🚧 进行中 / In Progress
 
-- [ ] action测试
+- [ ] **Phase 4: 战斗进阶 (生存本能)**
 
 ### 📋 计划中 / Planned
 
 - [ ] 多 NPC 社交互动
-- [ ] 情绪可视化 UI
+- [ ] 更多情绪可视化 UI
 
 
 

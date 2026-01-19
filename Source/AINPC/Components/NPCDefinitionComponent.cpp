@@ -11,6 +11,37 @@ UNPCDefinitionComponent::UNPCDefinitionComponent()
 	// Default IDs
 	PersonalityID = NAME_None;
 	ProfessionID = NAME_None;
+	SocialProfileID = NAME_None;
+	
+	NameID = NAME_None;
+	PastEventID = NAME_None;
+}
+
+bool UNPCDefinitionComponent::GetSocialProfileDef(FSocialProfileDef& OutDef) const
+{
+	if (SocialProfileID.IsNone() || !SocialProfileTable) return false;
+	const FSocialProfileDef* Row = SocialProfileTable->FindRow<FSocialProfileDef>(SocialProfileID, TEXT("NPCDefinition_GetSocialProfileDef"));
+	if (!Row) return false;
+	OutDef = *Row;
+	return true;
+}
+
+bool UNPCDefinitionComponent::GetNameDef(FNPCNameDef& OutDef) const
+{
+	if (NameID.IsNone() || !NameTable) return false;
+	const FNPCNameDef* Row = NameTable->FindRow<FNPCNameDef>(NameID, TEXT("NPCDefinition_GetNameDef"));
+	if (!Row) return false;
+	OutDef = *Row;
+	return true;
+}
+
+bool UNPCDefinitionComponent::GetPastEventDef(FPastEventDef& OutDef) const
+{
+	if (PastEventID.IsNone() || !PastEventTable) return false;
+	const FPastEventDef* Row = PastEventTable->FindRow<FPastEventDef>(PastEventID, TEXT("NPCDefinition_GetPastEventDef"));
+	if (!Row) return false;
+	OutDef = *Row;
+	return true;
 }
 
 void UNPCDefinitionComponent::BeginPlay()

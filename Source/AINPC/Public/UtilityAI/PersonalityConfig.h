@@ -152,4 +152,68 @@ struct FPersonalityConfig : public FTableRowBase
 		Config.Neuroticism = 0.5f;
 		return Config;
 	}
+
+	// 生成基于 OCEAN 值的文字描述 (5-Tier Granularity)
+	// Generate text description based on OCEAN values
+	FString GetOCEANDescription() const
+	{
+		TArray<FString> Traits;
+
+		// Lambda helper for 5-tier mapping
+		auto GetTrait = [](float Val, const FString& VeryHigh, const FString& High, const FString& Mid, const FString& Low, const FString& VeryLow) -> FString
+		{
+			if (Val >= 0.8f) return VeryHigh;
+			if (Val >= 0.6f) return High;
+			if (Val >= 0.4f) return Mid;
+			if (Val >= 0.2f) return Low;
+			return VeryLow;
+		};
+
+		// 1. Openness (Imagination, Curiosity)
+		Traits.Add(GetTrait(Openness, 
+			TEXT("Deeply Philosophical & Abstract"), // >0.8
+			TEXT("Curious & Inventive"),             // >0.6
+			TEXT("Practical but Open-minded"),       // 0.4-0.6
+			TEXT("Down-to-earth & Conventional"),    // >0.2
+			TEXT("Rigidly Traditional")              // <0.2
+		));
+
+		// 2. Conscientiousness (Discipline, Order)
+		Traits.Add(GetTrait(Conscientiousness, 
+			TEXT("Highly Disciplined & Perfectionist"), 
+			TEXT("Organized & Reliable"), 
+			TEXT("Reasonably Dependable"), 
+			TEXT("Disorganized & Spontaneous"), 
+			TEXT("Careless & Impulsive")
+		));
+
+		// 3. Extraversion (Social Energy)
+		Traits.Add(GetTrait(Extraversion, 
+			TEXT("Life of the Party & Thrill-seeker"), 
+			TEXT("Outgoing & Sociable"), 
+			TEXT("Moderately Social"), 
+			TEXT("Reserved & Private"), 
+			TEXT("Solitary & Reclusive")
+		));
+
+		// 4. Agreeableness (Trust, Empathy)
+		Traits.Add(GetTrait(Agreeableness, 
+			TEXT("Selfless & Altruistic"), 
+			TEXT("Compassionate & Trusting"), 
+			TEXT("Negotiator & Pragmatic"), 
+			TEXT("Competitive & Skeptical"), 
+			TEXT("Hostile & Manipulative")
+		));
+		
+		// 5. Neuroticism (Anxiety, Stability)
+		Traits.Add(GetTrait(Neuroticism, 
+			TEXT("Extremely Volatile & Anxious"), 
+			TEXT("Sensitive & Reactive"), 
+			TEXT("Generally Stable"), 
+			TEXT("Calm & Composed"), 
+			TEXT("Unshakeable & Stoic")
+		));
+
+		return FString::Join(Traits, TEXT(", "));
+	}
 };

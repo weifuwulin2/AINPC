@@ -7,7 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [Unreleased] - 2026-01-18
+## [Unreleased] - 2026-01-19
+
+### 🎯 Phase 3 - Player Interaction & Social Identity
+- **Added**: `UAction_TalkTo` utility action for AI-initiated dialogue.
+  - Integrates with `CognitionComponent` for LLM-generated speech based on personality/context.
+  - Automatically reduces `Loneliness` and `Boredom` upon successful interaction.
+- **Added**: Player-to-AI Dialogue System in `AINPCPlayerController`.
+  - `UPlayerDialogueWidget`: New C++ base class for chat input.
+  - `ToggleChat()`: Handles UI/Game mode switching and widget visibility.
+  - `HandleChatMessage()`: Broadcasts player speech to nearby NPCs within 10m radius.
+- **Changed**: Enhanced `SensoryComponent::ReceiveSpeech` logic.
+  - Now generates high-magnitude (0.8) `Social_Chat` semantic events for the AI brain.
+  - Integrated `EmotionDisplayComponent` to show speech bubbles above speakers.
+- **Changed**: Architecture Refactor - Modular Identity.
+  - Renamed `FBackstory` -> `FSocialProfileDef` (focusing on Role, Motivation, and Values).
+  - Updated `NPCDefinitionComponent` and `CognitionComponent` to use modular prompt building (Name + PastEvent + SocialProfile).
+  - Implemented Prompt LOD logic to reduce token usage by filtering static profile data based on distance/relevance.
+- **Added**: New Data-Driven Content.
+  - `DT_Names.json`: Modular name reservoir.
+  - `DT_PastEvents.json`: Significant past event descriptions for NPCs.
+  - `DT_SocialProfiles.json`: Replaced `DT_Backstories` with cleaned modular data.
+- **Added**: Player UI components.
+  - `WBP_playerDialog`: Player chat input interface (Blueprint).
+
+[Unreleased] - 2026-01-18
 
 ### 🎯 Major - Work System & Directive Refinements
 
@@ -627,23 +651,14 @@ Score = BaseReward × (Σ Motivations) × (∏ Contexts)
 - PersonalityComponent weight calculation: One-time at BeginPlay
 - Interpolation: ~0.01ms per NPC per frame
 - Total impact: < 0.1ms per NPC
-F e a t u r e :   F i x   &   R e f a c t o r   M e n t a l   S t a t e   D e c a y   S y s t e m  
-  
- -   * * I m p a c t * * :   R e s o l v e d   i s s u e   w h e r e   t h r e a t / e m o t i o n   s t a t e s   w o u l d   e i t h e r   g e t   s t u c k   ( t o o   s l o w )   o r   d e c a y   p r e m a t u r e l y   ( t o o   f a s t ) ,   a n d   e n s u r e d   L L M   i n t e n t i o n s   d r i v e   i m m e d i a t e   r e a c t i o n s   w i t h o u t   l i n g e r i n g   i n d e f i n i t e l y .  
-  
- -   * * C h a n g e s * * :  
-         -   * * M e t a b o l i s m C o m p o n e n t * * :   I m p l e m e n t e d   * * A s y m m e t r i c   S t a t e   T r a n s i t i o n * *   l o g i c .  
-                 -   * * R e a c t i o n   ( S p i k e ) * * :   ` T a r g e t   >   C u r r e n t `   u s e s   ` 1 0 . 0 f `   s p e e d   ( 0 . 1 s )   f o r   i n s t a n t   e m o t i o n a l   r e s p o n s e   ( e . g . ,   F e a r ) .  
-                 -   * * R e c o v e r y   ( D e c a y ) * * :   ` T a r g e t   < =   C u r r e n t `   i g n o r e s   T a r g e t   a n d   d e c a y s   t o w a r d s   0 . 0 f   u s i n g   ` D e c a y R a t e `   ( e . g . ,   0 . 0 2 )   f o r   n a t u r a l   c o o l d o w n .  
-         -   * * M e n t a l S t a t e I n t e r p o l a t o r * * :  
-                 -   R e d u c e d   t o   a   s i m p l e   * * T a r g e t   I n t e n t   C a c h e * * .   N o   l o n g e r   w r i t e s   d i r e c t l y   t o   m e n t a l   s t a t e   v a l u e s .  
-                 -   I m p l e m e n t e d   * * I n t e n t i o n   D e c a y * * :   T a r g e t   v a l u e s   f a d e   t o w a r d s   z e r o   o v e r   t i m e   ( 0 . 2 f   s p e e d ) ,   e n s u r i n g   L L M   c o m m a n d s   a c t   a s   " p u l s e s "   r a t h e r   t h a n   p e r m a n e n t   s t a t e   c h a n g e s .  
-         -   * * J u r i s d i c t i o n * * :  
-                 -   ` P e r c e i v e d _ T h r e a t ` ,   ` I n d i g n i t y ` ,   ` B o r e d o m `   e t c .   a r e   n o w   a l l o w e d   i n   ` S e t T a r g e t V a l u e `   ( L L M   P u l s e ) .  
-                 -   ` H u n g e r ` ,   ` F a t i g u e `   r e m a i n   s t r i c t l y   E n g i n e - c o n t r o l l e d   ( M e t a b o l i s m   G r o w t h ) .  
-  
- -   * * R e s u l t * * :  
-         -   N P C s   r e a c t   i n s t a n t l y   t o   t h r e a t s   ( L L M :   " T h r e a t   1 . 0 "   - >   N P C :   " T h r e a t   1 . 0 "   i n   0 . 1 s ) .  
-         -   N P C s   c a l m   d o w n   n a t u r a l l y   o v e r   t i m e   ( T h r e a t   m a t c h e s   ` T h r e a t D e c a y R a t e `   c u r v e )   e v e n   i f   L L M   s t o p s   u p d a t i n g .  
-         -   E l i m i n a t e d   c o n f l i c t   b e t w e e n   I n t e r p o l a t o r   a n d   M e t a b o l i s m   u p d a t i n g   t h e   s a m e   v a l u e s .  
- 
+### 🔄 Refactor - Mental State Decay System (Asymmetric Transition)
+- **Implemented Asymmetric State Transition** in `MetabolismComponent`:
+  - **Reaction (Spike)**: `Target > Current` uses high speed (10.0f) for instant emotional response (0.1s).
+  - **Recovery (Decay)**: `Target <= Current` ignores target and decays towards 0.0f using `DecayRate` for natural cooldown.
+- **MentalStateInterpolator Optimization**:
+  - Reduced to a simple **Target Intent Cache**.
+  - Implemented **Intention Decay**: Target values fade towards zero (0.2f speed), ensuring LLM commands act as temporary "pulses".
+- **Jurisdiction Rules**:
+  - `Perceived_Threat`, `Indignity`, `Boredom` now allow LLM-driven "pulses".
+  - `Hunger`, `Fatigue` remain strictly engine-controlled.
+- **Impact**: NPCs now react instantly to new stimuli but calm down naturally without LLM intervention.

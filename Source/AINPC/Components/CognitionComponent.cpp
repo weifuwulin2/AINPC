@@ -6,6 +6,7 @@
 #include "Components/GoalComponent.h"
 #include "Social/ProfessionTypes.h"
 #include "LLM/LLMCommunicator.h"
+#include "Components/NPCDefinitionComponent.h"
 #include "UtilityAI/SentimentMapping.h"
 #include "UtilityAI/MentalStateInterpolation.h"
 
@@ -213,6 +214,93 @@ void UCognitionComponent::ProcessStimulus(FString SituationDescription)
         }
     }
 	
+	// ---------------------------------------------------------
+	// ✅ Retrieve Backstory (History, Trauma, Social Status)
+	// ---------------------------------------------------------
+	FString BackstorySection = "";
+	if (AAIController* AICon = Cast<AAIController>(GetOwner()))
+	{
+		// Definition Component acts as the "Passport", usually on the Pawn
+		APawn* ControlledPawn = AICon->GetPawn();
+		UNPCDefinitionComponent* DefComp = nullptr;
+		
+		if (ControlledPawn) DefComp = ControlledPawn->FindComponentByClass<UNPCDefinitionComponent>();
+		if (!DefComp) DefComp = AICon->FindComponentByClass<UNPCDefinitionComponent>(); // Fallback to Controller
+
+		if (DefComp)
+		{
+			 // --- 1. Modular Data Retrieval ---
+			 FString CharName = "Unknown";
+			 FString OceanTraits = "Balanced";
+			 FString HistoryDesc = "None";
+			 FString PhobiaStr = "None";
+			 FString MentalScar = "";
+			 
+			 // A. OCEAN (from Personality Component)
+			 if (AUtilityAIController* UtilCon = Cast<AUtilityAIController>(AICon))
+			 {
+				 if (UtilCon->PersonalityComp)
+				 {
+					 OceanTraits = UtilCon->PersonalityComp->Personality.GetOCEANDescription();
+				 }
+			 }
+
+			 // B. Name (Modular)
+			 FNPCNameDef NameDef;
+			 if (DefComp->GetNameDef(NameDef))
+			 {
+				 CharName = FString::Printf(TEXT("%s %s"), *NameDef.FirstName, *NameDef.Surname);
+			 }
+
+			 // C. Past Event (Modular)
+			 FPastEventDef EventDef;
+			 if (DefComp->GetPastEventDef(EventDef))
+			 {
+				 HistoryDesc = EventDef.EventDescription;
+				 MentalScar = EventDef.MentalScar;
+				 if (EventDef.ResultingPhobias.Num() > 0)
+				 {
+					 PhobiaStr = FGameplayTagContainer::CreateFromArray(EventDef.ResultingPhobias).ToStringSimple();
+				 }
+			 }
+
+			 // D. Social Profile (Status, Values)
+			 FSocialProfileDef SocialProfile;
+			 bool bHasProfile = DefComp->GetSocialProfileDef(SocialProfile);
+			 
+			 FString ValuesStr = "None";
+			 FString StatusStr = "Unknown";
+
+			 if (bHasProfile)
+			 {
+				 if (SocialProfile.KeyValues.Num() > 0) ValuesStr = FString::Join(SocialProfile.KeyValues, TEXT(", "));
+				 StatusStr = UEnum::GetValueAsString(SocialProfile.SocialStatus);
+				 int32 ScopeIndex = StatusStr.Find(TEXT("::"));
+				 if (ScopeIndex != INDEX_NONE) StatusStr = StatusStr.RightChop(ScopeIndex + 2);
+			 }
+
+			 // --- 2. Assemble Section ---
+			 BackstorySection = FString::Printf(TEXT(
+				 "\n[IDENTITY]\n"
+				 "Name: %s\n"
+				 "Personality Traits (OCEAN): %s\n"
+				 "Past Event: %s\n"
+				 "Mental Scar: %s\n"
+				 "Phobias/Traumas: %s\n"
+				 "Core Values: %s\n"
+				 "Social Class: %s\n"
+			 ), 
+			 *CharName,
+			 *OceanTraits,
+			 *HistoryDesc,
+			 *MentalScar,
+			 *PhobiaStr,
+			 *ValuesStr,
+			 *StatusStr
+			 );
+		}
+	}
+	
 	// ⚠️ 关键修复：如果 Personality 还没初始化（ID为None），不要发送请求，避免 LLM 产生幻觉
 	// Critical Fix: If Personality is not initialized (ID is None), do not send request to avoid LLM hallucinations
 	if (PersonalityIDStr == "None" || PersonalityIDStr == "Default" || PersonalityIDStr.IsEmpty())
@@ -269,20 +357,27 @@ void UCognitionComponent::ProcessStimulus(FString SituationDescription)
 		// 僵尸：生理限制和原始驱动 / Physiological limits and primal drives
 		RoleSection += TEXT("\n[INSTINCTS] Driven purely by insatiable hunger for living flesh. No fear, no pain, no higher logic.\n[LIMITATION] Brain rot preventing complex speech (can only grunt/hiss/say single broken words).\n");
 	}
-	else if (PersonalityIDStr.Contains(TEXT("Warrior")) || PersonalityIDStr.Contains(TEXT("Brave")))
-	{
-		// 战士：价值观驱动 / Value driven
-		RoleSection += TEXT("\n[VALUES] Honor, Glory, Strength. You despise cowardice.\n[Tendency] You prefer to face threats head-on unless the situation is absolutely hopeless.\n");
-	}
-	else if (PersonalityIDStr.Contains(TEXT("Merchant")))
-	{
-		RoleSection += TEXT("\n[VALUES] Profit, Wealth, Self-Preservation.\n[Tendency] You avoid physical danger and prefer to negotiate or flee to protect your goods.\n");
-	}
+	/* 
+	 * Removed hardcoded "Warrior" and "Merchant" logic.
+	 * Role rules should come from Personality.BehavioralGuidelines or RoleDescription.
+	 * Only "Zombie/Monster" hardcoding remains for physiological overrides.
+	 */
+
+	// --- PROMPT LOD OPTIMIZATION ---
+	// If in Critical LOD (Survival/Combat), we strip away flavor text to focus LLM on survival.
+	bool bFullContext = (CurrentLOD == EContextLOD::Standard || CurrentLOD == EContextLOD::Deep);
+	
+	// FString FinalRoleSection = bFullContext ? RoleSection : TEXT("You are in extreme danger. Focus ONLY on survival.");
+	FString FinalRoleSection = RoleSection; // Keep role/instincts even in danger (e.g. Zombie hunger)
+	FString FinalBackstorySection = bFullContext ? BackstorySection : TEXT(""); // No backstory in combat
+	FString FinalSituation = SituationDescription;
+	FString FinalMemories = bFullContext ? ContextMemory : TEXT(""); // No memories in combat unless critical? (Maybe keep basic)
 
 	// 构造精简的 Prompt / Build concise prompt
 	FString Prompt = FString::Printf(TEXT(
+		"%s"
 		"%s\n"
-		"Situation: %s\n"
+		"Situation: %s %s\n"
 		"Memories: %s\n\n"
 		"IMPORTANT Instructions:\n"
 		"1. [DEFICIT MODEL] 'Boredom' and 'Loneliness' reflect unmet needs (GROW over time). 'Indignity' and 'Threat' are reactions (DECAY over time).\n"
@@ -291,18 +386,9 @@ void UCognitionComponent::ProcessStimulus(FString SituationDescription)
 		"4. [JURISDICTION] Do NOT output Hunger/Fatigue (Engine manages them).\n"
 		"5. [EMOTION STRICT] 'Emotion' MUST be EXACTLY one of: Neutral, Angry, Scared, Sad, Happy, Curious, Disgust. ABSOLUTELY NO OTHER VALUES (e.g., 'Suspicious', 'Confused', 'Anxious'). If you feel 'suspicious', use 'Curious'. If uncertain, use 'Neutral'.\n"
 		"\n"
-		"Output valid JSON based on this TypeScript definition. ALL strings must be double-quoted.\n"
-		"type Tag = \"None\" | \"Slight\" | \"Moderate\" | \"Strong\" | \"Extreme\";\n"
-		"interface Response {\n"
-		"  Perceived_Threat: Tag;\n"
-		"  Loneliness: Tag;     // Need for social contact\n"
-		"  Indignity: Tag;      // Reaction to insult/disrespect\n"
-		"  Boredom: Tag;        // Need for stimulation\n"
-		"  Intention: \"Attack\" | \"Flee\" | \"Idle\" | \"Talk\" | \"Investigate\" | \"Beg\" | \"Work\";\n"
-		"  Emotion: \"Neutral\" | \"Angry\" | \"Scared\" | \"Sad\" | \"Happy\" | \"Curious\" | \"Disgust\";\n"
-		"  Speech: string;      // approx 5 words, match personality\n"
+		"  Speech: string;      // approx 10 words, match personality\n"
 		"}\n"
-	), *RoleSection, *SituationDescription, *ContextMemory);
+	), *FinalRoleSection, *FinalBackstorySection, *FinalSituation, *CurrentDecisionContext, *FinalMemories);
 	
 	UE_LOG(LogTemp, Log, TEXT("[Cognition] Sending to LLM..."));
 	
@@ -412,5 +498,22 @@ void UCognitionComponent::OnDreamingAnalysisComplete(bool bSuccess, const FStrin
 	if (MemoryComp && ExtractedInsights.Num() > 0)
 	{
 		MemoryComp->ConsolidateMemories(ExtractedInsights);
+	}
+}
+
+void UCognitionComponent::ReportDecisionContext(const FString& WinnerName, const FString& RunnerUpName, float ConflictLevel)
+{
+	// Only report if there is meaningful conflict (ConflictLevel < 0.2 means scores are close)
+	// Lower ConflictLevel = Higher Conflict (because it's percentage diff)
+    // 0.0 = Equal, 1.0 = Winner is infinitely better
+	
+	if (ConflictLevel < 0.25f && !RunnerUpName.IsEmpty())
+	{
+		CurrentDecisionContext = FString::Printf(TEXT("[INTERNAL CONFLICT] You are torn between '%s' and '%s'. The urge is almost equal."), 
+			*WinnerName, *RunnerUpName);
+	}
+	else
+	{
+		CurrentDecisionContext = ""; // Clear if decision is clear
 	}
 }

@@ -51,8 +51,9 @@ void UNPCMentalState::UpdateFromStruct(const FMentalState& NewState)
 	// ✅ 复制 Intention (LLM 的策略建议)
 	// Copy Intention (LLM's strategic suggestion)
 	Intention = NewState.Intention;
+	Speech = NewState.Speech; // Copy generated dialogue
 	
-	UE_LOG(LogTemp, Log, TEXT("[MentalState] Updated: Intention='%s'"), *Intention);
+	UE_LOG(LogTemp, Log, TEXT("[MentalState] Updated: Intention='%s', Speech='%s'"), *Intention, *Speech);
 }
 
 FMentalState UNPCMentalState::ToStruct() const

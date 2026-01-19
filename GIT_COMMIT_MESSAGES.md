@@ -205,3 +205,26 @@ This file contains a log of commit messages for the AINPC project.
 - **MentalStateInterpolator**: Changed to only cache/decay target intentions. No longer writes to state directly.
 - **Fix**: Solved conflict preventing Perceived_Threat from decaying naturally.
 
+## [2026-01-19] Phase 3: Player Interaction & Modular Identity Refactor
+**Type**: feat/refactor
+**Scope**: Sensory, Cognition, NPCDefinition, UI, PlayerController
+
+**Description**:
+- **Dialogue Action**: Implemented `Action_TalkTo` utility action for LLM-driven conversations.
+- **Social Input**: Created `UPlayerDialogueWidget` and integrated chat input logic into `AINPCPlayerController`.
+- **Speech Perception**: Enhanced `SensoryComponent::ReceiveSpeech` to generate semantic events and trigger visual speech bubbles.
+- **Identity Refactor**: Renamed Backstory to `SocialProfileDef` and refactored `CognitionComponent` to use modular prompt assembly (Name/Event/Profile).
+- **Optimization**: Implemented Prompt LOD system to optimize context window usage.
+
+**Files Changed**:
+- `Source/AINPC/Public/Actions/Action_TalkTo.h/.cpp`
+- `Source/AINPC/Public/UI/PlayerDialogueWidget.h/.cpp`
+- `Source/AINPC/AINPCPlayerController.h/.cpp`
+- `Source/AINPC/Components/SensoryComponent.cpp`
+- `Source/AINPC/Components/CognitionComponent.cpp`
+- `Source/AINPC/Components/NPCDefinitionComponent.h/.cpp`
+- `Source/AINPC/Public/UtilityAI/BackstoryConfig.h` (Renamed struct to SocialProfile)
+- `Content/AINPC/Datatable/DT_Names.json` (New)
+- `Content/AINPC/Datatable/DT_PastEvents.json` (New)
+- `Content/AINPC/Datatable/DT_SocialProfiles.json` (Replaced Backstories)
+- `Content/AINPC/Widgets/WBP_playerDialog` (New)

@@ -59,6 +59,10 @@ public:
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "LLM State")
 	FString Intention;
+
+    // Generated Dialogue Content
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "LLM State")
+	FString Speech;
 	
 	// =========================================================
 	// 辅助函数

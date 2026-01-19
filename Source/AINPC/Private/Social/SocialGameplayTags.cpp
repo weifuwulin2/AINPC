@@ -59,4 +59,20 @@ namespace AINPCTags
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Intention_Investigate, "Intention.Investigate", "LLM Intention: Investigate");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Intention_Beg, "Intention.Beg", "LLM Intention: Beg");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Intention_Work, "Intention.Work", "LLM Intention: Work");
+
+	// Trauma
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Trauma_Fire,           "Trauma.Fire", "Trauma: Fire");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Trauma_LoudNoises,     "Trauma.LoudNoises", "Trauma: Loud Noises");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Trauma_Humiliation,    "Trauma.Humiliation", "Trauma: Humiliation");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Trauma_Poverty,        "Trauma.Poverty", "Trauma: Poverty");
+
+	// Phobias
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Phobia_Fire,           "Phobia.Fire", "Phobia: Fire");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Phobia_Magic,          "Phobia.Magic", "Phobia: Magic");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Phobia_LoudNoises,     "Phobia.LoudNoises", "Phobia: Loud Noises");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Phobia_Crowds,         "Phobia.Crowds", "Phobia: Crowds");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Phobia_Disease,        "Phobia.Disease", "Phobia: Disease");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Phobia_Touch,          "Phobia.Touch", "Phobia: Touch");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Phobia_Betrayal,       "Phobia.Betrayal", "Phobia: Betrayal");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Phobia_Confinement,    "Phobia.Confinement", "Phobia: Confinement");
 }

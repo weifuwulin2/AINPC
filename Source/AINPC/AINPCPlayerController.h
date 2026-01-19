@@ -35,6 +35,22 @@ protected:
 	/** Pointer to the mobile controls widget */
 	TObjectPtr<UUserWidget> MobileControlsWidget;
 
+	/** Chat Widget Class */
+	UPROPERTY(EditAnywhere, Category = "UI")
+	TSubclassOf<class UPlayerDialogueWidget> ChatWidgetClass;
+
+	/** Chat Widget Instance */
+	UPROPERTY()
+	TObjectPtr<class UPlayerDialogueWidget> ChatWidgetInstance;
+    
+    /** Toggle Chat UI */
+    UFUNCTION(BlueprintCallable, Category = "UI")
+    void ToggleChat();
+
+    /** Handle Message Submission */
+    UFUNCTION()
+    void HandleChatMessage(const FString& Message);
+
 	/** Gameplay initialization */
 	virtual void BeginPlay() override;
 

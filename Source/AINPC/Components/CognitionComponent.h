@@ -65,6 +65,15 @@ public:
 	UPROPERTY()
 	UMentalStateInterpolator* Interpolator;
 
+	// --- Decision Context ---
+	// Updates the Cognition layer with the current Utility AI conflict status
+	UFUNCTION(BlueprintCallable, Category = "AI | Cognition")
+	void ReportDecisionContext(const FString& WinnerName, const FString& RunnerUpName, float ConflictLevel);
+
+	// Context string describing the last significant decision conflict
+	UPROPERTY(VisibleAnywhere, Category = "AI | Cognition")
+	FString CurrentDecisionContext;
+
 protected:
 	UPROPERTY(VisibleAnywhere, Category = "AI | Cognition")
 	EContextLOD CurrentLOD = EContextLOD::Standard;

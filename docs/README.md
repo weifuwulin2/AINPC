@@ -11,6 +11,8 @@ Welcome to the AINPC Knowledge Base. This index serves as the central hub for al
 
 ### 🏗️ Architecture & Design
 *   [**Data Flow Analysis**](analysis/DataFlow_Analysis.md) - **(Crucial)** Mermaid diagrams and detailed system data flow analysis.
+*   [**Initialization Architecture**](design/Initialization_Architecture.md) - How NPCs load identities and state at spawn.
+*   [**Social/Work LOD System**](design/Social_Work_LOD_Integration_Design.md) - How attention and distance affect AI behavior complexity.
 *   [**Personality Pipeline**](design/Personality_OCEAN_Maslow_LLM_Pipeline.md) - Detailed flow from OCEAN traits to Maslow needs to LLM prompts.
 *   [**Jurisdiction System**](design/Maslow_Variables_Jurisdiction.md) - Rules defining whether the Engine, Utility AI, or LLM controls specific state variables.
 *   [**Utility AI Algorithm**](design/UtilityAI_TwoPhase_Algorithm.md) - Explanation of the specific scoring algorithm used.
@@ -19,6 +21,7 @@ Welcome to the AINPC Knowledge Base. This index serves as the central hub for al
 *   [**Single Point Config**](guides/Single_Point_Configuration_Guide.md) - How to add new mental states using the `MentalStateFields.h` macro system.
 *   [**Utility Action Config**](guides/Utility_AI_Configuration_Guide.md) - How to create and tune Utility AI Actions.
 *   [**Personality Tables**](guides/PersonalityTable_Configuration_Guide.md) - Configuring DataTable assets for different NPC personalities.
+*   [**Social Profiles**](guides/PersonalityTable_Configuration_Guide.md) - (Updated) Configuring Role/Motivation/Values.
 
 ### Troubleshooting
 *   [**Known Bugs List**](troubleshooting/Known_Bugs_List.md) - Active issues and investigation plans
@@ -29,6 +32,7 @@ Welcome to the AINPC Knowledge Base. This index serves as the central hub for al
 *   [**Changelog**](../CHANGELOG.md) - Version history.
 
 ### 🔄 System Updates
+*   [**Phase 3: Player Interaction**](../CHANGELOG.md#v053---phase-3-player-interaction--modular-identity-2026-01-19) - Summary of the player dialogue and modular identity system.
 *   [**Faction System Update**](updates/Faction_System_Update.md) - Simplification to three core factions (Human, Monster, Neutral) with improved hostility logic.
 *   [**Metabolism System Fix**](guides/Metabolism_Logic_Fix_Summary.md) - Complete overhaul of Hunger/Fatigue system with Engine-exclusive protection.
 
@@ -38,4 +42,4 @@ Welcome to the AINPC Knowledge Base. This index serves as the central hub for al
 *   [**Concurrent Request Fix**](reports/Bug4_Fix_Report.md)
 
 ---
-*Last Updated: 2026-01-13*
+*Last Updated: 2026-01-19*

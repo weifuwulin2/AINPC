@@ -1,4 +1,4 @@
-#include "Test/TestAction_TalkTo.h"
+#include "Actions/Action_TalkTo.h"
 #include "AIController.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -8,16 +8,17 @@
 #include "Controller/UtilityAIController.h"
 #include "Components/CognitionComponent.h"
 #include "UtilityAI/MentalStateInterpolation.h"
+#include "UtilityAI/UNPCMentalState.h"
 
-UTestAction_TalkTo::UTestAction_TalkTo()
+UAction_TalkTo::UAction_TalkTo()
 {
-	ActionName = "Test_TalkTo";
+	ActionName = "TalkTo";
 	ExecutionTime = 0.0f;
 	LastChatTime = -999.0f;
 	CurrentTarget = nullptr;
 }
 
-void UTestAction_TalkTo::Enter_Implementation(AAIController* Controller)
+void UAction_TalkTo::Enter_Implementation(AAIController* Controller)
 {
 	Super::Enter_Implementation(Controller);
 
@@ -29,7 +30,7 @@ void UTestAction_TalkTo::Enter_Implementation(AAIController* Controller)
 	CurrentTarget = FindBestTalkTarget(Controller);
 
 	UE_LOG(LogTemp, Display, TEXT("───────────────────────────────────────"));
-	UE_LOG(LogTemp, Display, TEXT("[TEST] TalkTo Action ENTERED"));
+	UE_LOG(LogTemp, Display, TEXT("[ACTION] TalkTo Started"));
 	
 	if (CurrentTarget)
 	{
@@ -43,7 +44,7 @@ void UTestAction_TalkTo::Enter_Implementation(AAIController* Controller)
 	UE_LOG(LogTemp, Display, TEXT("───────────────────────────────────────"));
 }
 
-void UTestAction_TalkTo::Execute_Implementation(AAIController* Controller)
+void UAction_TalkTo::Execute_Implementation(AAIController* Controller)
 {
 	Super::Execute_Implementation(Controller);
 
@@ -53,7 +54,7 @@ void UTestAction_TalkTo::Execute_Implementation(AAIController* Controller)
 	APawn* ControlledPawn = Controller->GetPawn();
 	if (!ControlledPawn) return;
 
-	// 1. 如果没有目标或目标失效，尝试寻找
+	// 1. Validate Target
 	bool bTargetInvalid = !CurrentTarget || !IsValid(CurrentTarget) || CurrentTarget->IsPendingKillPending() || CurrentTarget->ActorHasTag("Dead");
 	
 	if (bTargetInvalid)
@@ -66,39 +67,35 @@ void UTestAction_TalkTo::Execute_Implementation(AAIController* Controller)
 		}
 		else
 		{
-			// 如果找不到人聊天，就没事干了，可以让它随便走走或者停下
+			// Nothing to do, stop and wait
 			Controller->StopMovement();
 			return;
 		}
 	}
 
-	// 2. 移动逻辑
+	// 2. Movement Logic
 	float Dist = FVector::Dist(ControlledPawn->GetActorLocation(), CurrentTarget->GetActorLocation());
 	float ChatRange = 300.0f;
 
 	if (Dist > ChatRange)
 	{
-		// 还没到，继续走
-		Controller->MoveToActor(CurrentTarget, ChatRange - 50.0f); // 走到 ChatRange 里面一点
+		Controller->MoveToActor(CurrentTarget, ChatRange - 50.0f);
 	}
 	else
 	{
-		// 到了，停下来
-		Controller->StopMovement(); // 停止移动
-		
-		// 确保面向目标
+		Controller->StopMovement();
 		Controller->SetFocus(CurrentTarget);
 
-			// 3. 聊天逻辑 (每5秒一次)
+		// 3. Chat Logic (Every 5 seconds)
 		float CurrentTime = World->GetTimeSeconds();
 		if (CurrentTime - LastChatTime > 5.0f)
 		{
 			LastChatTime = CurrentTime;
 
-            // ✅ Get Controllers
+            // Trigger Dialogue via LLM
 			if (AUtilityAIController* UAICon = Cast<AUtilityAIController>(Controller))
 			{
-                // Trigger Cognition to Generate Dialogue (via ProcessStimulus)
+                // Trigger Cognition
                 if (UAICon->CognitionComp)
                 {
                     FString Stimulus = FString::Printf(TEXT("You are talking to %s."), *CurrentTarget->GetName());
@@ -106,46 +103,52 @@ void UTestAction_TalkTo::Execute_Implementation(AAIController* Controller)
                     UE_LOG(LogTemp, Log, TEXT("[Action_TalkTo] Triggered Cognition Stimulus: %s"), *Stimulus);
                 }
 
-                // Wait for MentalState update to get Speech...
-                // (Ideally, Cognition should callback, but for now we poll/event)
-                // For this action, we rely on Cognition to update MentalState->Speech, 
-                // and then we 'say' it via SensoryComponent next tick or via delegate.
+                // Temporary Poll: Check if Speech is ready in Mental State (simple simulation since Cognition is async)
+                // In a robust system, we'd bind to a 'OnSpeechReady' delegate. 
+                // Currently, we rely on the MentalState update that happens shortly after.
+                // Because we poll every frame in Execute, we can check UAICon->MentalState->Speech.
                 
-                // Temporary: Simulate 'Saying' what's in MentalState if available
-                if (UAICon->MentalState && !UAICon->MentalState->Speech.IsEmpty())
+                // However, LLM takes time (seconds). 
+                // So checking *immediately* after ProcessStimulus won't work for the *current* request.
+                // But it might pick up the previous one or we check continuously.
+			}
+		}
+		
+		// Poll for Speech output every frame (independent of the 5s trigger)
+		if (AUtilityAIController* UAICon = Cast<AUtilityAIController>(Controller))
+		{
+            if (UAICon->MentalState && !UAICon->MentalState->Speech.IsEmpty())
+            {
+                // Emit speech
+                if (UAICon->SensoryComp)
                 {
-                    // Emit actual speech
-                    if (UAICon->SensoryComp)
-                    {
-                        UAICon->SensoryComp->ReceiveSpeech(ControlledPawn, UAICon->MentalState->Speech);
-                    }
-                    
-                    UE_LOG(LogTemp, Log, TEXT("[Action_TalkTo] Said: %s"), *UAICon->MentalState->Speech);
-                    
-                    // Clear speech so we don't repeat
-                    UAICon->MentalState->Speech = "";
+                    UAICon->SensoryComp->ReceiveSpeech(ControlledPawn, UAICon->MentalState->Speech);
                 }
-
-                // Reduce Loneliness/Boredom
-                if (UAICon->MentalState)
-                {
-                     float OldLoneliness = UAICon->MentalState->Loneliness;
-                     UAICon->MentalState->Loneliness = FMath::Max(0.0f, UAICon->MentalState->Loneliness - 0.2f); // Big reduction
+                
+                UE_LOG(LogTemp, Log, TEXT("[Action_TalkTo] Said: %s"), *UAICon->MentalState->Speech);
+                
+                // Clear speech to avoid loop
+                UAICon->MentalState->Speech = "";
+                
+                 // Reduce Social Need (Loneliness) significantly after speaking
+                 if (UAICon->MentalState)
+                 {
+                     UAICon->MentalState->Loneliness = FMath::Max(0.0f, UAICon->MentalState->Loneliness - 0.2f);
                      UAICon->MentalState->Boredom = FMath::Max(0.0f, UAICon->MentalState->Boredom - 0.1f);
                      
+                     // Sync Interpolator
                      if (UAICon->CognitionComp && UAICon->CognitionComp->Interpolator)
                      {
                          UAICon->CognitionComp->Interpolator->SetTargetValue(TEXT("Loneliness"), UAICon->MentalState->Loneliness);
                          UAICon->CognitionComp->Interpolator->SetTargetValue(TEXT("Boredom"), UAICon->MentalState->Boredom);
                      }
-                     UE_LOG(LogTemp, Log, TEXT("[Action_TalkTo] Socializing... Loneliness: %.2f -> %.2f"), OldLoneliness, UAICon->MentalState->Loneliness);
-                }
-			}
+                 }
+            }
 		}
 	}
 }
 
-void UTestAction_TalkTo::Exit_Implementation(AAIController* Controller)
+void UAction_TalkTo::Exit_Implementation(AAIController* Controller)
 {
 	Super::Exit_Implementation(Controller);
 	
@@ -156,11 +159,11 @@ void UTestAction_TalkTo::Exit_Implementation(AAIController* Controller)
 	}
 	
 	UE_LOG(LogTemp, Display, TEXT("───────────────────────────────────────"));
-	UE_LOG(LogTemp, Display, TEXT("[TEST] TalkTo Action EXITED"));
+	UE_LOG(LogTemp, Display, TEXT("[ACTION] TalkTo Exited"));
 	UE_LOG(LogTemp, Display, TEXT("───────────────────────────────────────"));
 }
 
-AActor* UTestAction_TalkTo::FindBestTalkTarget(AAIController* Controller)
+AActor* UAction_TalkTo::FindBestTalkTarget(AAIController* Controller)
 {
 	if (!Controller || !Controller->GetWorld()) return nullptr;
 	APawn* MyPawn = Controller->GetPawn();
@@ -169,23 +172,16 @@ AActor* UTestAction_TalkTo::FindBestTalkTarget(AAIController* Controller)
 	AActor* BestCandidate = nullptr;
 	float ClosestDistSq = FLT_MAX;
 
-	// 遍历所有角色
 	for (TActorIterator<ACharacter> It(Controller->GetWorld()); It; ++It)
 	{
 		ACharacter* Candidate = *It;
 		
-		// 基本过滤
 		if (Candidate == MyPawn) continue;
 		if (!IsValid(Candidate) || Candidate->IsPendingKillPending()) continue;
         if (Candidate->ActorHasTag("Dead")) continue;
-        
-        // 排除 Enemy
-        if (Candidate->ActorHasTag("Enemy")) continue;
-
-		// 排除布娃娃 (物理模拟)
+        if (Candidate->ActorHasTag("Enemy")) continue; 
 		if (Candidate->GetMesh() && Candidate->GetMesh()->IsSimulatingPhysics()) continue;
 
-		// 找最近的
 		float DistSq = FVector::DistSquared(MyPawn->GetActorLocation(), Candidate->GetActorLocation());
 		if (DistSq < ClosestDistSq)
 		{

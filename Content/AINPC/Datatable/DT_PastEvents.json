@@ -1,0 +1,31 @@
+[
+    {
+        "Name": "Event_BurningFields",
+        "EventDescription": "Sole survivor of the Battle of Burning Fields. Watched the entire squad burn alive in a magical firestorm.",
+        "ResultingPhobias": [
+            "Phobia.Fire",
+            "Phobia.Magic",
+            "Phobia.LoudNoises"
+        ],
+        "MentalScar": "Smell of ash triggers panic attacks. Flinches at sudden bright lights."
+    },
+    {
+        "Name": "Event_PlagueSurvivor",
+        "EventDescription": "Lost entire family to the Red Plague. Lived alone in a quarantined zone for 2 years while neighbors turned into monsters.",
+        "ResultingPhobias": [
+            "Phobia.Crowds",
+            "Phobia.Disease",
+            "Phobia.Touch"
+        ],
+        "MentalScar": "Obsessive cleanliness. Refuses to shake hands. Keeps distance."
+    },
+    {
+        "Name": "Event_BetrayedNoble",
+        "EventDescription": "Was formerly high nobility but was framed by a trusted advisor and stripped of all titles. Spent 5 years in a debtor's prison.",
+        "ResultingPhobias": [
+            "Phobia.Betrayal",
+            "Phobia.Confinement"
+        ],
+        "MentalScar": "Trusts no one. Constantly checks for exits. Hoards small valuable items."
+    }
+]
