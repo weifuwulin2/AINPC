@@ -5,6 +5,7 @@
 #include "Components/EmotionDisplayComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Social/SocialGameplayTags.h"
+#include "AINPC.h"
 
 USensoryComponent::USensoryComponent()
 {
@@ -45,11 +46,11 @@ void USensoryComponent::HandleSmartObjectInteraction(AActor* Instigator, AActor*
 	{
 		// 4. Send to Brain (Memory/Cognition)
 		OnSemanticEventSensed.Broadcast(NewEvent);
-		UE_LOG(LogTemp, Log, TEXT("[Sensory] Transmitting Event: %s (Mag: %.2f)"), *NewEvent.Content, NewEvent.Magnitude);
+		AINPC_LOG(Log, "Transmitting Event: %s (Mag: %.2f)", *NewEvent.Content, NewEvent.Magnitude);
 	}
 	else
 	{
-		UE_LOG(LogTemp, Verbose, TEXT("[Sensory] Filtered out trivial event: %s"), *NewEvent.Content);
+		AINPC_LOG_VERBOSE("Filtered out trivial event: %s", *NewEvent.Content);
 	}
 }
 
@@ -58,7 +59,7 @@ bool USensoryComponent::ProcessEventFilter(FSemanticEvent& Event)
 	// Physiological Layer Logic: Filter out noise
 	
 	// 🔍 调试：显示进入过滤器的事件
-	UE_LOG(LogTemp, Warning, TEXT("[Sensory] ProcessEventFilter: Target=%s, Verb=%s, Magnitude=%.2f"), 
+	AINPC_LOG(Warning, "ProcessEventFilter: Target=%s, Verb=%s, Magnitude=%.2f", 
 		Event.Target ? *Event.Target->GetName() : TEXT("NULL"),
 		*Event.Verb.ToString(),
 		Event.Magnitude);
@@ -70,7 +71,7 @@ bool USensoryComponent::ProcessEventFilter(FSemanticEvent& Event)
 	{
 		// This is already upgraded to Danger in HandleTargetPerceived
 		// Let it pass through immediately
-		UE_LOG(LogTemp, Warning, TEXT("[Sensory] → PASS: Immediate Threat (Danger Event)"));
+		AINPC_LOG(Warning, "→ PASS: Immediate Threat (Danger Event)");
 		return true;
 	}
 	
@@ -231,7 +232,7 @@ void USensoryComponent::HandleTargetPerceived(AActor* Actor, FAIStimulus Stimulu
                 if (AIController->GetFocusActor() == Actor)
                 {
                     AIController->ClearFocus(EAIFocusPriority::Gameplay);
-                    UE_LOG(LogTemp, Warning, TEXT("[Sensory] ⚰️ Target %s is dead! Cleared FocusActor."), *Actor->GetName());
+                    AINPC_LOG(Warning, "⚰️ Target %s is dead! Cleared FocusActor.", *Actor->GetName());
                 }
             }
             return; // 忽略死亡目标的感知
@@ -277,7 +278,7 @@ void USensoryComponent::HandleTargetPerceived(AActor* Actor, FAIStimulus Stimulu
         FName TargetFaction = GetActorFaction(Actor);
         bool bIsHostile = AreActorsHostile(GetOwner(), Actor);
         
-        UE_LOG(LogTemp, Warning, TEXT("[Sensory] Perception: Self=%s (Faction: %s) saw Target=%s (Faction: %s), Hostile=%s"), 
+        AINPC_LOG(Warning, "Perception: Self=%s (Faction: %s) saw Target=%s (Faction: %s), Hostile=%s", 
             *GetOwner()->GetName(), *SelfFaction.ToString(),
             *Actor->GetName(), *TargetFaction.ToString(),
             bIsHostile ? TEXT("YES") : TEXT("NO"));
@@ -287,7 +288,7 @@ void USensoryComponent::HandleTargetPerceived(AActor* Actor, FAIStimulus Stimulu
         if (bIsHostile)
         {
             Magnitude = 0.8f; // 敌对阵营：高重要性，直接传到 Cognition (Hostile faction: High importance, direct to Cognition)
-            UE_LOG(LogTemp, Warning, TEXT("[Sensory] → Hostile faction detected! Magnitude set to 0.8"));
+            AINPC_LOG(Warning, "→ Hostile faction detected! Magnitude set to 0.8");
             
             // ✅ 设置 FocusActor 为敌对目标，让 Attack 动作知道攻击谁
             // Set FocusActor to hostile target so Attack action knows who to attack
@@ -478,7 +479,7 @@ void USensoryComponent::ReceiveSpeech(AActor* Speaker, FString Message)
          }
     }
     
-    UE_LOG(LogTemp, Warning, TEXT("[Sensory] 💬 SPEECH RECEIVED from %s: \"%s\""), *SpeakerName, *Message);
+    AINPC_LOG(Warning, "💬 SPEECH RECEIVED from %s: \"%s\"", *SpeakerName, *Message);
 
     // 2. Broadcast Legacy Event
     FString FormattedMsg = FString::Printf(TEXT("%s: %s"), *SpeakerName, *Message);

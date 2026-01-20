@@ -4,6 +4,7 @@
 #include "Components/PersonalityComponent.h"
 #include "Controller/UtilityAIController.h"
 #include "Components/CognitionComponent.h"
+#include "AINPC.h"
 
 UPersonalityComponent::UPersonalityComponent()
 {
@@ -25,13 +26,13 @@ void UPersonalityComponent::BeginPlay()
 	// CombatEnemy will call SetPersonalityByID() which triggers full initialization
 	// 注意：PersonalityID 会由 CombatEnemy::BeginPlay() 通过延迟定时器设置
 	// CombatEnemy 会调用 SetPersonalityByID() 触发完整初始化
-	UE_LOG(LogTemp, Verbose, TEXT("[PersonalityComponent] BeginPlay complete. Waiting for CombatEnemy to set PersonalityID..."));
+	AINPC_LOG_VERBOSE("BeginPlay complete. Waiting for CombatEnemy to set PersonalityID...");
 }
 
 void UPersonalityComponent::SetPersonalityByID(FName NewPersonalityID)
 {
 	UE_LOG(LogTemp, Warning, TEXT("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"));
-	UE_LOG(LogTemp, Warning, TEXT("[PersonalityComponent] SetPersonalityByID called"));
+	AINPC_LOG(Warning, "SetPersonalityByID called");
 	UE_LOG(LogTemp, Warning, TEXT("  Old PersonalityID: %s"), *PersonalityID.ToString());
 	UE_LOG(LogTemp, Warning, TEXT("  New PersonalityID: %s"), *NewPersonalityID.ToString());
 	
@@ -55,14 +56,14 @@ void UPersonalityComponent::RecalculateWeights()
 	if (bShowDetailedLogs)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"));
-		UE_LOG(LogTemp, Warning, TEXT("[PersonalityComponent] RecalculateWeights called"));
+		AINPC_LOG(Warning, "RecalculateWeights called");
 		UE_LOG(LogTemp, Warning, TEXT("  PersonalityID: %s"), *PersonalityID.ToString());
 		UE_LOG(LogTemp, Warning, TEXT("  PersonalityTable: %s"), PersonalityTable ? TEXT("Valid") : TEXT("NULL"));
 	}
 	
 	if (!PsychologyModel)
 	{
-		UE_LOG(LogTemp, Error, TEXT("[PersonalityComponent] PsychologyModel is null! Cannot calculate weights."));
+		AINPC_LOG_ERROR("PsychologyModel is null! Cannot calculate weights.");
 		if (bShowDetailedLogs)
 		{
 			UE_LOG(LogTemp, Warning, TEXT("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"));
@@ -79,7 +80,7 @@ void UPersonalityComponent::RecalculateWeights()
 		if (PersonalityRow)
 		{
 			Personality = *PersonalityRow;
-			UE_LOG(LogTemp, Warning, TEXT("  ✅ Reloaded personality from table: %s"), *PersonalityID.ToString());
+			AINPC_LOG(Warning, "✅ Reloaded personality from table: %s", *PersonalityID.ToString());
 			UE_LOG(LogTemp, Log, TEXT("     OCEAN: O=%.2f, C=%.2f, E=%.2f, A=%.2f, N=%.2f"), 
 			       Personality.Openness, Personality.Conscientiousness, 
 			       Personality.Extraversion, Personality.Agreeableness, Personality.Neuroticism);
@@ -88,7 +89,7 @@ void UPersonalityComponent::RecalculateWeights()
 		}
 		else
 		{
-			UE_LOG(LogTemp, Error, TEXT("  ❌ PersonalityID '%s' not found in table!"), *PersonalityID.ToString());
+			AINPC_LOG_ERROR("❌ PersonalityID '%s' not found in table!", *PersonalityID.ToString());
 		}
 	}
 	else
@@ -168,7 +169,7 @@ float UPersonalityComponent::GetWeightForVariable(const FString& VariableName) c
 	}
 	else
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[PersonalityComponent] Unknown variable name: %s, returning default weight 1.0"), *VariableName);
+		AINPC_LOG_WARNING("Unknown variable name: %s, returning default weight 1.0", *VariableName);
 		return 1.0f;  // 默认权重
 	}
 }
@@ -197,7 +198,7 @@ void UPersonalityComponent::UsePersonalityTemplate(const FString& TemplateName)
 	}
 	else
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[PersonalityComponent] Unknown template name: %s"), *TemplateName);
+		AINPC_LOG_WARNING("Unknown template name: %s", *TemplateName);
 		return;
 	}
 
@@ -238,10 +239,10 @@ void UPersonalityComponent::InitializeDefaultPsychologyModel()
 	
 	if (PsychologyModel)
 	{
-		UE_LOG(LogTemp, Log, TEXT("[PersonalityComponent] Created default PsychologyModel."));
+		AINPC_LOG(Log, "Created default PsychologyModel.");
 	}
 	else
 	{
-		UE_LOG(LogTemp, Error, TEXT("[PersonalityComponent] Failed to create default PsychologyModel!"));
+		AINPC_LOG_ERROR("Failed to create default PsychologyModel!");
 	}
 }

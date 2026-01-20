@@ -1,5 +1,6 @@
 #include "Components/MemoryComponent.h"
 #include "Social/SocialGameplayTags.h"
+#include "AINPC.h"
 
 UMemoryComponent::UMemoryComponent()
 {
@@ -26,12 +27,12 @@ void UMemoryComponent::CommitEvent(const FSemanticEvent& Event)
 	// Accumulate Importance for Reflection Trigger
 	CurrentImportanceSum += NewItem.ImportanceScore;
 
-	UE_LOG(LogTemp, Log, TEXT("[Memory] Stored: %s (Imp: %.2f)"), *NewItem.Description, NewItem.ImportanceScore);
+	AINPC_LOG(Log, "Stored: %s (Imp: %.2f)", *NewItem.Description, NewItem.ImportanceScore);
 
 	// Check Trigger (Logic only, actual LLM call would be async)
 	if (CurrentImportanceSum >= ReflectionThreshold)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[Memory] 'Slow System' Reflection Triggered! (Sum: %.2f)"), CurrentImportanceSum);
+		AINPC_LOG(Warning, "'Slow System' Reflection Triggered! (Sum: %.2f)", CurrentImportanceSum);
 		// Reset accumulator after triggering (in a real system, reset after successful reflection)
 		CurrentImportanceSum = 0.0f; 
 		
@@ -159,7 +160,7 @@ void UMemoryComponent::ConsolidateMemories(const TArray<FString>& NewInsights)
 	// 1. In a real system, you might archive old memories here.
 	// For now, we simply ADD the insights as new, high-importance memories.
 	
-	UE_LOG(LogTemp, Log, TEXT("[Memory] Consolidating %d Insights..."), NewInsights.Num());
+	AINPC_LOG(Log, "Consolidating %d Insights...", NewInsights.Num());
 	
 	for (const FString& Insight : NewInsights)
 	{

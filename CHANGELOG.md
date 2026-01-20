@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased] - 2026-01-20
+
+### 🔧 Debug & Quality of Life Improvements
+
+#### AINPC_LOG Macro System
+- **Added**: Centralized logging macros in `AINPC.h` with automatic class name prefixing
+  - `AINPC_LOG(Verbosity, Format, ...)` - General logging with auto class name
+  - `AINPC_LOG_WARNING()` - Warning level
+  - `AINPC_LOG_ERROR()` - Error level  
+  - `AINPC_LOG_VERBOSE()` - Verbose level
+- **Changed**: Updated 9 core NPC components to use new AINPC_LOG macros:
+  - `SensoryComponent`, `UtilityAIComponent`, `CognitionComponent`
+  - `PersonalityComponent`, `MemoryComponent`, `MetabolismComponent`
+  - `GoalComponent`, `NPCDefinitionComponent`, `EmotionDisplayComponent`
+- **Impact**: Debug logs now show class names automatically (e.g., `[USensoryComponent] Perception: ...`)
+
+#### Toggle Chat UI Fix
+- **Fixed**: Player Chat UI toggle not working properly in `AINPCPlayerController`
+  - Changed `FInputModeUIOnly` to `FInputModeGameAndUI`
+  - Player can now press T to close the chat UI while it's visible
+  - Previously, keyboard input was blocked when UI was open
+
+### 📝 Documentation
+- **Added**: `docs/design/Phase4_AI_System_Enhancement_Plan.md` - Comprehensive implementation plan for:
+  - Memory System Refactor (Mathematical Decay, Resolution Tags, GC)
+  - Agency & Soul (Gossip Network, Hidden Agendas, Obsession Evolution)
+  - AI-Friendly Debug Protocol (Log Channels, JSON Snapshots, Visual Overlay)
+  - Prompt Optimization (Layer Architecture, LOD-based Stripping)
+
+---
+
 ## [Unreleased] - 2026-01-19
 
 ### 🎯 Phase 3 - Player Interaction & Social Identity

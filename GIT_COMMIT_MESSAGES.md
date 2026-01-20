@@ -228,3 +228,47 @@ This file contains a log of commit messages for the AINPC project.
 - `Content/AINPC/Datatable/DT_PastEvents.json` (New)
 - `Content/AINPC/Datatable/DT_SocialProfiles.json` (Replaced Backstories)
 - `Content/AINPC/Widgets/WBP_playerDialog` (New)
+
+---
+
+## [2026-01-20] AINPC_LOG Debug Macro System & Chat UI Fix
+**Type**: feat/fix
+**Scope**: Debugging, AINPCPlayerController, Core Components
+
+**Description**:
+- **AINPC_LOG Macros**: Created centralized logging macros in `AINPC.h` with automatic class name extraction
+  - Uses `__FUNCTION__` to automatically prepend class name (e.g., `[USensoryComponent]`)
+  - Variants: `AINPC_LOG`, `AINPC_LOG_VERBOSE`, `AINPC_LOG_WARNING`, `AINPC_LOG_ERROR`
+  - All logged to `LogAINPC` category for unified filtering
+- **Component Updates**: Migrated 9 core components to use new AINPC_LOG macros:
+  - SensoryComponent, UtilityAIComponent, CognitionComponent
+  - PersonalityComponent, MemoryComponent, MetabolismComponent
+  - GoalComponent, NPCDefinitionComponent, EmotionDisplayComponent
+- **Toggle Chat Fix**: Fixed `AINPCPlayerController::ToggleChat()` input mode issue
+  - Changed `FInputModeUIOnly` → `FInputModeGameAndUI`
+  - Allows player to press T to close chat UI (previously keyboard was blocked)
+- **Documentation**: Created `Phase4_AI_System_Enhancement_Plan.md` covering:
+  - Memory System Refactor (Decay Model, Resolution Tags, GC)
+  - Agency & Soul (Gossip Network, Hidden Agendas)
+  - Debug Protocol (Log Channels, JSON Snapshots, Visual Overlay)
+  - Prompt Optimization (Layer Architecture, LOD-based Stripping)
+
+**Files Changed**:
+- `Source/AINPC/AINPC.h` - Added AINPC_LOG macros
+- `Source/AINPC/AINPCPlayerController.cpp` - Fixed input mode
+- `Source/AINPC/Components/SensoryComponent.cpp`
+- `Source/AINPC/Components/UtilityAIComponent.cpp`
+- `Source/AINPC/Components/CognitionComponent.cpp`
+- `Source/AINPC/Components/PersonalityComponent.cpp`
+- `Source/AINPC/Components/MemoryComponent.cpp`
+- `Source/AINPC/Components/MetabolismComponent.cpp`
+- `Source/AINPC/Components/GoalComponent.cpp`
+- `Source/AINPC/Components/NPCDefinitionComponent.cpp`
+- `Source/AINPC/Components/EmotionDisplayComponent.cpp`
+- `docs/design/Phase4_AI_System_Enhancement_Plan.md` (New)
+- `CHANGELOG.md`
+
+**Impact**:
+- Debug logs now automatically show which class emitted them
+- Easier to trace issues across component boundaries
+- Chat UI toggle works correctly for player dialogue

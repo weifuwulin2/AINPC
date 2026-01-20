@@ -1,6 +1,3 @@
-// EmotionDisplayComponent.cpp
-// 情绪显示组件实现 / Emotion Display Component Implementation
-
 #include "Components/EmotionDisplayComponent.h"
 #include "Components/WidgetComponent.h"
 #include "Components/CognitionComponent.h"
@@ -13,6 +10,7 @@
 #include "Components/Image.h"  // For UImage widget
 #include "GameFramework/Character.h"
 #include "TimerManager.h"
+#include "AINPC.h"
 
 UEmotionDisplayComponent::UEmotionDisplayComponent()
 {
@@ -24,7 +22,7 @@ void UEmotionDisplayComponent::BeginPlay()
 	Super::BeginPlay();
 	
 	UE_LOG(LogTemp, Warning, TEXT("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"));
-	UE_LOG(LogTemp, Warning, TEXT("[EmotionDisplay] BeginPlay called"));
+	AINPC_LOG(Warning, "BeginPlay called");
 	
 	// 延迟创建 Widget 组件，确保 Pawn 已经被 Possess
 	// Delay Widget creation to ensure Pawn is possessed
@@ -35,7 +33,7 @@ void UEmotionDisplayComponent::BeginPlay()
 			DelayHandle,
 			[this]()
 			{
-				UE_LOG(LogTemp, Warning, TEXT("[EmotionDisplay] Delayed initialization starting..."));
+				AINPC_LOG(Warning, "Delayed initialization starting...");
 				CreateWidgetComponents();
 				BindToCognitionEvents();
 			},
@@ -47,7 +45,7 @@ void UEmotionDisplayComponent::BeginPlay()
 	}
 	else
 	{
-		UE_LOG(LogTemp, Error, TEXT("[EmotionDisplay] GetWorld() returned nullptr!"));
+		AINPC_LOG_ERROR("GetWorld() returned nullptr!");
 	}
 	
 	UE_LOG(LogTemp, Warning, TEXT("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"));
@@ -56,14 +54,14 @@ void UEmotionDisplayComponent::BeginPlay()
 
 void UEmotionDisplayComponent::CreateWidgetComponents()
 {
-	UE_LOG(LogTemp, Warning, TEXT("[EmotionDisplay] CreateWidgetComponents called"));
+	AINPC_LOG(Warning, "CreateWidgetComponents called");
 	
 	// Owner 是 AI Controller，需要获取它控制的 Pawn
 	// Owner is AI Controller, need to get the controlled Pawn
 	AAIController* AIController = Cast<AAIController>(GetOwner());
 	if (!AIController)
 	{
-		UE_LOG(LogTemp, Error, TEXT("[EmotionDisplay] ❌ Owner is not an AIController! Owner: %s"), 
+		AINPC_LOG_ERROR("❌ Owner is not an AIController! Owner: %s", 
 		       GetOwner() ? *GetOwner()->GetName() : TEXT("NULL"));
 		return;
 	}
@@ -73,7 +71,7 @@ void UEmotionDisplayComponent::CreateWidgetComponents()
 	APawn* ControlledPawn = AIController->GetPawn();
 	if (!ControlledPawn)
 	{
-		UE_LOG(LogTemp, Error, TEXT("[EmotionDisplay] ❌ No Pawn controlled yet by %s"), *AIController->GetName());
+		AINPC_LOG_ERROR("❌ No Pawn controlled yet by %s", *AIController->GetName());
 		return;
 	}
 	
@@ -110,7 +108,7 @@ void UEmotionDisplayComponent::CreateWidgetComponents()
 		}
 		else
 		{
-			UE_LOG(LogTemp, Error, TEXT("[EmotionDisplay] ❌ EmojiWidgetClass is not set!"));
+			AINPC_LOG_ERROR("❌ EmojiWidgetClass is not set!");
 		}
 		
 		UE_LOG(LogTemp, Warning, TEXT("[EmotionDisplay] ✅ Emoji Widget attached to Pawn: %s"), *ControlledPawn->GetName());
@@ -140,7 +138,7 @@ void UEmotionDisplayComponent::CreateWidgetComponents()
 		}
 		else
 		{
-			UE_LOG(LogTemp, Error, TEXT("[EmotionDisplay] ❌ SpeechBubbleWidgetClass is not set!"));
+			AINPC_LOG_ERROR("❌ SpeechBubbleWidgetClass is not set!");
 		}
 		
 		UE_LOG(LogTemp, Warning, TEXT("[EmotionDisplay] ✅ Speech Bubble Widget attached to Pawn: %s"), *ControlledPawn->GetName());
@@ -187,7 +185,7 @@ void UEmotionDisplayComponent::BindToCognitionEvents()
 	// Bind to OnMentalStateChanged event
 	UtilityController->CognitionComp->OnMentalStateChanged.AddDynamic(this, &UEmotionDisplayComponent::OnEmotionChanged);
 	
-	UE_LOG(LogTemp, Warning, TEXT("[EmotionDisplay] ✅ Successfully bound to CognitionComponent events"));
+	AINPC_LOG(Warning, "✅ Successfully bound to CognitionComponent events");
 }
 
 void UEmotionDisplayComponent::OnEmotionChanged(const FMentalState& NewState)
@@ -259,7 +257,7 @@ void UEmotionDisplayComponent::ShowEmotion(const FString& Emotion)
 	// Show Widget
 	EmojiWidgetComponent->SetVisibility(true);
 	
-	UE_LOG(LogTemp, Log, TEXT("[EmotionDisplay] Showing emotion: %s"), *Emotion);
+	AINPC_LOG(Log, "Showing emotion: %s", *Emotion);
 	
 	// 清除之前的定时器
 	// Clear previous timer
@@ -301,7 +299,7 @@ void UEmotionDisplayComponent::ShowSpeechBubble(const FString& Message)
 	// Show Widget
 	SpeechBubbleWidgetComponent->SetVisibility(true);
 	
-	UE_LOG(LogTemp, Log, TEXT("[EmotionDisplay] Showing speech bubble: %s"), *Message);
+	AINPC_LOG(Log, "Showing speech bubble: %s", *Message);
 	
 	// 清除之前的定时器
 	// Clear previous timer

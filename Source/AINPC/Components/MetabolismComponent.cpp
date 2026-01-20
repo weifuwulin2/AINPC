@@ -6,6 +6,7 @@
 #include "Components/EmotionDisplayComponent.h"
 #include "UtilityAI/EmotionEvaluator.h"
 #include "UtilityAI/MentalStateInterpolation.h"
+#include "AINPC.h"
 
 UMetabolismComponent::UMetabolismComponent()
 {
@@ -33,11 +34,11 @@ void UMetabolismComponent::BeginPlay()
 
     if (CachedController)
     {
-        UE_LOG(LogTemp, Log, TEXT("[Metabolism] Component initialized for %s"), *CachedController->GetName());
+        AINPC_LOG(Log, "Component initialized for %s", *CachedController->GetName());
     }
     else
     {
-        UE_LOG(LogTemp, Warning, TEXT("[Metabolism] ⚠️ Could not find UtilityAIController! Metabolism will not work."));
+        AINPC_LOG_WARNING("⚠️ Could not find UtilityAIController! Metabolism will not work.");
     }
 }
 
@@ -92,7 +93,7 @@ void UMetabolismComponent::TickComponent(float DeltaTime, ELevelTick TickType, F
     if (CurrentTime - LastDebugLogTime > 5.0f)
     {
         float HungerDelta = State->Hunger - OldHunger;
-        UE_LOG(LogTemp, Warning, TEXT("[Metabolism] %s - Hg:%.2f Ft:%.2f Bd:%.2f Ln:%.2f"), 
+        AINPC_LOG(Warning, "%s - Hg:%.2f Ft:%.2f Bd:%.2f Ln:%.2f", 
                *CachedController->GetName(), State->Hunger, State->Fatigue, State->Boredom, State->Loneliness);
         LastDebugLogTime = CurrentTime;
         
@@ -157,12 +158,12 @@ void UMetabolismComponent::TickComponent(float DeltaTime, ELevelTick TickType, F
             State->CurrentEmotionScore -= 0.2f;
             State->CurrentEmotionScore = FMath::Max(State->CurrentEmotionScore, 0.0f);
             
-            UE_LOG(LogTemp, Warning, TEXT("[Metabolism] 🎭 Emotion Score Decay: %.2f -> %.2f"), OldScore, State->CurrentEmotionScore);
+            AINPC_LOG(Warning, "🎭 Emotion Score Decay: %.2f -> %.2f", OldScore, State->CurrentEmotionScore);
             
             // 当分数降到阈值以下，变回 Neutral
             if (State->CurrentEmotionScore < 0.3f && State->CurrentEmotion != EEmotionState::Neutral)
             {
-                UE_LOG(LogTemp, Warning, TEXT("[Metabolism] 🎭 Emotion Score %.2f < 0.3, resetting to Neutral"), 
+                AINPC_LOG(Warning, "🎭 Emotion Score %.2f < 0.3, resetting to Neutral", 
                        State->CurrentEmotionScore);
                 
                 State->CurrentEmotion = EEmotionState::Neutral;

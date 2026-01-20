@@ -93,11 +93,12 @@ void AAINPCPlayerController::ToggleChat()
             }
             else
             {
-                // Show and Focus UI
+                // Show and Focus UI (use GameAndUI so player can still press T to close)
                 ChatWidgetInstance->SetVisibility(ESlateVisibility::Visible);
-                FInputModeUIOnly InputMode;
+                FInputModeGameAndUI InputMode;
                 InputMode.SetWidgetToFocus(ChatWidgetInstance->TakeWidget());
                 InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+                InputMode.SetHideCursorDuringCapture(false);
                 SetInputMode(InputMode);
                 SetShowMouseCursor(true);
             }

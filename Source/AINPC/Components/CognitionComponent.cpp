@@ -1,5 +1,5 @@
 #include "CognitionComponent.h"
-
+#include "AINPC.h"
 #include "UtilityAIComponent.h"
 #include "Controller/UtilityAIController.h"
 #include "Components/PersonalityComponent.h"
@@ -28,11 +28,11 @@ void UCognitionComponent::BeginPlay()
 		MemoryComp = Owner->FindComponentByClass<UMemoryComponent>();
 		if (!MemoryComp)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("[Cognition] Warning: No MemoryComponent found on Owner! Memories will not be stored/retrieved."));
+			AINPC_LOG_WARNING("No MemoryComponent found on Owner! Memories will not be stored/retrieved.");
 		}
 		else
 		{
-			UE_LOG(LogTemp, Log, TEXT("[Cognition] Connected to MemoryComponent."));
+			AINPC_LOG(Log, "Connected to MemoryComponent.");
 		}
 	}
 
@@ -49,7 +49,7 @@ void UCognitionComponent::BeginPlay()
 	// 安全检查
 	if (ConfigApiKey.IsEmpty())
 	{
-		UE_LOG(LogTemp, Error, TEXT("[Cognition] FATAL: API Key not found in DefaultGame.ini!"));
+		AINPC_LOG_ERROR("FATAL: API Key not found in DefaultGame.ini!");
 		return;
 	}
 
@@ -61,12 +61,12 @@ void UCognitionComponent::BeginPlay()
 	// 3. 初始化 Service
 	LLMService->Init(ConfigApiKey, ConfigApiUrl);
     
-	UE_LOG(LogTemp, Log, TEXT("[Cognition] Brain Initialized via Config."));
+	AINPC_LOG(Log, "Brain Initialized via Config.");
 
 	// 4. 初始化语义映射器 / Initialize Sentiment Mapper
 	SentimentMapper = NewObject<USentimentMapper>(this);
 	SentimentMapper->Initialize();  // 使用默认映射
-	UE_LOG(LogTemp, Log, TEXT("[Cognition] SentimentMapper initialized"));
+	AINPC_LOG(Log, "SentimentMapper initialized");
 
 	// 5. 初始化插值器 / Initialize Interpolator
 	Interpolator = NewObject<UMentalStateInterpolator>(this);
@@ -101,7 +101,7 @@ void UCognitionComponent::BeginPlay()
 	Interpolator->SetInterpConfig("Trust", SlowConfig);            // 信任：慢速 (0.5) (兼容)
 	Interpolator->SetInterpConfig("Boredom", SlowConfig);          // 无聊：慢速
 	
-	UE_LOG(LogTemp, Log, TEXT("[Cognition] Interpolator initialized with custom speeds"));
+	AINPC_LOG(Log, "Interpolator initialized with custom speeds");
 }
 
 void UCognitionComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
@@ -305,7 +305,7 @@ void UCognitionComponent::ProcessStimulus(FString SituationDescription)
 	// Critical Fix: If Personality is not initialized (ID is None), do not send request to avoid LLM hallucinations
 	if (PersonalityIDStr == "None" || PersonalityIDStr == "Default" || PersonalityIDStr.IsEmpty())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[Cognition] PersonalityID not set yet. Scheduling retry in 0.5s..."));
+		AINPC_LOG_WARNING("PersonalityID not set yet. Scheduling retry in 0.5s...");
 		
 		PendingStimulus = SituationDescription;
 		
@@ -390,7 +390,7 @@ void UCognitionComponent::ProcessStimulus(FString SituationDescription)
 		"}\n"
 	), *FinalRoleSection, *FinalBackstorySection, *FinalSituation, *CurrentDecisionContext, *FinalMemories);
 	
-	UE_LOG(LogTemp, Log, TEXT("[Cognition] Sending to LLM..."));
+	AINPC_LOG(Log, "Sending to LLM...");
 	
 	// 发送请求，并绑定内部回调 OnLLMReply
 	LLMService->SendRequest(
@@ -440,13 +440,13 @@ void UCognitionComponent::OnLLMReply(bool bSuccess, const FMentalState& NewState
 		}
 		else
 		{
-			UE_LOG(LogTemp, Warning, TEXT("[Cognition] Interpolator not initialized! Broadcasting directly."));
+			AINPC_LOG_WARNING("Interpolator not initialized! Broadcasting directly.");
 			OnMentalStateChanged.Broadcast(NewState);
 		}
 	}
 	else
 	{
-		UE_LOG(LogTemp, Error, TEXT("[Cognition] Failed to process thought."));
+		AINPC_LOG_ERROR("Failed to process thought.");
 	}
 }
 

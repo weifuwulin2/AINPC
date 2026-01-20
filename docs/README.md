@@ -32,6 +32,7 @@ Welcome to the AINPC Knowledge Base. This index serves as the central hub for al
 *   [**Changelog**](../CHANGELOG.md) - Version history.
 
 ### 🔄 System Updates
+*   [**Phase 4: AI System Enhancement Plan**](design/Phase4_AI_System_Enhancement_Plan.md) - **(New)** Comprehensive plan for Memory Refactor, Agency/Soul, Debug Protocol, and Prompt Optimization.
 *   [**Phase 3: Player Interaction**](../CHANGELOG.md#v053---phase-3-player-interaction--modular-identity-2026-01-19) - Summary of the player dialogue and modular identity system.
 *   [**Faction System Update**](updates/Faction_System_Update.md) - Simplification to three core factions (Human, Monster, Neutral) with improved hostility logic.
 *   [**Metabolism System Fix**](guides/Metabolism_Logic_Fix_Summary.md) - Complete overhaul of Hunger/Fatigue system with Engine-exclusive protection.
@@ -42,4 +43,4 @@ Welcome to the AINPC Knowledge Base. This index serves as the central hub for al
 *   [**Concurrent Request Fix**](reports/Bug4_Fix_Report.md)
 
 ---
-*Last Updated: 2026-01-19*
+*Last Updated: 2026-01-20*

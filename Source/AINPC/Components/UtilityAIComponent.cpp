@@ -5,6 +5,7 @@
 #include "Components/CognitionComponent.h"
 #include "LLM/LLMCommunicator.h"
 #include "Actions/Action_SmartObject.h"
+#include "AINPC.h"
 
 UUtilityAIComponent::UUtilityAIComponent()
 {
@@ -20,7 +21,7 @@ void UUtilityAIComponent::BeginPlay()
     OwnerController = Cast<AUtilityAIController>(GetOwner());
     if (!OwnerController)
     {
-        UE_LOG(LogTemp, Error, TEXT("UtilityComp must be attached to UtilityAIController!"));
+        AINPC_LOG_ERROR("UtilityComp must be attached to UtilityAIController!");
         return;
     }
 
@@ -36,7 +37,7 @@ void UUtilityAIComponent::SetProfession(FName NewProfessionID)
     }
 
     CurrentProfessionID = NewProfessionID;
-    UE_LOG(LogTemp, Log, TEXT("[UtilityComp] SetProfession called: %s. Reloading actions..."), *CurrentProfessionID.ToString());
+    AINPC_LOG(Log, "SetProfession called: %s. Reloading actions...", *CurrentProfessionID.ToString());
     
     // Reload actions with new profession filter
     LoadActionsFromTable();
@@ -65,7 +66,7 @@ void UUtilityAIComponent::LoadActionsFromTable()
         // CurrentProfessionID = OwnerController->PersonalityComp->PersonalityID;
     }
 
-    UE_LOG(LogTemp, Log, TEXT("[UtilityComp] Loading Actions for Profession: %s"), *CurrentProfessionID.ToString());
+    AINPC_LOG(Log, "Loading Actions for Profession: %s", *CurrentProfessionID.ToString());
 
     for (FUtilityActionConfig* Row : Rows)
     {
@@ -78,7 +79,7 @@ void UUtilityAIComponent::LoadActionsFromTable()
                 // 2. 如果当前 NPC 的 ID 与配置的不匹配，则跳过
                 if (Row->RequiredProfessionID != CurrentProfessionID)
                 {
-                    UE_LOG(LogTemp, Warning, TEXT("[UtilityComp] 🚫 Skipped Action %s (Requires: %s, Current: %s)"), 
+                    AINPC_LOG(Warning, "🚫 Skipped Action %s (Requires: %s, Current: %s)", 
                            *Row->ActionName, *Row->RequiredProfessionID.ToString(), *CurrentProfessionID.ToString());
                     continue; 
                 }
@@ -99,7 +100,7 @@ void UUtilityAIComponent::LoadActionsFromTable()
             }
 
             AvailableActions.Add(NewAction);
-            UE_LOG(LogTemp, Warning, TEXT("  + Loaded Action: %s"), *Row->ActionName);
+            AINPC_LOG(Warning, "+ Loaded Action: %s", *Row->ActionName);
         }
     }
 }
@@ -127,12 +128,12 @@ void UUtilityAIComponent::TickComponent(float DeltaTime, ELevelTick TickType, FA
     {
         if (CurrentAction)
         {
-            UE_LOG(LogTemp, Warning, TEXT("[UtilityAI] %s - Current Action: %s"), 
+            AINPC_LOG(Warning, "%s - Current Action: %s", 
                    *OwnerController->GetName(), *CurrentAction->ActionName);
         }
         else
         {
-            UE_LOG(LogTemp, Warning, TEXT("[UtilityAI] %s - No Action"), 
+            AINPC_LOG(Warning, "%s - No Action", 
                    *OwnerController->GetName());
         }
         LastStatusLog = CurrentTime;
@@ -271,12 +272,12 @@ void UUtilityAIComponent::EvaluateAndDecide()
     {
         if (BestAction)
         {
-            UE_LOG(LogTemp, Warning, TEXT("[UtilityAI|%s] 🏆 Best Action: %s (Score: %.3f)"), 
+            AINPC_LOG(Warning, "[%s] 🏆 Best Action: %s (Score: %.3f)", 
                    *PersonalityID, *BestAction->ActionName, BestScore);
         }
         else
         {
-            UE_LOG(LogTemp, Error, TEXT("[UtilityAI|%s] ⚠️ No valid action found!"), *PersonalityID);
+            AINPC_LOG_ERROR("[%s] ⚠️ No valid action found!", *PersonalityID);
         }
         UE_LOG(LogTemp, Warning, TEXT("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"));
         // Reset the request flag
@@ -329,6 +330,6 @@ void UUtilityAIComponent::EvaluateAndDecide()
         CurrentAction->MarkExecutionTime(GetWorld()->GetTimeSeconds());
 
         // 打印切换日志
-        UE_LOG(LogTemp, Warning, TEXT("[UtilityAI|%s] ✅ Switch Action: %s (Score: %.2f)"), *PersonalityID, *CurrentAction->ActionName, BestScore);
+        AINPC_LOG(Warning, "[%s] ✅ Switch Action: %s (Score: %.2f)", *PersonalityID, *CurrentAction->ActionName, BestScore);
     }
 }

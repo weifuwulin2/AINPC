@@ -3,6 +3,7 @@
 #include "Components/PersonalityComponent.h"
 #include "Components/GoalComponent.h"
 #include "AIController.h"
+#include "AINPC.h"
 
 UNPCDefinitionComponent::UNPCDefinitionComponent()
 {
@@ -56,11 +57,11 @@ void UNPCDefinitionComponent::ApplyDefinition(AAIController* Controller)
 {
 	if (!Controller)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[NPCDefinition] ApplyDefinition failed: Controller is null."));
+		AINPC_LOG_WARNING("ApplyDefinition failed: Controller is null.");
 		return;
 	}
 
-	UE_LOG(LogTemp, Log, TEXT("[NPCDefinition] Applying Profile for %s..."), *GetOwner()->GetName());
+	AINPC_LOG(Log, "Applying Profile for %s...", *GetOwner()->GetName());
 
 	ApplyPersonality(Controller);
 	ApplyProfession(Controller);
@@ -73,7 +74,7 @@ void UNPCDefinitionComponent::ApplyPersonality(AAIController* Controller)
 	if (UPersonalityComponent* PersonalityComp = Controller->FindComponentByClass<UPersonalityComponent>())
 	{
 		PersonalityComp->SetPersonalityByID(PersonalityID);
-		UE_LOG(LogTemp, Log, TEXT("  - Applied Personality: %s"), *PersonalityID.ToString());
+		AINPC_LOG(Log, "Applied Personality: %s", *PersonalityID.ToString());
 		
 		// Fallback Faction Tags (Legacy logic, helpful for simple systems)
 		AActor* Owner = GetOwner();
@@ -92,7 +93,7 @@ void UNPCDefinitionComponent::ApplyPersonality(AAIController* Controller)
 	}
 	else
 	{
-		UE_LOG(LogTemp, Warning, TEXT("  - Failed to apply Personality: PersonalityComponent not found on Controller."));
+		AINPC_LOG_WARNING("Failed to apply Personality: PersonalityComponent not found on Controller.");
 	}
 }
 
@@ -104,21 +105,21 @@ void UNPCDefinitionComponent::ApplyProfession(AAIController* Controller)
 	if (UGoalComponent* GoalComp = Controller->FindComponentByClass<UGoalComponent>())
 	{
 		GoalComp->InitializeProfession(ProfessionID);
-		UE_LOG(LogTemp, Log, TEXT("  - Applied Profession (Goal): %s"), *ProfessionID.ToString());
+		AINPC_LOG(Log, "Applied Profession (Goal): %s", *ProfessionID.ToString());
 	}
 	else
 	{
-		UE_LOG(LogTemp, Log, TEXT("  - No GoalComponent found. Profession (Goal) ignored."));
+		AINPC_LOG(Log, "No GoalComponent found. Profession (Goal) ignored.");
 	}
 
     // 2. Utility AI Component (Action Filtering)
     if (UUtilityAIComponent* UtilityComp = Controller->FindComponentByClass<UUtilityAIComponent>())
     {
         UtilityComp->SetProfession(ProfessionID);
-        UE_LOG(LogTemp, Log, TEXT("  - Applied Profession (Utility): %s"), *ProfessionID.ToString());
+        AINPC_LOG(Log, "Applied Profession (Utility): %s", *ProfessionID.ToString());
     }
     else
     {
-        UE_LOG(LogTemp, Log, TEXT("  - No UtilityAIComponent found. Profession (Actions) ignored."));
+        AINPC_LOG(Log, "No UtilityAIComponent found. Profession (Actions) ignored.");
     }
 }

@@ -6,6 +6,7 @@
 #include "GameFramework/Character.h"
 #include "Controller/UtilityAIController.h"
 #include "UtilityAI/UNPCMentalState.h"
+#include "AINPC.h"
 
 UGoalComponent::UGoalComponent()
 {
@@ -79,7 +80,7 @@ void UGoalComponent::BeginPlay()
 				CheckSchedule();
 				UpdateArbitration();  // Set initial directive
 				
-				UE_LOG(LogTemp, Log, TEXT("[GoalComponent] Initial Directive set to: %s"), 
+				AINPC_LOG(Log, "Initial Directive set to: %s", 
 				       *CurrentDirective.ToString());
 			}
 		}
@@ -97,11 +98,11 @@ void UGoalComponent::InitializeProfession(FName NewProfessionID)
 		if (Row)
 		{
 			ProfessionConfig = *Row;
-			UE_LOG(LogTemp, Log, TEXT("[GoalComponent] Loaded Profession: %s"), *ProfessionID.ToString());
+			AINPC_LOG(Log, "Loaded Profession: %s", *ProfessionID.ToString());
 		}
 		else
 		{
-			UE_LOG(LogTemp, Error, TEXT("[GoalComponent] Failed to find ProfessionID '%s' in table."), *ProfessionID.ToString());
+			AINPC_LOG_ERROR("Failed to find ProfessionID '%s' in table.", *ProfessionID.ToString());
 		}
 	}
 
@@ -153,7 +154,7 @@ void UGoalComponent::UpdateArbitration()
 				MentalState = Controller->MentalState;
 				if (MentalState)
 				{
-					UE_LOG(LogTemp, Warning, TEXT("[GoalComponent] ✅ MentalState acquired (delayed initialization)"));
+					AINPC_LOG(Warning, "✅ MentalState acquired (delayed initialization)");
 				}
 			}
 		}
@@ -186,7 +187,7 @@ void UGoalComponent::UpdateArbitration()
 		if (MentalState->Hunger > CriticalHungerThreshold || MentalState->Fatigue > CriticalHungerThreshold) 
 		{
 			bSurvivalTriggered = true;
-			UE_LOG(LogTemp, Warning, TEXT("[GoalComponent] ⚠️ SURVIVAL TRIGGERED: Hunger=%.2f, Fatigue=%.2f (Threshold=%.2f)"),
+			AINPC_LOG(Warning, "⚠️ SURVIVAL TRIGGERED: Hunger=%.2f, Fatigue=%.2f (Threshold=%.2f)",
 			       MentalState->Hunger, MentalState->Fatigue, CriticalHungerThreshold);
 		}
 	}
@@ -196,7 +197,7 @@ void UGoalComponent::UpdateArbitration()
 		static int32 NullStateLogCounter = 0;
 		if (NullStateLogCounter++ % 100 == 0)
 		{
-			UE_LOG(LogTemp, Error, TEXT("[GoalComponent] ❌ MentalState is NULL! Cannot check Survival needs!"));
+			AINPC_LOG_ERROR("❌ MentalState is NULL! Cannot check Survival needs!");
 		}
 	}
 
@@ -232,7 +233,7 @@ void UGoalComponent::UpdateArbitration()
 	if (MentalState && MentalState->Loneliness > 0.5f)
 	{
 		bSocialTriggered = true;
-		UE_LOG(LogTemp, Log, TEXT("[GoalComponent] 💬 SOCIAL TRIGGERED: Loneliness=%.2f"),
+		AINPC_LOG(Log, "💬 SOCIAL TRIGGERED: Loneliness=%.2f",
 		       MentalState->Loneliness);
 	}
 	
@@ -286,7 +287,7 @@ void UGoalComponent::SetDirective(FGameplayTag NewDirective)
 	if (CurrentDirective != NewDirective)
 	{
 		CurrentDirective = NewDirective;
-		UE_LOG(LogTemp, Warning, TEXT("[GoalComponent] 🎯 Directive Changed: %s (LOD: %d)"), 
+		AINPC_LOG(Warning, "🎯 Directive Changed: %s (LOD: %d)", 
 			   *CurrentDirective.ToString(), (int)CurrentLOD);
 		// Optional: Broadcast change
 	}
