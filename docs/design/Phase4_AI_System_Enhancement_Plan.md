@@ -10,6 +10,9 @@
 ## 📋 目录
 
 1. [记忆系统重构 (Memory Refactor)](#1-记忆系统重构)
+   - **核心修复**: [时态标注与语义修正](#a-核心方案时态标注与语义修正-temporal-annotation)
+   - **过滤器**: [数学衰减模型](#b-辅助方案数学衰减模型-relevance-filter)
+   - **结构支持**: [数据结构扩展](#c-扩展-fmemoryitem-结构)
 2. [赋予"灵魂"与自主性 (Agency & Soul)](#2-赋予灵魂与自主性)
 3. [AI友好型调试协议 (Debug Protocol)](#3-ai友好型调试协议)
 4. [Prompt工程与性能优化 (Optimization)](#4-prompt工程与性能优化)
@@ -41,7 +44,81 @@ struct FMemoryItem {
 
 ### 1.2 提议的改动
 
-#### A. 扩展 `FMemoryItem` 结构
+#### A. 核心方案：时态标注与语义修正 (Temporal Annotation)
+这是解决"复读机"问题的**即时方案**。通过在 Prompt 层面明确区分"过去"与"现在"。
+
+##### [MODIFY] [MemoryComponent.h](file:///d:/CombatDemos/AINPC/Source/AINPC/Components/MemoryComponent.h)
+
+```cpp
+// 格式化输出带有时态标注的记忆描述
+FString GetFormattedDescription(const FMemoryItem& Item, float CurrentGameTime) const;
+```
+
+##### [MODIFY] [MemoryComponent.cpp](file:///d:/CombatDemos/AINPC/Source/AINPC/Components/MemoryComponent.cpp)
+
+```cpp
+FString UMemoryComponent::GetFormattedDescription(const FMemoryItem& Item, float CurrentGameTime) const
+{
+    float SecondsAgo = CurrentGameTime - Item.GameTimeSeconds;
+    float MinutesAgo = SecondsAgo / 60.0f;
+    
+    FString Prefix = "";
+    
+    // 1. 解决状态标记
+    if (Item.bIsResolved)
+    {
+        Prefix = TEXT("[RESOLVED/PAST] ");
+    }
+    // 2. 时间衰减标记
+    else if (MinutesAgo < 0.5f)
+    {
+        Prefix = TEXT("[JUST NOW] ");
+    }
+    else if (MinutesAgo < 5.0f)
+    {
+        Prefix = FString::Printf(TEXT("[%.0f MIN AGO] "), MinutesAgo);
+    }
+    else
+    {
+        Prefix = TEXT("[HISTORY] ");
+    }
+    
+    return Prefix + Item.Description;
+}
+```
+
+##### [MODIFY] [CognitionComponent.cpp](file:///d:/CombatDemos/AINPC/Source/AINPC/Components/CognitionComponent.cpp)
+**Prompt 规则注入**:
+```cpp
+"IMPORTANT Instructions:\n"
+"...\n"
+"6. [MEMORY TIME] Memories marked [RESOLVED] or [HISTORY] are reference only. Do NOT react to them as new events.\n"
+"   Only react to [JUST NOW] memories immediately.\n"
+```
+
+---
+
+#### B. 辅助方案：数学衰减模型 (Relevance Filter)
+这是**长期方案**。防止旧的高分记忆（如战斗）一直占据 Prompt 窗口，导致新产生的低分事件（如"我在吃饭"）无法进入 LLM 视野。
+
+##### [MODIFY] [MemoryComponent.cpp](file:///d:/CombatDemos/AINPC/Source/AINPC/Components/MemoryComponent.cpp)
+
+```cpp
+float UMemoryComponent::CalculateRelevanceScore(...)
+{
+    // ... 原有的衰减逻辑 ...
+    
+    // 核心目的：将旧信息通过降权移出 Top 5 列表
+    // 从而让 Prompt 永远只包含"当前最相关"的信息
+    float TimeFactor = 1.0f / (1.0f + (TimeDelta / HalfLifeSeconds));
+    
+    return BaseScore * TimeFactor; 
+}
+```
+
+---
+
+#### C. 扩展 `FMemoryItem` 结构
 
 ##### [MODIFY] [SocialTypes.h](file:///d:/CombatDemos/AINPC/Source/AINPC/Public/Social/SocialTypes.h)
 
@@ -114,7 +191,9 @@ float UMemoryComponent::CalculateRelevanceScore(
 
 ---
 
-#### C. 记忆生命周期管理
+#### D. 记忆生命周期管理 (Lifecycle Manager)
+
+我们需要智能地判断何时一个记忆"已解决" (Resolved)，而不仅仅是依赖时间。
 
 ##### [NEW] [MemoryLifecycleManager.h](file:///d:/CombatDemos/AINPC/Source/AINPC/Private/Memory/MemoryLifecycleManager.h)
 
@@ -125,22 +204,28 @@ class UMemoryLifecycleManager : public UObject
     GENERATED_BODY()
     
 public:
-    // 解决标记：标记相关记忆为 [Resolved]
-    // 当从 Survival 切换回 Work 时调用
-    void ResolveMemoriesByTag(UMemoryComponent* MemoryComp, FGameplayTag TagToResolve);
+    // 主更新循环：检查是否有记忆可以被 Resolve
+    void Update(AUtilityAIController* Controller, float DeltaTime);
+
+    // 策略实现：
+    // 1. 战斗解除：当 Directive 从 Survival 切出，或感知范围内无敌人 -> Resolve "Danger"
+    void CheckCombatResolution(AUtilityAIController* Controller);
+
+    // 2. 社交和解/气消：
+    //    a. Indignity < 0.2 (气消了) -> Resolve "Social.Conflict"
+    //    b. 刚进行了 Friendly 交互 (和解) -> Resolve "Social.Conflict"
+    //    c. 刚完成了 Retaliation (骂回去了) -> Resolve "Social.Conflict"
+    void CheckSocialResolution(AUtilityAIController* Controller);
     
     // 垃圾回收：清理低权重记忆
-    // 在 NPC 进入 Sleep 状态时调用
     void GarbageCollect(UMemoryComponent* MemoryComp, float MinRelevanceThreshold = 0.1f);
-    
-    // 记忆归档（可选）
-    void ArchiveToStorage(const TArray<FMemoryItem>& Items);
 };
 ```
 
-**触发时机**:
-- `GoalComponent::SetDirective()` 切换时调用 `ResolveMemoriesByTag()`
-- `Action_SmartObject` (Sleep) 执行时调用 `GarbageCollect()`
+**触发逻辑**:
+- **战斗记忆**: 当威胁消失 (Threat < 0.1) 或 切换 Directive 时解决。
+- **冲突记忆**: 当情绪 (Indignity) 恢复平静 或 收到道歉 (Received Apology) 时解决。
+- **普通对话**: 每 5 分钟或对话结束时自动归档为 Summary。
 
 ---
 

@@ -272,3 +272,24 @@ This file contains a log of commit messages for the AINPC project.
 - Debug logs now automatically show which class emitted them
 - Easier to trace issues across component boundaries
 - Chat UI toggle works correctly for player dialogue
+
+---
+
+## [2026-01-20] Phase 4 P0 - Log Channels & Nameplate Fix
+**Type**: chore/fix
+**Scope**: Debugging, UI, EmotionDisplay
+
+**Description**:
+- **Log Channels**: Implemented dedicated log categories (`LogAINPCBrain`, `LogAINPCMemory`, `LogAINPCSocial`, `LogAINPCUtility`) in `AINPC.h` to isolate debug traffic.
+- **Nameplate Fixes**: 
+  - Disabled collision on all EmotionDisplay widget components to prevent blocking NPC navigation. 
+  - Implemented robust initialization logic to find `NPCDefinitionComponent` across Pawn/Controller hierarchy.
+- **Docs**: Started Phase 4 documentation.
+
+**Files Changed**:
+- `Source/AINPC/AINPC.h`
+- `Source/AINPC/AINPC.cpp`
+- `Source/AINPC/Components/EmotionDisplayComponent.cpp`
+- `Source/AINPC/Components/MemoryComponent.cpp`
+- `Source/AINPC/Components/UtilityAIComponent.cpp`
+- `Docs/design/Phase4_AI_System_Enhancement_Plan.md`

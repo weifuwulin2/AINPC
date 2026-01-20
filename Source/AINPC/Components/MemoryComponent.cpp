@@ -27,12 +27,12 @@ void UMemoryComponent::CommitEvent(const FSemanticEvent& Event)
 	// Accumulate Importance for Reflection Trigger
 	CurrentImportanceSum += NewItem.ImportanceScore;
 
-	AINPC_LOG(Log, "Stored: %s (Imp: %.2f)", *NewItem.Description, NewItem.ImportanceScore);
+	MEMORY_LOG(Log, "Stored: %s (Imp: %.2f)", *NewItem.Description, NewItem.ImportanceScore);
 
 	// Check Trigger (Logic only, actual LLM call would be async)
 	if (CurrentImportanceSum >= ReflectionThreshold)
 	{
-		AINPC_LOG(Warning, "'Slow System' Reflection Triggered! (Sum: %.2f)", CurrentImportanceSum);
+		MEMORY_LOG(Warning, "'Slow System' Reflection Triggered! (Sum: %.2f)", CurrentImportanceSum);
 		// Reset accumulator after triggering (in a real system, reset after successful reflection)
 		CurrentImportanceSum = 0.0f; 
 		
@@ -137,10 +137,10 @@ TArray<FMemoryItem> UMemoryComponent::RetrieveRelevantMemories(const FString& Qu
 
 void UMemoryComponent::DumpMemoryLog()
 {
-	UE_LOG(LogTemp, Display, TEXT("=== Memory Stream Dump (%d items) ==="), MemoryStream.Num());
+	MEMORY_LOG(Display, "=== Memory Stream Dump (%d items) ===", MemoryStream.Num());
 	for (const FMemoryItem& Item : MemoryStream)
 	{
-		UE_LOG(LogTemp, Display, TEXT("[%s] (Imp: %.1f) %s"), *Item.Timestamp.ToString(), Item.ImportanceScore, *Item.Description);
+		MEMORY_LOG(Display, "[%s] (Imp: %.1f) %s", *Item.Timestamp.ToString(), Item.ImportanceScore, *Item.Description);
 	}
 }
 
@@ -160,7 +160,7 @@ void UMemoryComponent::ConsolidateMemories(const TArray<FString>& NewInsights)
 	// 1. In a real system, you might archive old memories here.
 	// For now, we simply ADD the insights as new, high-importance memories.
 	
-	AINPC_LOG(Log, "Consolidating %d Insights...", NewInsights.Num());
+	MEMORY_LOG(Log, "Consolidating %d Insights...", NewInsights.Num());
 	
 	for (const FString& Insight : NewInsights)
 	{

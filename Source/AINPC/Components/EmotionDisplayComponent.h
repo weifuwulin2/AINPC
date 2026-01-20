@@ -51,6 +51,15 @@ public:
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Emotion Display")
 	TSubclassOf<UUserWidget> SpeechBubbleWidgetClass;
+
+	/**
+	 * 名字条 Widget 类 / Nameplate Widget Class
+	 * 
+	 * 用于显示 NPC 名字的 UMG Widget
+	 * UMG Widget used to display NPC name
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Emotion Display")
+	TSubclassOf<UUserWidget> NameplateWidgetClass;
 	
 	/**
 	 * Emoji 显示时长 / Emoji Display Duration
@@ -108,6 +117,16 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Emotion Display")
 	void HideSpeechBubble();
+
+	/**
+	 * 更新名字条信息 / Update Nameplate Info
+	 * 
+	 * @param Name - NPC 名字
+	 * @param Personality - 性格 ID
+	 * @param Profession - 职业 ID
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Emotion Display")
+	void UpdateNameplate(const FString& Name, const FString& Personality, const FString& Profession);
 	
 	/**
 	 * 根据情绪获取 emoji 文本 / Get Emoji Text by Emotion
@@ -165,6 +184,12 @@ protected:
 	 */
 	UPROPERTY()
 	UWidgetComponent* SpeechBubbleWidgetComponent;
+
+	/**
+	 * 名字条 Widget 组件 / Nameplate Widget Component
+	 */
+	UPROPERTY()
+	UWidgetComponent* NameplateWidgetComponent;
 	
 	// ========== 纹理缓存 (Texture Cache) ==========
 	

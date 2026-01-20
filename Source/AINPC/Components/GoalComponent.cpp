@@ -80,7 +80,7 @@ void UGoalComponent::BeginPlay()
 				CheckSchedule();
 				UpdateArbitration();  // Set initial directive
 				
-				AINPC_LOG(Log, "Initial Directive set to: %s", 
+				BRAIN_LOG(Log, "Initial Directive set to: %s", 
 				       *CurrentDirective.ToString());
 			}
 		}
@@ -98,11 +98,11 @@ void UGoalComponent::InitializeProfession(FName NewProfessionID)
 		if (Row)
 		{
 			ProfessionConfig = *Row;
-			AINPC_LOG(Log, "Loaded Profession: %s", *ProfessionID.ToString());
+			BRAIN_LOG(Log, "Loaded Profession: %s", *ProfessionID.ToString());
 		}
 		else
 		{
-			AINPC_LOG_ERROR("Failed to find ProfessionID '%s' in table.", *ProfessionID.ToString());
+			BRAIN_LOG(Error, "Failed to find ProfessionID '%s' in table.", *ProfessionID.ToString());
 		}
 	}
 
@@ -154,7 +154,7 @@ void UGoalComponent::UpdateArbitration()
 				MentalState = Controller->MentalState;
 				if (MentalState)
 				{
-					AINPC_LOG(Warning, "✅ MentalState acquired (delayed initialization)");
+					BRAIN_LOG(Warning, "✅ MentalState acquired (delayed initialization)");
 				}
 			}
 		}

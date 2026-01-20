@@ -21,7 +21,7 @@ void UUtilityAIComponent::BeginPlay()
     OwnerController = Cast<AUtilityAIController>(GetOwner());
     if (!OwnerController)
     {
-        AINPC_LOG_ERROR("UtilityComp must be attached to UtilityAIController!");
+        UTILITY_LOG(Error, "UtilityComp must be attached to UtilityAIController!");
         return;
     }
 
@@ -37,7 +37,7 @@ void UUtilityAIComponent::SetProfession(FName NewProfessionID)
     }
 
     CurrentProfessionID = NewProfessionID;
-    AINPC_LOG(Log, "SetProfession called: %s. Reloading actions...", *CurrentProfessionID.ToString());
+    UTILITY_LOG(Log, "SetProfession called: %s. Reloading actions...", *CurrentProfessionID.ToString());
     
     // Reload actions with new profession filter
     LoadActionsFromTable();
@@ -66,7 +66,7 @@ void UUtilityAIComponent::LoadActionsFromTable()
         // CurrentProfessionID = OwnerController->PersonalityComp->PersonalityID;
     }
 
-    AINPC_LOG(Log, "Loading Actions for Profession: %s", *CurrentProfessionID.ToString());
+    UTILITY_LOG(Log, "Loading Actions for Profession: %s", *CurrentProfessionID.ToString());
 
     for (FUtilityActionConfig* Row : Rows)
     {
@@ -79,7 +79,7 @@ void UUtilityAIComponent::LoadActionsFromTable()
                 // 2. 如果当前 NPC 的 ID 与配置的不匹配，则跳过
                 if (Row->RequiredProfessionID != CurrentProfessionID)
                 {
-                    AINPC_LOG(Warning, "🚫 Skipped Action %s (Requires: %s, Current: %s)", 
+                    UTILITY_LOG(Warning, "🚫 Skipped Action %s (Requires: %s, Current: %s)", 
                            *Row->ActionName, *Row->RequiredProfessionID.ToString(), *CurrentProfessionID.ToString());
                     continue; 
                 }
@@ -100,7 +100,7 @@ void UUtilityAIComponent::LoadActionsFromTable()
             }
 
             AvailableActions.Add(NewAction);
-            AINPC_LOG(Warning, "+ Loaded Action: %s", *Row->ActionName);
+            UTILITY_LOG(Warning, "+ Loaded Action: %s", *Row->ActionName);
         }
     }
 }
@@ -128,12 +128,12 @@ void UUtilityAIComponent::TickComponent(float DeltaTime, ELevelTick TickType, FA
     {
         if (CurrentAction)
         {
-            AINPC_LOG(Warning, "%s - Current Action: %s", 
+            UTILITY_LOG(Warning, "%s - Current Action: %s", 
                    *OwnerController->GetName(), *CurrentAction->ActionName);
         }
         else
         {
-            AINPC_LOG(Warning, "%s - No Action", 
+            UTILITY_LOG(Warning, "%s - No Action", 
                    *OwnerController->GetName());
         }
         LastStatusLog = CurrentTime;
@@ -173,17 +173,17 @@ void UUtilityAIComponent::EvaluateAndDecide()
 
     if (bShouldLog)
     {
-        UE_LOG(LogTemp, Warning, TEXT("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"));
-        UE_LOG(LogTemp, Warning, TEXT("[UtilityAI|%s] Evaluating Actions (Count: %d) [Triggered]"), *PersonalityID, AvailableActions.Num());
+        UTILITY_LOG(Warning, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        UTILITY_LOG(Warning, "[%s] Evaluating Actions (Count: %d) [Triggered]", *PersonalityID, AvailableActions.Num());
         
         // 显示当前正在执行的 Action
         if (CurrentAction)
         {
-            UE_LOG(LogTemp, Log, TEXT("[UtilityAI|%s] Currently Running: %s"), *PersonalityID, *CurrentAction->ActionName);
+            UTILITY_LOG(Log, "[%s] Currently Running: %s", *PersonalityID, *CurrentAction->ActionName);
         }
         else
         {
-            UE_LOG(LogTemp, Log, TEXT("[UtilityAI|%s] Currently Running: None"), *PersonalityID);
+            UTILITY_LOG(Log, "[%s] Currently Running: None", *PersonalityID);
         }
     }
 
@@ -198,7 +198,7 @@ void UUtilityAIComponent::EvaluateAndDecide()
         // Only log action scores when triggered
         if (bShouldLog)
         {
-            UE_LOG(LogTemp, Log, TEXT("  [%s|%s] Score: %.3f (BaseReward: %.2f, Considerations: %d)"), 
+            UTILITY_LOG(Log, "  [%s|%s] Score: %.3f (BaseReward: %.2f, Considerations: %d)", 
                    *PersonalityID, *Action->ActionName, Score, Action->BaseReward, Action->Considerations.Num());
         }
 
@@ -212,7 +212,7 @@ void UUtilityAIComponent::EvaluateAndDecide()
             
             if (bShouldLog)
             {
-                UE_LOG(LogTemp, Log, TEXT("    ↳ [%s] Inertia Bonus: +%.1f%% (%.3f -> %.3f)"), 
+                UTILITY_LOG(Log, "    ↳ [%s] Inertia Bonus: +%.1f%% (%.3f -> %.3f)", 
                        *PersonalityID, Action->InertiaBonus * 20.0f, OldScore, Score);
             }
         }
@@ -235,7 +235,7 @@ void UUtilityAIComponent::EvaluateAndDecide()
                 
                 if (bShouldLog)
                 {
-                    UE_LOG(LogTemp, Log, TEXT("    ↳ [%s] 🧠 LLM Intention Bonus: +%.2f (Intention: %s, %.3f -> %.3f)"), 
+                    UTILITY_LOG(Log, "    ↳ [%s] 🧠 LLM Intention Bonus: +%.2f (Intention: %s, %.3f -> %.3f)", 
                            *PersonalityID, IntentionBonus, *LLMIntention, OldScore, Score);
                 }
             }

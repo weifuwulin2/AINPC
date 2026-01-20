@@ -7,6 +7,12 @@
 /** Main log category used across the project */
 DECLARE_LOG_CATEGORY_EXTERN(LogAINPC, Log, All);
 
+/** Dedicated Log Categories for Phase 4 Debugging */
+DECLARE_LOG_CATEGORY_EXTERN(LogAINPCBrain, Log, All);    // Decision making (LOD, Directives)
+DECLARE_LOG_CATEGORY_EXTERN(LogAINPCMemory, Log, All);   // Memory system (Store, Decay, Retrieve)
+DECLARE_LOG_CATEGORY_EXTERN(LogAINPCSocial, Log, All);   // Social interactions (Gossip, Speak)
+DECLARE_LOG_CATEGORY_EXTERN(LogAINPCUtility, Log, All);  // Utility AI (Scoring, Actions)
+
 /**
  * Logging macros with automatic class name prefix.
  * Usage: AINPC_LOG(Warning, "My message with %s", *SomeString);
@@ -26,3 +32,23 @@ DECLARE_LOG_CATEGORY_EXTERN(LogAINPC, Log, All);
 /** Error version */
 #define AINPC_LOG_ERROR(Format, ...) \
     UE_LOG(LogAINPC, Error, TEXT("[%s] " Format), *FString(__FUNCTION__).Left(FString(__FUNCTION__).Find(TEXT("::"))), ##__VA_ARGS__)
+
+// ===================================
+// Specialized Logging Macros
+// ===================================
+
+/** Brain Log: High-level state changes, LOD switches, Directive updates. */
+#define BRAIN_LOG(Verbosity, Format, ...) \
+    UE_LOG(LogAINPCBrain, Verbosity, TEXT("[%s] " Format), *FString(__FUNCTION__).Left(FString(__FUNCTION__).Find(TEXT("::"))), ##__VA_ARGS__)
+
+/** Memory Log: Memory commitments, decay calculations, retrievals. */
+#define MEMORY_LOG(Verbosity, Format, ...) \
+    UE_LOG(LogAINPCMemory, Verbosity, TEXT("[%s] " Format), *FString(__FUNCTION__).Left(FString(__FUNCTION__).Find(TEXT("::"))), ##__VA_ARGS__)
+
+/** Social Log: Dialogue generation, gossip exchange, player interactions. */
+#define SOCIAL_LOG(Verbosity, Format, ...) \
+    UE_LOG(LogAINPCSocial, Verbosity, TEXT("[%s] " Format), *FString(__FUNCTION__).Left(FString(__FUNCTION__).Find(TEXT("::"))), ##__VA_ARGS__)
+
+/** Utility Log: Action scoring, consideration values, winning action selection. */
+#define UTILITY_LOG(Verbosity, Format, ...) \
+    UE_LOG(LogAINPCUtility, Verbosity, TEXT("[%s] " Format), *FString(__FUNCTION__).Left(FString(__FUNCTION__).Find(TEXT("::"))), ##__VA_ARGS__)

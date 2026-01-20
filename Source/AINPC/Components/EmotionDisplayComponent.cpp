@@ -11,6 +11,8 @@
 #include "GameFramework/Character.h"
 #include "TimerManager.h"
 #include "AINPC.h"
+#include "NPCDefinitionComponent.h"
+#include "Misc/OutputDeviceNull.h"
 
 UEmotionDisplayComponent::UEmotionDisplayComponent()
 {
@@ -23,6 +25,11 @@ void UEmotionDisplayComponent::BeginPlay()
 	
 	UE_LOG(LogTemp, Warning, TEXT("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"));
 	AINPC_LOG(Warning, "BeginPlay called");
+
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Cyan, TEXT("[EmotionDisplay] Component Active!"));
+	}
 	
 	// 延迟创建 Widget 组件，确保 Pawn 已经被 Possess
 	// Delay Widget creation to ensure Pawn is possessed
@@ -36,8 +43,53 @@ void UEmotionDisplayComponent::BeginPlay()
 				AINPC_LOG(Warning, "Delayed initialization starting...");
 				CreateWidgetComponents();
 				BindToCognitionEvents();
+
+				// Update Nameplate
+				// Robust Controller Retrieval
+				AAIController* AIC = Cast<AAIController>(GetOwner());
+				APawn* PawnOwner = Cast<APawn>(GetOwner());
+				
+				if (!AIC && PawnOwner)
+				{
+					AIC = Cast<AAIController>(PawnOwner->GetController());
+				}
+
+				if (AIC)
+				{
+					// Try to find Definition Component on Controller OR Pawn
+					UNPCDefinitionComponent* DefComp = AIC->FindComponentByClass<UNPCDefinitionComponent>();
+					if (!DefComp && AIC->GetPawn())
+					{
+						DefComp = AIC->GetPawn()->FindComponentByClass<UNPCDefinitionComponent>();
+					}
+
+					if (DefComp)
+					{
+						// Try to get modular name
+						FString FinalName = AIC->GetPawn() ? AIC->GetPawn()->GetName() : AIC->GetName();
+						FNPCNameDef NameDef;
+						if (DefComp->GetNameDef(NameDef))
+						{
+							FinalName = NameDef.FirstName;
+							if (!NameDef.Surname.IsEmpty())
+							{
+								FinalName += " " + NameDef.Surname;
+							}
+						}
+						
+						UpdateNameplate(FinalName, DefComp->PersonalityID.ToString(), DefComp->ProfessionID.ToString());
+					}
+					else
+					{
+						UE_LOG(LogTemp, Error, TEXT("[EmotionDisplay] ❌ Could not find UNPCDefinitionComponent on Controller or Pawn!"));
+					}
+				}
+				else
+				{
+					UE_LOG(LogTemp, Error, TEXT("[EmotionDisplay] ❌ Could not resolve AIController in BeginPlay!"));
+				}
 			},
-			0.1f,  // 延迟 0.1 秒
+			0.5f,  // 延迟 0.5 秒
 			false
 		);
 		
@@ -99,6 +151,7 @@ void UEmotionDisplayComponent::CreateWidgetComponents()
 		EmojiWidgetComponent->SetWidgetSpace(EWidgetSpace::Screen);
 		EmojiWidgetComponent->SetDrawSize(FVector2D(32.0f, 32.0f));  // 改为 32x32
 		EmojiWidgetComponent->SetVisibility(false); // 初始隐藏 / Initially hidden
+		EmojiWidgetComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision); // ✅ Disable Collision
 		
 		if (EmojiWidgetClass)
 		{
@@ -129,6 +182,7 @@ void UEmotionDisplayComponent::CreateWidgetComponents()
 		SpeechBubbleWidgetComponent->SetWidgetSpace(EWidgetSpace::Screen);
 		SpeechBubbleWidgetComponent->SetDrawSize(FVector2D(200.0f, 60.0f));  // 改为 200x60
 		SpeechBubbleWidgetComponent->SetVisibility(false); // 初始隐藏 / Initially hidden
+		SpeechBubbleWidgetComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision); // ✅ Disable Collision
 		
 		if (SpeechBubbleWidgetClass)
 		{
@@ -146,6 +200,77 @@ void UEmotionDisplayComponent::CreateWidgetComponents()
 	else
 	{
 		UE_LOG(LogTemp, Error, TEXT("[EmotionDisplay] ❌ Failed to create SpeechBubbleWidgetComponent!"));
+	}
+
+	// 3. Nameplate Widget
+	if (NameplateWidgetClass)
+	{
+		NameplateWidgetComponent = NewObject<UWidgetComponent>(ControlledPawn, TEXT("NameplateWidget"));
+		if (NameplateWidgetComponent)
+		{
+			NameplateWidgetComponent->RegisterComponent();
+			NameplateWidgetComponent->AttachToComponent(ControlledPawn->GetRootComponent(), FAttachmentTransformRules::KeepRelativeTransform);
+			NameplateWidgetComponent->SetWidgetSpace(EWidgetSpace::Screen);
+			NameplateWidgetComponent->SetDrawAtDesiredSize(true);
+			
+			// 位置调整：在头顶下方一点，或更高 (Position adjustment)
+			NameplateWidgetComponent->SetRelativeLocation(FVector(0.0f, 0.0f, HeightOffset + 25.0f)); // Slightly higher than others
+			NameplateWidgetComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision); // ✅ Disable Collision
+			
+			NameplateWidgetComponent->SetWidgetClass(NameplateWidgetClass);
+			NameplateWidgetComponent->SetVisibility(true); // Always visible by default
+			
+			AINPC_LOG(Log, "✅ Nameplate Widget attached to Pawn: %s", *ControlledPawn->GetName());
+		}
+	}
+	else
+	{
+		// Optional, so no error log if missing
+		AINPC_LOG(Log, "NameplateWidgetClass not set, skipping nameplate.");
+	}
+}
+
+void UEmotionDisplayComponent::UpdateNameplate(const FString& Name, const FString& Personality, const FString& Profession)
+{
+	if (!NameplateWidgetComponent)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[EmotionDisplay] NameplateWidgetComponent is NULL!"));
+		return;
+	}
+
+	UUserWidget* Widget = NameplateWidgetComponent->GetWidget();
+	if (!Widget)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[EmotionDisplay] Widget Instance is NULL! (Maybe not initialized yet?)"));
+		return;
+	}
+
+	// 尝试设置文本 (Try to set text)
+	// Format: [Personality] Name <Profession>
+	
+	FString DisplayText = FString::Printf(TEXT("[%s] %s"), *Personality, *Name);
+	if (!Profession.IsEmpty() && Profession != TEXT("None"))
+	{
+		DisplayText += FString::Printf(TEXT(" <%s>"), *Profession);
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("[EmotionDisplay] Updating Nameplate: %s"), *DisplayText);
+
+	// 使用反射查找名为 "NameText" 的 TextBlock (Use reflection to find TextBlock named "NameText")
+	if (UTextBlock* TextBlock = Cast<UTextBlock>(Widget->GetWidgetFromName(TEXT("NameText"))))
+	{
+		TextBlock->SetText(FText::FromString(DisplayText));
+		UE_LOG(LogTemp, Log, TEXT("[EmotionDisplay] ✅ Metadata found 'NameText' and set text."));
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[EmotionDisplay] ⚠️ Could not find 'NameText' via C++. Trying Blueprint Function 'SetNameText'..."));
+		
+		// 如果找不到 TextBlock，尝试调用 Blueprint 函数 "SetNameText"
+		// Fallback: Call Blueprint function "SetNameText"
+		FOutputDeviceNull Ar;
+		FString Cmd = FString::Printf(TEXT("SetNameText \"%s\""), *DisplayText);
+		Widget->CallFunctionByNameWithArguments(*Cmd, Ar, nullptr, true);
 	}
 }
 
@@ -207,6 +332,7 @@ void UEmotionDisplayComponent::OnEmotionChanged(const FMentalState& NewState)
 		}
 	}
 	
+	/* DEPRECATED: Speech is now handled by UtilityAIComponent on Action Change (Deferred Display)
 	// 显示 LLM 生成的对话内容
 	// Display LLM-generated speech content
 	if (!NewState.Speech.IsEmpty())
@@ -218,6 +344,7 @@ void UEmotionDisplayComponent::OnEmotionChanged(const FMentalState& NewState)
 			ShowSpeechBubble(NewState.Speech);
 		}
 	}
+	*/
 }
 
 void UEmotionDisplayComponent::ShowEmotion(const FString& Emotion)

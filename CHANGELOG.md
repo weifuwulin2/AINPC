@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - 2026-01-20
 
+### 🔧 Logging & Debugging (Phase 4 P0)
+- **Dedicated Log Channels**: Implemented specialized log categories in `AINPC.h` to reduce console noise:
+  - `LogAINPCBrain`: High-level directives and LOD switches.
+  - `LogAINPCMemory`: Memory storage, decay, and retrieval.
+  - `LogAINPCSocial`: Dialogue and social interactions.
+  - `LogAINPCUtility`: Action scoring and selection.
+- **Component Logging**: Updated `MemoryComponent`, `UtilityAIComponent`, `GoalComponent` to use these new channels.
+
+### 💄 UI & Feedback
+- **Robust Nameplate Initialization**: Fixed nameplate UI initialization failure by implementing a robust search for `NPCDefinitionComponent` across both Pawn and Controller.
+- **Navigation Fix**: Disabled collision on all EmotionDisplay widgets (Nameplate, Emoji, SpeechBubble) to prevent UI elements from blocking NPC navigation and raycasts.
+
 ### 🔧 Debug & Quality of Life Improvements
 
 #### AINPC_LOG Macro System
