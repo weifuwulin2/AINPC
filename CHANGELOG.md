@@ -21,6 +21,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Robust Nameplate Initialization**: Fixed nameplate UI initialization failure by implementing a robust search for `NPCDefinitionComponent` across both Pawn and Controller.
 - **Navigation Fix**: Disabled collision on all EmotionDisplay widgets (Nameplate, Emoji, SpeechBubble) to prevent UI elements from blocking NPC navigation and raycasts.
 
+### 🗣️ Speech Bubble System Redesign
+- **Simplified Speech Gate**: Changed from whitelist (only TalkTo/Attack/Flee) to blacklist (only block during Sleep). NPCs can now speak in any context except sleeping.
+- **Conversation Mode**: Added `bInConversation` flag to `UtilityAIController` for tracking active conversations.
+- **Vision Suppression**: During TalkTo action, suppress player vision events to prevent "seen player 3 times" noise. Enemy events still pass through for combat interruption.
+- **Auto-Speech Timer**: NPCs now auto-speak every 8 seconds during conversation if player doesn't respond.
+- **Player Reply Reset**: When player speaks, conversation timer resets for immediate NPC response.
+- **Player Interruption**: Player speaking to sleeping/eating NPC boosts Loneliness, triggering Social directive switch.
+- **Topic Guidance**: Improved auto-speak prompts to focus on light small talk (weather, work, local news).
+- **Conversation Continuation**: ReceiveSpeech now instructs LLM to respond naturally to what was just said.
+
 ### 🔧 Debug & Quality of Life Improvements
 
 #### AINPC_LOG Macro System

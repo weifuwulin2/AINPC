@@ -293,3 +293,26 @@ This file contains a log of commit messages for the AINPC project.
 - `Source/AINPC/Components/MemoryComponent.cpp`
 - `Source/AINPC/Components/UtilityAIComponent.cpp`
 - `Docs/design/Phase4_AI_System_Enhancement_Plan.md`
+
+---
+
+## [2026-01-21] Speech Bubble System Redesign
+**Type**: feat/refactor
+**Scope**: EmotionDisplay, SensoryComponent, Action_TalkTo, UtilityAIController
+
+**Description**:
+- **Simplified Speech Gate**: Changed from whitelist (only certain actions) to blacklist (only block during Sleep). NPCs now speak in any context except sleeping.
+- **Conversation Mode Flag**: Added `bInConversation` to `UtilityAIController` for tracking active TalkTo conversations.
+- **Vision Suppression**: During conversation, suppress player vision events (prevents "seen player 3 times" noise). Enemy events still pass through for combat interruption.
+- **Auto-Speech Timer**: Added `ConversationTimer` and `AutoSpeakInterval` (8s) to Action_TalkTo. NPCs auto-speak if no player reply.
+- **Player Reply Reset**: Player speech resets conversation timer via `ResetConversationTimer()`.
+- **Player Interruption**: Player speaking to busy NPC (sleeping/eating) boosts Loneliness +0.5, triggering Social directive.
+- **Topic Guidance**: Auto-speak prompts now focus on light small talk (weather, work, local news).
+- **Conversation Continuation**: ReceiveSpeech event now instructs LLM to respond naturally to what was just said.
+
+**Files Changed**:
+- `Source/AINPC/Controller/UtilityAIController.h` (added bInConversation)
+- `Source/AINPC/Components/EmotionDisplayComponent.cpp` (simplified gate)
+- `Source/AINPC/Components/SensoryComponent.cpp` (vision suppression, timer reset, topic guidance)
+- `Source/AINPC/Public/Actions/Action_TalkTo.h` (timer members)
+- `Source/AINPC/Private/Actions/Action_TalkTo.cpp` (auto-speak logic, flag management)

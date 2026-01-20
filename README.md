@@ -254,6 +254,17 @@ AINPC/
 
 ## 🎉 最新更新 / Latest Updates
 
+### v0.5.4 - Phase 4 P0: Debug & Logic Hardening (2026-01-20)
+
+#### 🔧 调试与稳定性 / Debug & Stability
+- **✅ Dedicated Log Channels (专用日志频道)**
+  - Implemented `LogAINPCBrain`, `LogAINPCMemory`, `LogAINPCSocial`, `LogAINPCUtility`.
+  - drastically reduced console noise and improved debugging efficiency.
+- **✅ Nameplate Initialization Fix (名字条修复)**
+  - Robust initialization ensuring Nameplate UI always finds the correct `NPCDefinition`.
+- **✅ UI Collision Fix (UI碰撞修复)**
+  - Disabled collision on all EmotionDisplay widgets to prevent NPC navigation blocking.
+
 ### v0.5.3 - Phase 3: Player Interaction & Modular Identity (2026-01-19)
 
 #### 🎉 新增特性 / New Features
@@ -460,7 +471,10 @@ AINPC/
 
 ### 🚧 进行中 / In Progress
 
-- [ ] **Phase 4: 战斗进阶 (生存本能)**
+- [ ] **Phase 4: AI System Enhancement (Memory, Agency, Debug)**
+  - [x] P0: Log Channels & UI Fixes
+  - [ ] P1: Memory Refactor (Decay & Resolution)
+  - [ ] P2: Agency (Gossip & Hidden Agenda)
 
 ### 📋 计划中 / Planned
 

@@ -95,6 +95,11 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI Configuration")
     UDataTable* EmotionMatrixTable;
 
+    // ✅ 对话中标记 - 用于抑制视觉事件
+    // Conversation flag - used to suppress vision events during conversation
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI Data")
+    bool bInConversation = false;
+
     // =========================================================
     // 4. 对外接口 (External Interface)
     // =========================================================

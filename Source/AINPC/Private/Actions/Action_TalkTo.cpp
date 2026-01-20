@@ -22,6 +22,12 @@ void UAction_TalkTo::Enter_Implementation(AAIController* Controller)
 {
 	Super::Enter_Implementation(Controller);
 
+	// ✅ Mark conversation started - suppress vision events
+	if (AUtilityAIController* UAICon = Cast<AUtilityAIController>(Controller))
+	{
+		UAICon->bInConversation = true;
+	}
+
 	if (UWorld* World = Controller ? Controller->GetWorld() : nullptr)
 	{
 		ExecutionTime = World->GetTimeSeconds();
@@ -86,31 +92,28 @@ void UAction_TalkTo::Execute_Implementation(AAIController* Controller)
 		Controller->StopMovement();
 		Controller->SetFocus(CurrentTarget);
 
-		// 3. Chat Logic (Every 5 seconds)
-		float CurrentTime = World->GetTimeSeconds();
-		if (CurrentTime - LastChatTime > 5.0f)
+		// ✅ Auto-speech timer: increment and trigger LLM when expired
+		// 自动对话计时器：累积时间
+		float DeltaTime = World->GetDeltaSeconds();
+		ConversationTimer += DeltaTime;
+		
+		if (ConversationTimer >= AutoSpeakInterval)
 		{
-			LastChatTime = CurrentTime;
+			ConversationTimer = 0.f; // Reset timer
 
             // Trigger Dialogue via LLM
 			if (AUtilityAIController* UAICon = Cast<AUtilityAIController>(Controller))
 			{
-                // Trigger Cognition
+                // Trigger Cognition - with topic guidance for natural conversation
                 if (UAICon->CognitionComp)
                 {
-                    FString Stimulus = FString::Printf(TEXT("You are talking to %s."), *CurrentTarget->GetName());
+                    FString Stimulus = FString::Printf(
+                        TEXT("You are having a friendly chat with %s. Make light small talk about everyday topics like the weather, work, local news, or how their day is going. Keep it casual and brief."),
+                        *CurrentTarget->GetName()
+                    );
                     UAICon->CognitionComp->ProcessStimulus(Stimulus);
-                    UE_LOG(LogTemp, Log, TEXT("[Action_TalkTo] Triggered Cognition Stimulus: %s"), *Stimulus);
+                    UE_LOG(LogTemp, Log, TEXT("[Action_TalkTo] Auto-speak triggered after %.1fs"), AutoSpeakInterval);
                 }
-
-                // Temporary Poll: Check if Speech is ready in Mental State (simple simulation since Cognition is async)
-                // In a robust system, we'd bind to a 'OnSpeechReady' delegate. 
-                // Currently, we rely on the MentalState update that happens shortly after.
-                // Because we poll every frame in Execute, we can check UAICon->MentalState->Speech.
-                
-                // However, LLM takes time (seconds). 
-                // So checking *immediately* after ProcessStimulus won't work for the *current* request.
-                // But it might pick up the previous one or we check continuously.
 			}
 		}
 		
@@ -151,6 +154,12 @@ void UAction_TalkTo::Execute_Implementation(AAIController* Controller)
 void UAction_TalkTo::Exit_Implementation(AAIController* Controller)
 {
 	Super::Exit_Implementation(Controller);
+	
+	// ✅ Mark conversation ended - resume vision events
+	if (AUtilityAIController* UAICon = Cast<AUtilityAIController>(Controller))
+	{
+		UAICon->bInConversation = false;
+	}
 	
 	if (Controller)
 	{

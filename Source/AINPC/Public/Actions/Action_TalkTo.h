@@ -29,6 +29,15 @@ private:
 	float ExecutionTime;
 	float LastChatTime;
 	
+	// ✅ Auto-speech timer - speaks every AutoSpeakInterval seconds if player doesn't reply
+	float ConversationTimer = 0.f;
+	float AutoSpeakInterval = 8.f;
+
+public:
+	// Reset timer when player speaks
+	void ResetConversationTimer() { ConversationTimer = 0.f; }
+	
+private:
 	// Findings nearest friendly/neutral unit
 	AActor* FindBestTalkTarget(AAIController* Controller);
 };

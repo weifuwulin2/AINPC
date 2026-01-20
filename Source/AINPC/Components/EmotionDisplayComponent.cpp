@@ -11,7 +11,9 @@
 #include "GameFramework/Character.h"
 #include "TimerManager.h"
 #include "AINPC.h"
+#include "GoalComponent.h"
 #include "NPCDefinitionComponent.h"
+#include "UtilityAIComponent.h"
 #include "Misc/OutputDeviceNull.h"
 
 UEmotionDisplayComponent::UEmotionDisplayComponent()
@@ -332,7 +334,6 @@ void UEmotionDisplayComponent::OnEmotionChanged(const FMentalState& NewState)
 		}
 	}
 	
-	/* DEPRECATED: Speech is now handled by UtilityAIComponent on Action Change (Deferred Display)
 	// 显示 LLM 生成的对话内容
 	// Display LLM-generated speech content
 	if (!NewState.Speech.IsEmpty())
@@ -340,11 +341,34 @@ void UEmotionDisplayComponent::OnEmotionChanged(const FMentalState& NewState)
 		// 只在对话改变时才更新显示
 		if (NewState.Speech != LastSpeech)
 		{
-			LastSpeech = NewState.Speech;
-			ShowSpeechBubble(NewState.Speech);
+			// ✅ Simplified Speech Gate: 默认允许说话，只在睡觉时禁言
+			// Default allow speech, only block during Sleep
+			bool bCanSpeak = true;
+			
+			if (AUtilityAIController* UAICon = Cast<AUtilityAIController>(GetOwner()))
+			{
+				if (UAICon->UtilityComp && UAICon->UtilityComp->CurrentAction)
+				{
+					FString ActionName = UAICon->UtilityComp->CurrentAction->ActionName;
+					if (ActionName.Contains(TEXT("Sleep")))
+					{
+						bCanSpeak = false;
+					}
+				}
+			}
+			
+			if (bCanSpeak)
+			{
+				LastSpeech = NewState.Speech;
+				ShowSpeechBubble(NewState.Speech);
+			}
+			else
+			{
+				// NPC is sleeping, discard speech
+				UE_LOG(LogTemp, Verbose, TEXT("[EmotionDisplay] Speech suppressed (sleeping): %s"), *NewState.Speech);
+			}
 		}
 	}
-	*/
 }
 
 void UEmotionDisplayComponent::ShowEmotion(const FString& Emotion)

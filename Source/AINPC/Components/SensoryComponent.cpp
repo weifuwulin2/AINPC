@@ -6,6 +6,11 @@
 #include "Kismet/GameplayStatics.h"
 #include "Social/SocialGameplayTags.h"
 #include "AINPC.h"
+#include "CognitionComponent.h"
+#include "UtilityAIComponent.h"
+#include "UtilityAI/MentalStateInterpolation.h"
+#include "UtilityAI/UNPCMentalState.h"
+#include "Actions/Action_TalkTo.h"
 
 USensoryComponent::USensoryComponent()
 {
@@ -212,6 +217,24 @@ void USensoryComponent::HandleTargetPerceived(AActor* Actor, FAIStimulus Stimulu
 
     if (Stimulus.WasSuccessfullySensed())
     {
+        // ✅ 对话中抑制玩家视觉事件 - 但敌人事件正常通过
+        // Suppress PLAYER vision events during conversation, but allow Enemy/Danger events
+        if (AUtilityAIController* UAICon = Cast<AUtilityAIController>(GetOwner()))
+        {
+            if (UAICon->bInConversation)
+            {
+                // Only suppress non-hostile targets (player)
+                // 只抑制非敌对目标（玩家），敌人仍然可以打断对话
+                bool bIsEnemy = Actor->ActorHasTag(TEXT("Enemy")) || AreActorsHostile(GetOwner(), Actor);
+                if (!bIsEnemy)
+                {
+                    // Skip player vision events while in conversation
+                    return;
+                }
+                // Enemy detected! Let this event through to trigger combat
+            }
+        }
+
         // ✅ 死亡检查：如果目标已死亡（布娃娃或有Dead标签），立即清除Focus并忽略
         // Death Check: If target is dead (ragdoll or has Dead tag), clear Focus and ignore
         bool bIsDead = Actor->ActorHasTag(TEXT("Dead"));
@@ -506,17 +529,53 @@ void USensoryComponent::ReceiveSpeech(AActor* Speaker, FString Message)
         }
     }
 
-    // 4. Generate Semantic Event
+    // 4. Generate Semantic Event - with topic continuation guidance
     FSemanticEvent Event;
     Event.Instigator = Speaker;
     Event.Target = GetOwner();
     Event.Verb = AINPCTags::Social_Chat;
-    Event.Content = FString::Printf(TEXT("%s said: \"%s\""), *SpeakerName, *Message);
+    Event.Content = FString::Printf(TEXT("%s said to you: \"%s\". Listen and respond naturally to what they just said."), *SpeakerName, *Message);
     Event.Magnitude = 0.8f; 
 
     if (ProcessEventFilter(Event))
     {
         OnSemanticEventSensed.Broadcast(Event);
+    }
+
+    // ✅ 5. Player Speech Interruption Logic (打断机制)
+    // When PLAYER speaks to this NPC, boost Loneliness to trigger Social directive
+    // This will interrupt Sleep/Eat actions and make the NPC respond
+    if (Speaker && Speaker->ActorHasTag(TEXT("Player")))
+    {
+        if (AUtilityAIController* UAICon = Cast<AUtilityAIController>(GetOwner()))
+        {
+            if (UAICon->MentalState)
+            {
+                // Boost Loneliness to trigger Social directive switch
+                float OldLoneliness = UAICon->MentalState->Loneliness;
+                UAICon->MentalState->Loneliness = FMath::Min(1.0f, UAICon->MentalState->Loneliness + 0.5f);
+                
+                AINPC_LOG(Warning, "🗣️ Player spoke! Boosting Loneliness: %.2f -> %.2f (Interruption trigger)", 
+                    OldLoneliness, UAICon->MentalState->Loneliness);
+                
+                // Sync with Interpolator if available
+                if (UAICon->CognitionComp && UAICon->CognitionComp->Interpolator)
+                {
+                    UAICon->CognitionComp->Interpolator->SetTargetValue(TEXT("Loneliness"), UAICon->MentalState->Loneliness);
+                }
+            }
+            
+            // ✅ Reset conversation timer - NPC will respond immediately instead of waiting
+            // 重置对话计时器 - NPC 立即回复而不是等待
+            if (UAICon->UtilityComp && UAICon->UtilityComp->CurrentAction)
+            {
+                if (UAction_TalkTo* TalkAction = Cast<UAction_TalkTo>(UAICon->UtilityComp->CurrentAction))
+                {
+                    TalkAction->ResetConversationTimer();
+                    AINPC_LOG(Log, "⏱️ Conversation timer reset - player spoke");
+                }
+            }
+        }
     }
 }
 
