@@ -84,7 +84,7 @@ protected:
 
 	/** Called when the spawned enemy has died */
 	UFUNCTION()
-	void OnEnemyDied();
+	void OnEnemyDied(ACombatEnemy* DeadEnemy, AActor* Killer);
 
 	/** Called after the last spawned enemy has died */
 	void SpawnerDepleted();

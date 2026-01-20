@@ -101,6 +101,16 @@ struct AINPC_API FMemoryItem
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Memory")
 	float ImportanceScore = 0.0f;
 
+	// ✅ Phase 4 P1: Resolution state - marks event as "handled"
+	// 解决状态标记 - 表示该事件已被处理
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Memory")
+	bool bIsResolved = false;
+	
+	// ✅ Phase 4 P1: Game time for precise decay calculation
+	// 游戏时间戳（秒）- 用于精确衰减计算
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Memory")
+	float GameTimeSeconds = 0.0f;
+
 	// Embedding vector for semantic search (reserved for future use)
 	// TArray<float> Embedding; 
 

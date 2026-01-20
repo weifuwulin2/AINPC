@@ -316,3 +316,31 @@ This file contains a log of commit messages for the AINPC project.
 - `Source/AINPC/Components/SensoryComponent.cpp` (vision suppression, timer reset, topic guidance)
 - `Source/AINPC/Public/Actions/Action_TalkTo.h` (timer members)
 - `Source/AINPC/Private/Actions/Action_TalkTo.cpp` (auto-speak logic, flag management)
+
+---
+
+## [2026-01-21] Phase 6 & 7 - LLM Latency Optimization & Death Handling Fixes
+**Type**: perf/fix
+**Scope**: CognitionComponent, SensoryComponent, CombatEnemy
+**Description**:
+- **Amygdala Hijack**: Implemented immediate threat response in `CognitionComponent`.
+  - Spikes `Perceived_Threat` to 0.9 instantly if `HOSTILE`/`DANGER` detected in input.
+  - Bypasses LLM latency for combat initialization.
+- **Request Throttling**: Added Rate Limiting to `ProcessStimulus`.
+  - High Priority (Danger) Cooldown: 1.5s.
+  - Normal Priority Cooldown: 4.0s.
+  - Prevents LLM request spam from repetitive perception events.
+- **Death Event Perception Fixes**:
+  - Removed `ShouldPerceiveTarget` cooldown check for death events to ensure they are always processed.
+  - Implemented `GetSmartActorName` to resolve memories using both DisplayName and ObjectName.
+  - Fixed issue where "Hostile" memories were not cleared upon enemy death due to name mismatch.
+- **Hostile Memory Cleanup**:
+  - Added logic in `MetabolismComponent` to clear Hostile memories when Threat decays (0.4->0.1).
+- **Delegate Refactor**: `ACombatEnemy::OnEnemyDied` now passes DeadEnemy and Killer for precise event handling.
+
+**Files Changed**:
+- `Source/AINPC/Components/CognitionComponent.h/.cpp`
+- `Source/AINPC/Components/SensoryComponent.h/.cpp`
+- `Source/AINPC/Components/MemoryComponent.h/.cpp`
+- `Source/AINPC/Components/MetabolismComponent.h/.cpp`
+- `Source/AINPC/Variant_Combat/AI/CombatEnemy.h/.cpp`

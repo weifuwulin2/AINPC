@@ -1,6 +1,7 @@
 #include "Components/MetabolismComponent.h"
 #include "Controller/UtilityAIController.h"
 #include "UtilityAI/UNPCMentalState.h"
+#include "Components/MemoryComponent.h"
 #include "Components/CognitionComponent.h"
 #include "Components/PersonalityComponent.h"
 #include "Components/EmotionDisplayComponent.h"
@@ -138,6 +139,26 @@ void UMetabolismComponent::TickComponent(float DeltaTime, ELevelTick TickType, F
 
     // 威胁感 (Perceived_Threat) - 消失得比较快，因为如果没有持续威胁，你就安全了
     ApplyStateTransition(State->Perceived_Threat, TEXT("Perceived_Threat"), ThreatDecayRate);
+
+    // ✅ CHECK SAFETY RESTORATION
+    // 检查安全恢复：如果威胁从高降到低，清理敌对记忆
+    // Check Safety Restoration: If threat drops from high to low, clean up hostile memories
+    if (State->Perceived_Threat > 0.4f)
+    {
+        bWasThreatened = true;
+    }
+    else if (bWasThreatened && State->Perceived_Threat < 0.1f)
+    {
+        // Safe again! Resolve hostile memories on the Pawn's MemoryComponent
+        if (CachedController && CachedController->GetPawn())
+        {
+             if (UMemoryComponent* MemComp = CachedController->GetPawn()->FindComponentByClass<UMemoryComponent>())
+             {
+                 MemComp->MarkAllHostileMemoriesResolved();
+             }
+        }
+        bWasThreatened = false;
+    }
 
     // === 3. 情绪分数衰减（简化版）===
     // Emotion Score Decay (Simplified)

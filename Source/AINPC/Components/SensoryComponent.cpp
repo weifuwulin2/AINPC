@@ -3,6 +3,7 @@
 #include "Components/PersonalityComponent.h"
 #include "Components/NPCDefinitionComponent.h"
 #include "Components/EmotionDisplayComponent.h"
+#include "Components/MemoryComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Social/SocialGameplayTags.h"
 #include "AINPC.h"
@@ -11,6 +12,7 @@
 #include "UtilityAI/MentalStateInterpolation.h"
 #include "UtilityAI/UNPCMentalState.h"
 #include "Actions/Action_TalkTo.h"
+#include "Variant_Combat/AI/CombatEnemy.h"
 
 USensoryComponent::USensoryComponent()
 {
@@ -305,6 +307,16 @@ void USensoryComponent::HandleTargetPerceived(AActor* Actor, FAIStimulus Stimulu
             *GetOwner()->GetName(), *SelfFaction.ToString(),
             *Actor->GetName(), *TargetFaction.ToString(),
             bIsHostile ? TEXT("YES") : TEXT("NO"));
+            
+        // ✅ Bind to CombatEnemy Death Delegate
+        // 绑定战斗敌人的死亡委托，以便在其死亡时将其记忆标记为已解决
+        if (ACombatEnemy* CombatEnemy = Cast<ACombatEnemy>(Actor))
+        {
+             if (!CombatEnemy->OnEnemyDied.IsAlreadyBound(this, &USensoryComponent::HandleCombatEnemyDeath))
+             {
+                 CombatEnemy->OnEnemyDied.AddDynamic(this, &USensoryComponent::HandleCombatEnemyDeath);
+             }
+        }
         
         // 优先级 1: 检查阵营敌对关系（最高优先级，绕过累积系统）
         // Priority 1: Check faction hostility (highest priority, bypass accumulation)
@@ -661,19 +673,28 @@ void USensoryComponent::HandleDeath(AActor* DeadActor, AActor* Killer)
                 UE_LOG(LogTemp, Warning, TEXT("[Sensory] ⚰️ Target %s is dead! Cleared FocusActor."), *DeadActor->GetName());
             }
         }
+        
+        // ✅ Mark all memories about the dead actor as RESOLVED
+        // 将关于死者的所有记忆标记为已解决（防止"僵尸循环"问题）
+        if (UMemoryComponent* MemoryComp = Owner->FindComponentByClass<UMemoryComponent>())
+        {
+             // Try both Smart Name (e.g. "zombie") and Object Name (e.g. "BP_Zombie_C_0")
+             // 尝试使用 Smart Name 和 Object Name 进行清除
+             FString SmartName = GetSmartActorName(DeadActor);
+             MemoryComp->MarkMemoriesResolvedForActor(SmartName);
+             MemoryComp->MarkMemoriesResolvedForActor(DeadActor->GetName());
+        }
     }
 
     // ✅ 过滤器: 使用与视觉相同的过滤机制
     // Filter: Use same filtering mechanism as sight
     
-    // 1. Attention Cooldown (Prevent processing same death event multiple times)
-    // 防止短时间内重复处理同一死亡事件
-    if (!ShouldPerceiveTarget(DeadActor)) 
-    {
-        return;
-    }
+    // ⚠️ CRITICAL: Do NOT block death events based on vision cooldown!
+    // Death is a unique event and must always be processed even if we just saw the actor.
+    // 我们不应该因为最近刚看到该 Actor 就即使是在它死亡时也忽略它。
+    // if (!ShouldPerceiveTarget(DeadActor)) return; <-- REMOVED
     
-    MarkTargetPerceived(DeadActor);
+    MarkTargetPerceived(DeadActor); // Update timestamp so we don't "see" it again instantly as a corpse
 
     // Legacy: Broadcast text
     OnStimulusProduced.Broadcast(Desc);
@@ -1046,3 +1067,40 @@ AActor* USensoryComponent::FindBestSmartObject(FGameplayTag ActivityTag)
 }
 
 
+
+void USensoryComponent::HandleCombatEnemyDeath(ACombatEnemy* DeadEnemy, AActor* Killer)
+{
+    HandleDeath(DeadEnemy, Killer);
+}
+
+FString USensoryComponent::GetSmartActorName(AActor* Target)
+{
+    FString TargetName = "Unknown";
+    if (!Target) return TargetName;
+
+    if (APawn* TargetPawn = Cast<APawn>(Target))
+    {
+        if (AController* TargetController = TargetPawn->GetController())
+        {
+            if (AUtilityAIController* UtilityController = Cast<AUtilityAIController>(TargetController))
+            {
+                if (UtilityController->PersonalityComp && !UtilityController->PersonalityComp->PersonalityID.IsNone())
+                {
+                    TargetName = UtilityController->PersonalityComp->PersonalityID.ToString();
+                }
+            }
+        }
+    }
+    
+    if (TargetName == "Unknown" && Target->ActorHasTag("Player"))
+    {
+        TargetName = "Player";
+    }
+    
+    if (TargetName == "Unknown")
+    {
+        TargetName = Target->GetName();
+    }
+    
+    return TargetName;
+}

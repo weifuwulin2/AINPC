@@ -66,6 +66,10 @@ private:
 	// 缓存 Controller 引用
 	UPROPERTY()
 	AUtilityAIController* CachedController;
+	
+	// ✅ 威胁状态追踪：如果之前很高，当降低到安全值时触发记忆清理
+	// Threat Tracking: If it was high, trigger memory cleanup when it drops to safe levels
+	bool bWasThreatened = false;
 
 	// 调试日志计时器（每个 NPC 独立）
 	// Debug log timer (per-NPC)

@@ -14,6 +14,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnSensoryStimulusProduced, const FS
 
 class UAIPerceptionComponent;
 class USmartObjectComponent;
+class ACombatEnemy;
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class AINPC_API USensoryComponent : public UActorComponent
@@ -51,6 +52,10 @@ public:
 	// New: Handle Death Event
 	UFUNCTION(BlueprintCallable, Category = "AI Sensory")
 	void HandleDeath(AActor* DeadActor, AActor* Killer);
+	
+	// Wrapper callback for CombatEnemy delegate
+	UFUNCTION()
+	void HandleCombatEnemyDeath(ACombatEnemy* DeadEnemy, AActor* Killer);
 
 	// --- Processing Layer (The Spinal Cord) ---
 
@@ -164,4 +169,8 @@ private:
 	// 重置目标的累积计数（在触发认知事件后）
 	// Reset accumulation count for target (after triggering cognitive event)
 	void ResetVisualAccumulation(AActor* Target);
+	
+	// ✅ 获取用于记忆的 Actor 名称 (Smart Name)
+	// Get actor name for memory (e.g. PersonalityID or "Player")
+	FString GetSmartActorName(AActor* Actor);
 };

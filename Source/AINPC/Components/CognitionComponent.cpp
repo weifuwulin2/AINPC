@@ -33,6 +33,9 @@ void UCognitionComponent::BeginPlay()
 		else
 		{
 			AINPC_LOG(Log, "Connected to MemoryComponent.");
+			
+			// ✅ Bind OnDreamingNeeded to StartDreaming
+			MemoryComp->OnDreamingNeeded.AddDynamic(this, &UCognitionComponent::StartDreaming);
 		}
 	}
 
@@ -149,11 +152,15 @@ void UCognitionComponent::ProcessStimulus(FString SituationDescription)
 	FString ContextMemory = "";
 	if (MemoryComp)
 	{
+		// ✅ Phase 4 P1: Get game time for temporal formatting
+		float CurrentGameTime = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.f;
+		
 		TArray<FMemoryItem> Memories = MemoryComp->RetrieveRelevantMemories(SituationDescription, 5);
 		for (const FMemoryItem& Item : Memories)
 		{
-			ContextMemory += FString::Printf(TEXT("- [%s] %s (Imp: %.1f)\n"), 
-				*Item.Timestamp.ToString(), *Item.Description, Item.ImportanceScore);
+			// Use formatted description with temporal prefix
+			FString FormattedDesc = MemoryComp->GetFormattedDescription(Item, CurrentGameTime);
+			ContextMemory += FString::Printf(TEXT("- %s\n"), *FormattedDesc);
 		}
 	}
 	
@@ -385,10 +392,52 @@ void UCognitionComponent::ProcessStimulus(FString SituationDescription)
 		"3. [COWARDICE RULE] If you are a COWARD and Threat is 'Strong'/'Extreme', Intention MUST be 'Flee' or 'Beg', unless you are cornered.\n"
 		"4. [JURISDICTION] Do NOT output Hunger/Fatigue (Engine manages them).\n"
 		"5. [EMOTION STRICT] 'Emotion' MUST be EXACTLY one of: Neutral, Angry, Scared, Sad, Happy, Curious, Disgust. ABSOLUTELY NO OTHER VALUES (e.g., 'Suspicious', 'Confused', 'Anxious'). If you feel 'suspicious', use 'Curious'. If uncertain, use 'Neutral'.\n"
+		"6. [MEMORY TIME] React ONLY to [JUST NOW] memories. [X MIN AGO] and [HISTORY] are context only. [RESOLVED] events are already handled - do NOT react again.\n"
 		"\n"
 		"  Speech: string;      // approx 10 words, match personality\n"
 		"}\n"
 	), *FinalRoleSection, *FinalBackstorySection, *FinalSituation, *CurrentDecisionContext, *FinalMemories);
+	
+	// ✅ AMYGDALA HIJACK (Immediate Threat Response)
+	// 如果检测到即时威胁（从记忆或情境中），不等待 LLM，立即触发杏仁核反应
+	// If immediate threat detected, trigger amygdala response immediately (don't wait for LLM)
+	if (FinalSituation.Contains(TEXT("HOSTILE")) || FinalSituation.Contains(TEXT("DANGER")) || 
+		ContextMemory.Contains(TEXT("HOSTILE")) || ContextMemory.Contains(TEXT("DANGER")))
+	{
+		if (Interpolator)
+		{
+			// 立即将威胁感拉满 (Immediate Fear Spike)
+			Interpolator->SetTargetValue(TEXT("Perceived_Threat"), 0.9f);
+			
+			// 如果是僵尸或特定性格，也可能增加愤怒
+			// If Zombie or Aggressive, maybe Anger too
+			if (PersonalityIDStr.Contains(TEXT("Zombie")) || RoleDescription.Contains(TEXT("Aggressive")))
+			{
+				// Aggressive response
+			}
+			else
+			{
+				// Default fear response
+			}
+			
+			UE_LOG(LogTemp, Warning, TEXT("[Cognition] 🧠⚡ AMYGDALA HIJACK! Threat detected, spiking Perceived_Threat to 0.9 immediately."));
+		}
+	}
+	
+	// ✅ RATE LIMITING
+	// 防止短时间内发送过多请求，特别是在感知系统不稳定时
+	// Prevent spamming requests in short time
+	float CurrentTime = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f;
+	bool bIsHighPriority = FinalSituation.Contains(TEXT("HOSTILE")) || FinalSituation.Contains(TEXT("DANGER"));
+	// High Priority: 1.5s (allow faster updates for combat), Normal: 4.0s (reduce chatter cost)
+	float Cooldown = bIsHighPriority ? 1.5f : 4.0f;
+	
+	if (CurrentTime - LastLLMRequestTime < Cooldown)
+	{
+		 UE_LOG(LogTemp, Verbose, TEXT("[Cognition] Request Throttled (Pri=%d). Cooldown: %.1fs"), bIsHighPriority, Cooldown);
+		 return; 
+	}
+	LastLLMRequestTime = CurrentTime;
 	
 	AINPC_LOG(Log, "Sending to LLM...");
 	
@@ -498,6 +547,10 @@ void UCognitionComponent::OnDreamingAnalysisComplete(bool bSuccess, const FStrin
 	if (MemoryComp && ExtractedInsights.Num() > 0)
 	{
 		MemoryComp->ConsolidateMemories(ExtractedInsights);
+		
+		// ✅ Clear short-term memories after consolidation
+		MemoryComp->ClearShortTermMemories();
+		AINPC_LOG(Log, "Dream cycle complete: %d insights consolidated", ExtractedInsights.Num());
 	}
 }
 

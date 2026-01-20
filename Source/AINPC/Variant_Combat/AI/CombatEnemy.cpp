@@ -243,7 +243,7 @@ void ACombatEnemy::HandleDeath()
 	GetMesh()->SetSimulatePhysics(true);
 
 	// call the died delegate to notify any subscribers
-	OnEnemyDied.Broadcast();
+	OnEnemyDied.Broadcast(this, LastDamageCauser);
 
 	// ✅ Notify nearby AI Sensory systems
 	// 通知附近的 AI 感知系统

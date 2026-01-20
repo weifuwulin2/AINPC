@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased] - 2026-01-21
+
+### 🚀 Optimization - LLM Latency & Memory 
+- **Added**: "Amygdala Hijack" Mechanism in `CognitionComponent`.
+  - Immediate threat response: bypasses LLM latency by detecting `HOSTILE`/`DANGER` keywords in localized stimuli.
+  - Spikes `Perceived_Threat` to 0.9 instantly before sending LLM request.
+- **Added**: Request Throttling System.
+  - Prevents LLM spam from repetitive perception events.
+  - High Priority (Danger): 1.5s cooldown.
+  - Normal Priority: 4.0s cooldown.
+- **Fixed**: Memory Logic for Death Events.
+  - Removed `ShouldPerceiveTarget` cooldown check for death events to ensure they are always committed.
+  - Implemented `GetSmartActorName` to resolve memories using both Display Name (e.g. "zombie") and Object Name.
+  - Fixed logic where existing "Hostile Enemy" memories were not being resolved upon enemy death.
+
+### 💀 Gameplay - Death Handling
+- **Refactored**: `ACombatEnemy::OnEnemyDied` delegate now passes `DeadEnemy` and `Killer` parameters.
+- **Added**: `SensoryComponent` binds to `OnEnemyDied` upon perceiving a hostile actor.
+- **Added**: Automatic Memory Cleanup.
+  - When `Perceived_Threat` decays (0.4 -> 0.1), all Hostile memories are marked as `[RESOLVED]`.
+  - Simulates NPC "calming down" and realizing the danger has passed.
+
 ## [Unreleased] - 2026-01-20
 
 ### 🔧 Logging & Debugging (Phase 4 P0)

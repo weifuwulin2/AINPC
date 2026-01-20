@@ -101,4 +101,8 @@ private:
 	// 重试定时器 / Retry timer
 	FTimerHandle RetryStimulusTimerHandle;
 	FString PendingStimulus;
+	
+	// ✅ Rate Limiting
+	float LastLLMRequestTime = -999.0f;
+	float MinRequestInterval = 2.0f; // Minimum seconds between LLM calls
 };

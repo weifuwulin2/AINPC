@@ -21,7 +21,8 @@ DECLARE_DELEGATE(FOnEnemyAttackCompleted);
 DECLARE_DELEGATE(FOnEnemyLanded);
 
 /** Enemy died delegate */
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnEnemyDied);
+/** Enemy died delegate */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnEnemyDied, ACombatEnemy*, DeadEnemy, AActor*, Killer);
 
 /**
  *  An AI-controlled character with combat capabilities.
