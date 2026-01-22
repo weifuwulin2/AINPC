@@ -10,13 +10,20 @@
 #include "UtilityAI/MentalStateInterpolation.h"
 #include "Social/SocialGameplayTags.h"
 #include "Actions/Action_SmartObject.h"
+#include "Social/SocialGameplayTags.h" // ✅ Native Tags
+#include "Components/UtilityAIComponent.h"
+#include "UtilityAI/MentalStateNames.h" // ✅ Use Constants
 #include "UtilityAI/EmotionMatrixConfig.h"
 
+// Initialize Game-wide Constants
+const float UUtilityActionBase::IntentionMatchBonus = 0.3f;
+const float UUtilityActionBase::DirectiveMatchMultiplier = 1.5f;
+const float UUtilityActionBase::DirectiveMismatchMultiplier = 0.5f;
 
 UUtilityActionBase::UUtilityActionBase()
 {
-    // 默认名字
-    ActionName = "BaseAction";
+	// Default weights
+	// Weight_Motivation = 1.0f;"BaseAction";
 }
 
 void UUtilityActionBase::InitFromConfig(const FUtilityActionConfig& Config)
@@ -29,6 +36,10 @@ void UUtilityActionBase::InitFromConfig(const FUtilityActionConfig& Config)
     ActivityTag = Config.ActivityTag; // 用于 Emotion Matrix 查表
     IntentionTag = Config.IntentionTag; // 用于 LLM Intention 匹配
 	DirectiveTag = Config.DirectiveTag; // 用于 Goal Directive 匹配
+    PersonalityInfluence = Config.PersonalityInfluence; // 数据驱动 PAM 配置
+    
+    UE_LOG(LogTemp, Warning, TEXT("[InitFromConfig] %s: PersonalityInfluence entries = %d"), 
+           *Config.ActionName, PersonalityInfluence.Num());
 
     // Fix: Assign name from config if available
     if (!Config.ActionName.IsEmpty())
@@ -51,6 +62,7 @@ float UUtilityActionBase::CalculateScore(UNPCMentalState* MentalState, AAIContro
     APawn* ControlledPawn = Controller->GetPawn();
     if (!ControlledPawn || !IsValid(ControlledPawn) || ControlledPawn->IsPendingKillPending())
     {
+        if (bLogDebug) UE_LOG(LogTemp, Warning, TEXT("    [%s] ❌ Score=0: Pawn Invalid/Dead"), *ActionName);
         return 0.0f;
     }
 
@@ -66,8 +78,10 @@ float UUtilityActionBase::CalculateScore(UNPCMentalState* MentalState, AAIContro
     // 这个检查会导致 SmartObject 动作永远得分 0，因为非活动动作的 ShouldExit 总是返回 true
     
     // ✅ 如果没有 Considerations，直接返回 BaseReward
+    // ✅ 如果没有 Considerations，直接返回 BaseReward
     if (Considerations.Num() == 0) 
     {
+        if (bLogDebug) UE_LOG(LogTemp, Warning, TEXT("    [%s] ⚠️ No Considerations, returning BaseReward=%.2f"), *ActionName, BaseReward);
         return BaseReward;
     }
 
@@ -76,18 +90,43 @@ float UUtilityActionBase::CalculateScore(UNPCMentalState* MentalState, AAIContro
     if (UWorld* World = Controller->GetWorld())
     {
         CurrentTime = World->GetTimeSeconds();
-        // 如果还在冷却期内，直接返回 0 分
-        if (CurrentTime - LastExecutedTime < CooldownTime)
+        // ✅ Check if we are the currently running action
+        bool bIsRunning = false;
+        if (AUtilityAIController* UAICon = Cast<AUtilityAIController>(Controller)) 
         {
+             if (UAICon->UtilityComp && UAICon->UtilityComp->CurrentAction == this)
+             {
+                 bIsRunning = true;
+             }
+        }
+
+        // 如果还在冷却期内 且 不是正在运行，直接返回 0 分
+        // If in cooldown AND not currently running, return 0
+        // (Prevents the running action from disqualifying itself)
+        if (!bIsRunning && CurrentTime - LastExecutedTime < CooldownTime)
+        {
+            if (bLogDebug) UE_LOG(LogTemp, Warning, TEXT("    [%s] ❌ Score=0: Cooldown (%.1fs left)"), 
+                                  *ActionName, CooldownTime - (CurrentTime - LastExecutedTime));
             return 0.0f; 
         }
     }
 
     // 2. 获取 PersonalityComponent (用于查询权重)
     UPersonalityComponent* PersonalityComp = nullptr;
-    if (APawn* BotPawn = Controller->GetPawn())
+    
+    // ✅ Priority 1: Check Controller (PersonalityComp is typically on Controller)
+    if (AUtilityAIController* UtilityController = Cast<AUtilityAIController>(Controller))
     {
-        PersonalityComp = BotPawn->FindComponentByClass<UPersonalityComponent>();
+        PersonalityComp = UtilityController->PersonalityComp;
+    }
+    
+    // ✅ Priority 2: Fallback to Pawn (if not found on Controller)
+    if (!PersonalityComp)
+    {
+        if (APawn* BotPawn = Controller->GetPawn())
+        {
+            PersonalityComp = BotPawn->FindComponentByClass<UPersonalityComponent>();
+        }
     }
 
     // 3. 两阶段计算 (Two-Phase Calculation)
@@ -256,11 +295,81 @@ float UUtilityActionBase::CalculateScore(UNPCMentalState* MentalState, AAIContro
         }
     }
 
+            
+        
+    
+
     // 5. 最终得分计算 / Final Score Calculation
     // 公式 / Formula:
     // Score = BaseReward × (MotivationSum + IntentionBonus) × ContextProduct
     float EffectiveMotivation = MotivationSum + IntentionBonus;
     float FinalScore = BaseReward * EffectiveMotivation * ContextProduct;
+
+    // =========================================================
+    // 5.5. 应用数据驱动性格修正 (Data-Driven PAM)
+    // =========================================================
+    // Personality Action Modifier (PAM)
+    // 根据配置直接修正最终分数 (独立于 Maslow 权重)
+    // Directly modify final score based on configuration (independent of Maslow weights)
+    
+    if (PersonalityComp && PersonalityInfluence.Num() > 0)
+    {
+        for (const auto& Pair : PersonalityInfluence)
+        {
+            EOCEANTrait Trait = Pair.Key;
+            float InfluenceFactor = Pair.Value; // e.g., -1.0 for Neuroticism on Attack
+            
+            // 获取性格特质值 (0.0 - 1.0)
+            float TraitValue = PersonalityComp->GetTraitValue(Trait);
+            
+            // 计算修正乘数
+            // Calculate Modifier Multiplier
+            // 范围: 0.2x - 2.0x (更强的性格区分)
+            // Range: 0.2x - 2.0x (Stronger personality differentiation)
+            float Modifier = 1.0f;
+            
+            // 逻辑: Influence > 0 表示正相关 (Trait越高分越高)
+            //       Influence < 0 表示负相关 (Trait越低分越高)
+            // Logic: Influence > 0 means positive correlation (Higher trait = higher score)
+            //        Influence < 0 means negative correlation (Lower trait = higher score)
+            
+            if (InfluenceFactor > 0)
+            {
+                // 正相关: 0.5 + (Trait * Factor * 1.5)
+                // e.g. Factor=1.0, Trait=1.0 -> Mod = 0.5 + 1.5 = 2.0x (High bonus)
+                // e.g. Factor=1.0, Trait=0.0 -> Mod = 0.5 + 0.0 = 0.5x
+                Modifier = 0.5f + (TraitValue * InfluenceFactor * 1.5f);
+            }
+            else
+            {
+                // 负相关: 0.5 + ((1.0 - Trait) * Abs(Factor) * 1.5)
+                // e.g. Factor=-1.0, Trait=1.0 (High N) -> Mod = 0.5 + (0.0 * 1.5) = 0.5x (Penalty)
+                // e.g. Factor=-1.0, Trait=0.2 (Low N)  -> Mod = 0.5 + (0.8 * 1.5) = 1.7x (Bonus)
+                // e.g. Factor=-1.0, Trait=0.0 (Very Low N) -> Mod = 0.5 + (1.0 * 1.5) = 2.0x (Max bonus)
+                Modifier = 0.5f + ((1.0f - TraitValue) * FMath::Abs(InfluenceFactor) * 1.5f);
+            }
+            
+            // 钳制到合理范围 / Clamp to reasonable range
+            Modifier = FMath::Clamp(Modifier, 0.2f, 2.0f);
+            
+            // 应用修正
+            // Apply Modifier
+            float OldScore = FinalScore;
+            FinalScore *= Modifier;
+            
+            // ✅ Always log PAM (not dependent on bLogDebug)
+            UE_LOG(LogTemp, Warning, TEXT("    ↳ [PAM] %s: %.2f | Factor: %.1f -> Mod: %.2fx (%.2f -> %.2f)"),
+                   *UEnum::GetValueAsString(Trait), TraitValue, InfluenceFactor, Modifier, OldScore, FinalScore);
+        }
+    }
+    else
+    {
+        // ✅ Debug: Why PAM not applied
+        if (PersonalityInfluence.Num() > 0 && !PersonalityComp)
+        {
+            UE_LOG(LogTemp, Error, TEXT("    ❌ [PAM] PersonalityComponent is NULL for %s!"), *ActionName);
+        }
+    }
 
     // 6. 应用情绪矩阵乘数 / Apply Emotion Matrix Multiplier
     // ---------------------------------------------------------
@@ -353,25 +462,23 @@ float UUtilityActionBase::CalculateScore(UNPCMentalState* MentalState, AAIContro
         {
             FGameplayTag CurrentDirective = GoalComp->GetCurrentDirective();
             
-            if (CurrentDirective.MatchesTag(DirectiveTag))
+            // 4.5. 指令封锁与加成 / Directive Blocking & Bonus
+            if (CurrentDirective.IsValid())
             {
-                DirectiveMultiplier = 1.5f; // 1.5x bonus when directive matches (encouragement)
-                
-                if (bLogDebug)
-                {
-                    UE_LOG(LogTemp, Warning, TEXT("      [Directive] ✅ MATCHED! '%s' grants 1.5x bonus"), 
-                           *DirectiveTag.ToString());
-                }
-            }
-            else
-            {
-                DirectiveMultiplier = 0.3f; // Discouraged but not forbidden when directive doesn't match
-                
-                if (bLogDebug)
-                {
-                    UE_LOG(LogTemp, Warning, TEXT("      [Directive] ⚠️ MISMATCH! Action '%s' requires '%s', but current is '%s'. Score *= 0.3"), 
-                           *ActionName, *DirectiveTag.ToString(), *CurrentDirective.ToString());
-                }
+               // 如果有指令，检查是否匹配
+               if (DirectiveTag.MatchesTag(CurrentDirective))
+               {
+                   // 匹配指令：给予加成 (x1.5)
+                   DirectiveMultiplier = DirectiveMatchMultiplier;
+                   if (bLogDebug) UE_LOG(LogTemp, Log, TEXT("      [Directive] 🎯 Matches Directive '%s' -> Multiplier x%.1f"), *CurrentDirective.ToString(), DirectiveMatchMultiplier);
+               }
+               else if (DirectiveTag.IsValid())
+               {
+                   // 不匹配指令，且该动作本身属于某种指令类型：给予惩罚 (x0.5)
+                   // 例如：指令是 Social，但这动作是 Work，则降权
+                   DirectiveMultiplier = DirectiveMismatchMultiplier;
+                   if (bLogDebug) UE_LOG(LogTemp, Log, TEXT("      [Directive] ⛔ Mismatch Directive '%s' (Action is '%s') -> Multiplier x%.1f"), *CurrentDirective.ToString(), *DirectiveTag.ToString(), DirectiveMismatchMultiplier);
+               }
             }
         }
         else if (bLogDebug)
@@ -676,12 +783,12 @@ FString UUtilityActionBase::GetVariableNameFromInputType(EUtilityInputType Input
     switch (InputType)
     {
         // 马斯洛需求层次 - 简化后的 6 个核心字段
-        case EUtilityInputType::Hunger:            return TEXT("Hunger");
-        case EUtilityInputType::Fatigue:           return TEXT("Fatigue");
-        case EUtilityInputType::PerceivedThreat:   return TEXT("Perceived_Threat");
-        case EUtilityInputType::Loneliness:        return TEXT("Loneliness");
-        case EUtilityInputType::Indignity:         return TEXT("Indignity");
-        case EUtilityInputType::Boredom:           return TEXT("Boredom");
+        case EUtilityInputType::Hunger:            return MentalStateNames::Hunger;
+        case EUtilityInputType::Fatigue:           return MentalStateNames::Fatigue;
+        case EUtilityInputType::PerceivedThreat:   return MentalStateNames::Threat;
+        case EUtilityInputType::Loneliness:        return MentalStateNames::Loneliness;
+        case EUtilityInputType::Indignity:         return MentalStateNames::Indignity;
+        case EUtilityInputType::Boredom:           return MentalStateNames::Boredom;
         
         // 环境变量 (Environment variables)
         case EUtilityInputType::SelfHealth:        return TEXT("SelfHealth");

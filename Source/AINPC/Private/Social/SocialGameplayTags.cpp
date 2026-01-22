@@ -75,4 +75,7 @@ namespace AINPCTags
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Phobia_Touch,          "Phobia.Touch", "Phobia: Touch");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Phobia_Betrayal,       "Phobia.Betrayal", "Phobia: Betrayal");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Phobia_Confinement,    "Phobia.Confinement", "Phobia: Confinement");
+	// Status Tags
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Status_Dead, "Status.Dead", "Status: Dead");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Status_Unconscious, "Status.Unconscious", "Status: Unconscious");
 }

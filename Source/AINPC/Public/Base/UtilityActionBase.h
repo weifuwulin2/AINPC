@@ -8,6 +8,7 @@
 #include "Curves/CurveFloat.h"
 #include "UtilityAI/UNPCMentalState.h" // 确保路径引用正确
 #include "UtilityAI/MentalStateFields.h"  // ✅ 引入字段配置
+#include "Social/SocialTypes.h"           // ✅ 引入 EOCEANTrait 定义
 #include "UtilityActionBase.generated.h"
 
 class UUtilityActionBase;
@@ -196,6 +197,13 @@ struct FUtilityActionConfig : public FTableRowBase
 	// Profession Filter: If not None/Empty, only NPCs with this Profession ID can possess this action
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Filtering")
 	FName RequiredProfessionID;
+
+	// 性格修正系数 (Data-Driven PAM)
+	// Key: OCEAN 特质 / OCEAN Trait
+	// Value: 影响系数 (+1.0 正相关, -1.0 负相关) / Influence Factor (+1.0 positive correlation, -1.0 negative)
+	// Example: Attack { Neuroticism: -1.0 } -> Low N (Brave) gets bonus
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Personality")
+	TMap<EOCEANTrait, float> PersonalityInfluence;
 };
 
 // =========================================================
@@ -208,6 +216,11 @@ class AINPC_API UUtilityActionBase : public UObject
     GENERATED_BODY()
 
 public:
+    // Game-wide Constants for Scoring
+    static const float IntentionMatchBonus;        // Default: 0.3f
+    static const float DirectiveMatchMultiplier;   // Default: 1.5f
+    static const float DirectiveMismatchMultiplier; // Default: 0.5f
+
     UUtilityActionBase();
 
     // --- 配置数据 (由 Controller 注入) ---
@@ -237,6 +250,10 @@ public:
 	// Goal Directive Tag
 	UPROPERTY(Transient)
 	FGameplayTag DirectiveTag;
+
+    // Personality Influence Map (Data-Driven PAM)
+    UPROPERTY(Transient)
+    TMap<EOCEANTrait, float> PersonalityInfluence;
 
     UPROPERTY(Transient)
     FString ActionName;

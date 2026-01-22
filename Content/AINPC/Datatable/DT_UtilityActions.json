@@ -35,7 +35,10 @@
             "TagName": "Directive.Survival"
         },
         "ActionName": "Attack",
-        "RequiredProfessionID": "None"
+        "RequiredProfessionID": "None",
+        "PersonalityInfluence": {
+            "Neuroticism": -1.0
+        }
     },
     {
         "Name": "Flee",
@@ -67,7 +70,10 @@
             "TagName": "Directive.Survival"
         },
         "ActionName": "Flee",
-        "RequiredProfessionID": "None"
+        "RequiredProfessionID": "None",
+        "PersonalityInfluence": {
+            "Neuroticism": 1.0
+        }
     },
     {
         "Name": "Idle",

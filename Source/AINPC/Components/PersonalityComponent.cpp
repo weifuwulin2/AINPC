@@ -2,6 +2,7 @@
 // 性格组件实现 / Personality Component Implementation
 
 #include "Components/PersonalityComponent.h"
+#include "UtilityAI/MentalStateNames.h" // ✅ Use Constants
 #include "Controller/UtilityAIController.h"
 #include "Components/CognitionComponent.h"
 #include "AINPC.h"
@@ -143,27 +144,27 @@ float UPersonalityComponent::GetWeightForVariable(const FString& VariableName) c
 	// Use if-else chain to match variable name and map to Maslow layer weights
 	
 	// 生理层 (Physiological)
-	if (VariableName == TEXT("Hunger") || VariableName == TEXT("Fatigue"))
+	if (VariableName == MentalStateNames::Hunger || VariableName == MentalStateNames::Fatigue)
 	{
 		return MaslowWeights.Physiological;
 	}
 	// 安全层 (Safety)
-	else if (VariableName == TEXT("Perceived_Threat"))
+	else if (VariableName == MentalStateNames::Threat)
 	{
 		return MaslowWeights.Safety;
 	}
 	// 社交层 (Belonging)
-	else if (VariableName == TEXT("Loneliness") || VariableName == TEXT("Trust")) // Trust 保留兼容,映射到Belonging
+	else if (VariableName == MentalStateNames::Loneliness)
 	{
 		return MaslowWeights.Belonging;
 	}
 	// 尊严层 (Esteem)
-	else if (VariableName == TEXT("Indignity") || VariableName == TEXT("Anger")) // Anger 保留兼容
+	else if (VariableName == MentalStateNames::Indignity)
 	{
 		return MaslowWeights.Esteem;
 	}
 	// 自我实现层 (Self-Actualization)
-	else if (VariableName == TEXT("Boredom") || VariableName == TEXT("Curiosity")) // Curiosity 保留兼容
+	else if (VariableName == MentalStateNames::Boredom)
 	{
 		return MaslowWeights.SelfActualization;
 	}
@@ -229,6 +230,19 @@ void UPersonalityComponent::DebugPrintPersonality() const
 	UE_LOG(LogTemp, Log, TEXT("  Self-Actualization:      %.2f"), MaslowWeights.SelfActualization);
 	
 	UE_LOG(LogTemp, Log, TEXT("========================================"));
+}
+
+float UPersonalityComponent::GetTraitValue(EOCEANTrait Trait) const
+{
+	switch (Trait)
+	{
+		case EOCEANTrait::Openness:          return Personality.Openness;
+		case EOCEANTrait::Conscientiousness: return Personality.Conscientiousness;
+		case EOCEANTrait::Extraversion:      return Personality.Extraversion;
+		case EOCEANTrait::Agreeableness:     return Personality.Agreeableness;
+		case EOCEANTrait::Neuroticism:       return Personality.Neuroticism;
+		default:                             return 0.5f;
+	}
 }
 
 void UPersonalityComponent::InitializeDefaultPsychologyModel()

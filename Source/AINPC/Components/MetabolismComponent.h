@@ -75,4 +75,8 @@ private:
 	// Debug log timer (per-NPC)
 	float LastDebugLogTime = 0.0f;
 	
+	// 情绪衰减计时器（每个 NPC 独立）
+	// Emotion decay timer (per-NPC)
+	float LastEmotionDecayTime = 0.0f;
+	
 };

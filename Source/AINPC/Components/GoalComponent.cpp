@@ -1,4 +1,5 @@
 #include "Components/GoalComponent.h"
+#include "Social/SocialGameplayTags.h"
 #include "Components/SensoryComponent.h"
 #include "Components/CognitionComponent.h"
 #include "Subsystems/TimeManager.h"
@@ -178,12 +179,6 @@ void UGoalComponent::UpdateArbitration()
 	// B. Maslow Check
 	if (MentalState)
 	{
-		// FIX: Use Fatigue Threshold for Fatigue check, and > for Fatigue as it increases?
-		// Wait, Fatigue: 0=Rested, 1=Tired. Hunger: 0=Full, 1=Starving.
-		// So both should check > Threshold.
-		// Original code had `Fatigue < CriticalHungerThreshold` which seems wrong if Fatigue is 0-1 (High is bad).
-		// Assuming Fatigue increases over time.
-		
 		if (MentalState->Hunger > CriticalHungerThreshold || MentalState->Fatigue > CriticalHungerThreshold) 
 		{
 			bSurvivalTriggered = true;
@@ -193,7 +188,6 @@ void UGoalComponent::UpdateArbitration()
 	}
 	else
 	{
-		// Only log once every 100 frames to avoid spam
 		static int32 NullStateLogCounter = 0;
 		if (NullStateLogCounter++ % 100 == 0)
 		{
@@ -201,33 +195,23 @@ void UGoalComponent::UpdateArbitration()
 		}
 	}
 
-	// C. Health Check
-	// TODO: Get Health
-
     if (bSurvivalTriggered)
     {
-    	SetDirective(FGameplayTag::RequestGameplayTag("Directive.Survival"));
+    	SetDirective(AINPCTags::Directive_Survival);
     	SetLOD(EContextLOD::Critical);
     	return;
     }
 
-	// 🧟 Monster Check: Monsters only have Survival instincts, no Social/Work
-	// Zombies, beasts, etc. should not have schedules or social needs
+	// 🧟 Monster Check
 	EFactionType OwnerFaction = USensoryComponent::GetFaction(GetOwner());
 	if (OwnerFaction == EFactionType::Monster)
 	{
-		// Monsters are always in "Survival" mode
-		// This gives bonus to Attack/Flee/Eat/Sleep, but penalizes Work/Social
-		SetDirective(FGameplayTag::RequestGameplayTag("Directive.Survival"));
+		SetDirective(AINPCTags::Directive_Survival);
 		SetLOD(EContextLOD::Standard);
 		return;
 	}
 
-	// 2. Social Layer (Medium Priority) - Only for Human/Neutral NPCs
-	// Trigger Social directive if NPC is lonely
-	// Note: We don't check for actual friendly NPCs here. The Talk action itself has
-	// HasFriendlyNearby as a Context, so if no friends are nearby, Talk score will be 0.
-	// The directive just indicates "I want to socialize", the action decides if it's possible.
+	// 2. Social Layer
 	bool bSocialTriggered = false;
 	
 	if (MentalState && MentalState->Loneliness > 0.5f)
@@ -239,7 +223,7 @@ void UGoalComponent::UpdateArbitration()
 	
 	if (bSocialTriggered)
 	{
-		SetDirective(FGameplayTag::RequestGameplayTag("Directive.Social"));
+		SetDirective(AINPCTags::Directive_Social);
 		SetLOD(EContextLOD::Standard);
 		return;
 	}
@@ -278,7 +262,7 @@ void UGoalComponent::CheckSchedule()
 	}
 	else
 	{
-		CachedScheduleDirective = FGameplayTag::RequestGameplayTag("Directive.Idle");
+		CachedScheduleDirective = AINPCTags::Directive_Idle;
 	}
 }
 

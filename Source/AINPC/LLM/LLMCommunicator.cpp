@@ -174,8 +174,17 @@ void ULLMCommunicator::OnResponseReceived(FHttpRequestPtr Request, FHttpResponse
 
     // Navigate: choices[0] -> message -> content
     const TArray<TSharedPtr<FJsonValue>>* ChoicesArray;
-    if (JsonResponse->TryGetArrayField("choices", ChoicesArray) && ChoicesArray->Num() > 0)
+    if (JsonResponse->TryGetArrayField("choices", ChoicesArray))
     {
+        // ✅ P0 Fix: Check array bounds before accessing
+        if (ChoicesArray->Num() == 0)
+        {
+            UE_LOG(LogTemp, Error, TEXT("[LLM] ERROR: 'choices' array is empty!"));
+            UE_LOG(LogTemp, Warning, TEXT("========================================"));
+            Callback.ExecuteIfBound(false, ResultState);
+            return;
+        }
+
         TSharedPtr<FJsonObject> FirstChoice = (*ChoicesArray)[0]->AsObject();
         TSharedPtr<FJsonObject> MessageObj = FirstChoice->GetObjectField("message");
         FString InnerContentString = MessageObj->GetStringField("content");
@@ -398,8 +407,16 @@ void ULLMCommunicator::OnResponseReceivedRaw(FHttpRequestPtr Request, FHttpRespo
     {
         // 提取 choices[0].message.content
         const TArray<TSharedPtr<FJsonValue>>* ChoicesArray;
-        if (JsonResponse->TryGetArrayField("choices", ChoicesArray) && ChoicesArray->Num() > 0)
+        if (JsonResponse->TryGetArrayField("choices", ChoicesArray))
         {
+            // ✅ P0 Fix: Check array bounds before accessing
+            if (ChoicesArray->Num() == 0)
+            {
+                UE_LOG(LogTemp, Error, TEXT("[LLM Raw] ERROR: 'choices' array is empty!"));
+                Callback.ExecuteIfBound(false, "");
+                return;
+            }
+
             TSharedPtr<FJsonObject> FirstChoice = (*ChoicesArray)[0]->AsObject();
             TSharedPtr<FJsonObject> MessageObj = FirstChoice->GetObjectField("message");
             FString Content = MessageObj->GetStringField("content");

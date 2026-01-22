@@ -107,6 +107,20 @@ void UCognitionComponent::BeginPlay()
 	AINPC_LOG(Log, "Interpolator initialized with custom speeds");
 }
 
+void UCognitionComponent::BeginDestroy()
+{
+	// ✅ P3 Fix: Clean up timers explicitly
+	if (UWorld* World = GetWorld())
+	{
+		if (RetryStimulusTimerHandle.IsValid())
+		{
+			World->GetTimerManager().ClearTimer(RetryStimulusTimerHandle);
+		}
+	}
+	
+	Super::BeginDestroy();
+}
+
 void UCognitionComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);

@@ -1,4 +1,5 @@
 #include "Actions/Action_SmartObject.h"
+#include "Social/SocialGameplayTags.h" // ✅ Use Canonical Tags
 #include "Controller/UtilityAIController.h"
 #include "Components/SensoryComponent.h"
 #include "Components/SmartObjectComponent.h"
@@ -293,12 +294,18 @@ bool UAction_SmartObject::ShouldExit(AAIController* Controller) const
 				return true;
 			}
 		}
-		// Work -> Check Boredom
-		else if (SmartObjectTag.MatchesTag(FGameplayTag::RequestGameplayTag("Interaction.Work")))
+		// 针对工作类动作，增加惯性 (Add inertia for work actions)
+		else if (SmartObjectTag.MatchesTag(AINPCTags::Interaction_Work))
 		{
-			if (State->Boredom < 0.2f) // Fulfilled/satisfied threshold
+			// 工作持续时间较长，容易被打断，增加惯性保护
+			if (ActionDuration > 0.0f && Controller && Controller->GetWorld())
 			{
-				return true;
+				float ElapsedTime = Controller->GetWorld()->GetTimeSeconds() - ActionStartTime;
+				// 如果还没工作够时长，给予惯性加成 (e.g., allow exit only after 50% of duration)
+				if (ElapsedTime < ActionDuration * 0.5f) // Example: Don't exit if less than half duration
+				{
+					return false; // Prevent exit due to inertia
+				}
 			}
 		}
 	}

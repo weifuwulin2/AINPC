@@ -119,9 +119,7 @@ protected:
     UFUNCTION()
     void OnSemanticEventReceived(const FSemanticEvent& Event);
 
-    // 回调：当 Sensory 组件翻译完信号后，中转给认知组件 (Legacy?)
-    UFUNCTION()
-    void RelaySensoryToCognition(const FString& StimulusDescription);
+
 
     // 回调：当 Cognition 组件更新了情绪后，同步到本地 MentalState
     UFUNCTION()

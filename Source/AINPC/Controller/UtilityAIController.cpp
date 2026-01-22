@@ -100,11 +100,8 @@ void AUtilityAIController::BeginPlay()
     if (SensoryComp && AIPerception)
     {
         SensoryComp->InitializeSensorySystem(AIPerception);
-        
-        // 当 Sensory 翻译好信号后，调用 RelaySensoryToCognition
-        SensoryComp->OnStimulusProduced.AddDynamic(this, &AUtilityAIController::RelaySensoryToCognition);
 
-        // Phase 3 & 4 Connector: Nervous System -> Brain
+        // ✅ Single Event Path: Semantic Events -> Memory + Cognition
         SensoryComp->OnSemanticEventSensed.AddDynamic(this, &AUtilityAIController::OnSemanticEventReceived);
     }
 
@@ -201,24 +198,20 @@ void AUtilityAIController::OnSemanticEventReceived(const FSemanticEvent& Event)
         MemoryComp->CommitEvent(Event);
     }
 
-    // ✅ 收到刺激后，请求打印下一帧的 Utility AI 计算日志
+    // ✅ Trigger Cognition to process this event (replaces legacy RelaySensoryToCognition)
+    if (CognitionComp)
+    {
+        CognitionComp->ProcessStimulus(Event.Content);
+    }
+
+    // Request debug log
     if (UtilityComp)
     {
         UtilityComp->RequestDebugLog();
     }
-
-    // Optional: Pass to Cognition for immediate reaction?
-    // For now, Memory initiates the Slow System loop (Reflection)
 }
 
-void AUtilityAIController::RelaySensoryToCognition(const FString& StimulusDescription)
-{
-    // 中转：把翻译好的话传给大脑
-    if (CognitionComp)
-    {
-        CognitionComp->ProcessStimulus(StimulusDescription);
-    }
-}
+
 
 void AUtilityAIController::OnMindUpdated(const FMentalState& NewState)
 {

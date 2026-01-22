@@ -25,6 +25,7 @@ public:
 
 	virtual void BeginPlay() override;
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+	virtual void BeginDestroy() override; // ✅ P3 Fix: Timer cleanup
 
 	// --- 外部接口 ---
     

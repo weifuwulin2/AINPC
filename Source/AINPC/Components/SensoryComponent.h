@@ -9,8 +9,7 @@
 // Output Nerve: Connects to MemoryComponent
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnSemanticEventSensed, const FSemanticEvent&, Event);
 
-// Legacy: Legacy output for Chat/Bubbles
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnSensoryStimulusProduced, const FString&, StimulusDescription);
+
 
 class UAIPerceptionComponent;
 class USmartObjectComponent;
@@ -28,9 +27,7 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "AI Sensory")
 	FOnSemanticEventSensed OnSemanticEventSensed;
 
-	// Legacy: Generic Description Output
-	UPROPERTY(BlueprintAssignable, Category = "AI Sensory")
-	FOnSensoryStimulusProduced OnStimulusProduced;
+
 
 	// --- Input Nerves (Receptors) ---
 
@@ -113,7 +110,7 @@ private:
 	// 同一目标的感知冷却时间（秒）
 	// Cooldown time for perceiving the same target (seconds)
 	UPROPERTY(EditDefaultsOnly, Category = "AI Sensory | Attention")
-	float PerceptionCooldown = 5.0f;
+	float PerceptionCooldown = 2.0f;
 	
 	
 	// ✅ 视觉累积系统：追踪非敌对目标的累积观察次数

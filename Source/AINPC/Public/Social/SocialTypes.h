@@ -12,6 +12,20 @@ class AActor;
  * Jobs (Guard/Merchant) should be defined by Tags or Roles, not Faction.
  */
 
+/**
+ * OCEAN Personality Traits (Big Five)
+ * Used for personality data-driven logic
+ */
+UENUM(BlueprintType)
+enum class EOCEANTrait : uint8
+{
+    Openness            UMETA(DisplayName = "Openness"),
+    Conscientiousness   UMETA(DisplayName = "Conscientiousness"),
+    Extraversion        UMETA(DisplayName = "Extraversion"),
+    Agreeableness       UMETA(DisplayName = "Agreeableness"),
+    Neuroticism         UMETA(DisplayName = "Neuroticism")
+};
+
 UENUM(BlueprintType)
 enum class EFactionType : uint8
 {

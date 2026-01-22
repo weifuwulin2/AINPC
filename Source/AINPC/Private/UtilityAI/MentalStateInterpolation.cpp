@@ -2,6 +2,7 @@
 // 心理状态平滑插值实现 / Mental State Smooth Interpolation Implementation
 
 #include "UtilityAI/MentalStateInterpolation.h"
+#include "UtilityAI/MentalStateNames.h" // ✅ Use Constants
 #include "UtilityAI/MentalStateFields.h"
 
 UMentalStateInterpolator::UMentalStateInterpolator()
@@ -19,8 +20,8 @@ void UMentalStateInterpolator::SetTargetValue(const FString& VariableName, float
     // ✅ CRITICAL: Skip Engine-exclusive fields (Hunger, Fatigue)
     // These are managed by MetabolismComponent and should NOT have target values set by LLM
     // Note: Perceived_Threat is allowed here as LLM can trigger reactions.
-    if (VariableName == TEXT("Hunger") || 
-        VariableName == TEXT("Fatigue"))
+    if (VariableName == MentalStateNames::Hunger || 
+        VariableName == MentalStateNames::Fatigue)
     {
         // Skip - Engine manages these fields exclusively
         return;

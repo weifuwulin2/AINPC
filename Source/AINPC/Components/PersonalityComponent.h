@@ -139,6 +139,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Personality")
 	void DebugPrintPersonality() const;
 
+	/**
+	 * 获取指定 OCEAN 特质的当前值 (0.0 - 1.0)
+	 * Get current value of specific OCEAN trait (0.0 - 1.0)
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Personality")
+	float GetTraitValue(EOCEANTrait Trait) const;
+
 private:
 	/**
 	 * 初始化默认心理学模型 / Initialize default psychology model

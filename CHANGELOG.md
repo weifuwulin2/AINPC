@@ -9,6 +9,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - 2026-01-21
 
+### 🔧 Fixes - Utility AI & Architecture
+- **Fixed PAM Application**: Resolved `PersonalityComponent` lookup failure by checking Controller first.
+- **Fixed DataTable Config**: Corrected `Neuroticism` values for `Brave` (0.1) and `Cautious` (0.9) profiles.
+- **Fixed Threat Architecture**: Implemented "Hybrid Control" for `Perceived_Threat`. Engine now resets Threat to 0 when a **Hostile** enemy dies.
+- **Fixed Self-Interruption**: Modified `UtilityActionBase` to bypass Cooldown check if the action is currently running.
+- **Docs**: Updated `project_notes.md` with new jurisdiction rules.
+
+### 🧹 Code Cleanup - Legacy Removal
+- **Removed**: `OnStimulusProduced` legacy delegate from `SensoryComponent`.
+  - Unified all events to use `OnSemanticEventSensed` single path.
+  - Removed `RelaySensoryToCognition` function from `UtilityAIController`.
+  - Cognition now triggered directly from `OnSemanticEventReceived`.
+- **Changed**: Reduced `PerceptionCooldown` from 5s to 2s for faster response.
+
+### 🐛 Bug Fix - Death Event Filtering
+- **Fixed**: Death events now bypass `ProcessEventFilter` completely.
+  - Added fast-path for `Event.Death`, `Event.Death.Self`, `Event.Death.Witnessed` tags.
+  - Ensures death events always reach Memory and Cognition.
+
+### 🔴 P0 Critical Fix - Cross-Instance Interference
+- **Fixed**: Static variables causing multi-NPC behavior corruption.
+  - `UtilityAIComponent`: `LastStatusLog` → `LastStatusLogTime` (member variable)
+  - `MetabolismComponent`: `LastEmotionDecayTime` (member variable)
+- **Fixed**: `MemoryComponent` lookup in `MetabolismComponent` was using Pawn instead of Controller.
+  - Hostile memories now correctly resolved when threat decays.
+
+
 ### 🚀 Optimization - LLM Latency & Memory 
 - **Added**: "Amygdala Hijack" Mechanism in `CognitionComponent`.
   - Immediate threat response: bypasses LLM latency by detecting `HOSTILE`/`DANGER` keywords in localized stimuli.

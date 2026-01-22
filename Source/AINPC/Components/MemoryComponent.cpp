@@ -1,4 +1,6 @@
 #include "Components/MemoryComponent.h"
+#include "Components/MemoryComponent.h"
+#include "Social/SocialGameplayTags.h" // ✅ Use Canonical Tags
 #include "Social/SocialGameplayTags.h"
 #include "AINPC.h"
 
@@ -298,7 +300,8 @@ void UMemoryComponent::MarkAllHostileMemoriesResolved()
 		bool bIsHostile = Item.Description.Contains(TEXT("HOSTILE")) || 
 						  Item.Description.Contains(TEXT("ATTACK")) ||
 						  Item.Description.Contains(TEXT("DANGER")) ||
-						  Item.Tags.HasTag(FGameplayTag::RequestGameplayTag(FName("Event.Danger")));
+				  // 2. 存在 Danger 标签
+				  Item.Tags.HasTag(AINPCTags::Event_Danger);
 						  
 		if (!Item.bIsResolved && bIsHostile)
 		{

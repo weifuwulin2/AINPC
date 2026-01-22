@@ -82,6 +82,16 @@ bool USensoryComponent::ProcessEventFilter(FSemanticEvent& Event)
 		return true;
 	}
 	
+	// ✅ Rule 0.5: Death events always pass immediately (critical for memory resolution)
+	// 死亡事件总是立即通过（对记忆解析至关重要）
+	if (Event.Verb.MatchesTag(AINPCTags::Event_Death) ||
+	    Event.Verb.MatchesTag(AINPCTags::Event_Death_Self) ||
+	    Event.Verb.MatchesTag(AINPCTags::Event_Death_Witnessed))
+	{
+		AINPC_LOG(Warning, "→ PASS: Death Event (bypassing all filters)");
+		return true;
+	}
+	
 	// Check if target is a high-priority entity based on magnitude
 	// 基于 Magnitude 检查目标是否是高优先级实体
 	// (Magnitude is already set in HandleTargetPerceived based on faction/player status)
@@ -391,10 +401,7 @@ void USensoryComponent::HandleTargetPerceived(AActor* Actor, FAIStimulus Stimulu
         
         if (bShouldBroadcast)
         {
-            // Legacy Path: For backward compatibility with old Cognition logic
-            OnStimulusProduced.Broadcast(Desc);
-            
-            // New Path: Semantic Memory System
+            // ✅ Single Event Path: Semantic Memory System
             OnSemanticEventSensed.Broadcast(Event);
         }
     }
@@ -472,10 +479,7 @@ void USensoryComponent::HandleDamageTaken(AActor* DamagedActor, float Damage, co
     FString Extra = FString::Printf(TEXT("taking %.1f damage"), Damage);
     FString Desc = FormatDescription("was attacked by", DamageCauser, Extra);
     
-    // Legacy: Broadcast text
-    OnStimulusProduced.Broadcast(Desc);
-
-    // New: Generate Semantic Event
+    // Generate Semantic Event
     FSemanticEvent Event;
     Event.Instigator = DamageCauser;
     Event.Target = GetOwner();
@@ -516,9 +520,8 @@ void USensoryComponent::ReceiveSpeech(AActor* Speaker, FString Message)
     
     AINPC_LOG(Warning, "💬 SPEECH RECEIVED from %s: \"%s\"", *SpeakerName, *Message);
 
-    // 2. Broadcast Legacy Event
+    // 2. Format message for display
     FString FormattedMsg = FString::Printf(TEXT("%s: %s"), *SpeakerName, *Message);
-    OnStimulusProduced.Broadcast(FormattedMsg);
 
     // 3. Trigger EmotionDisplayComponent
     if (AActor* ActorToCheck = Cast<AActor>(Speaker))
@@ -672,6 +675,29 @@ void USensoryComponent::HandleDeath(AActor* DeadActor, AActor* Killer)
                 AIController->ClearFocus(EAIFocusPriority::Gameplay);
                 UE_LOG(LogTemp, Warning, TEXT("[Sensory] ⚰️ Target %s is dead! Cleared FocusActor."), *DeadActor->GetName());
             }
+            
+            // ✅ NEW: Reset Perceived_Threat when hostile enemy dies
+            // 当敌对目标死亡时，立即重置威胁感知
+            // This prevents the NPC from staying in "threat mode" after the enemy is gone
+            // ⚠️ Only reset if the dead actor was HOSTILE (not friendly NPC death)
+            if (AreActorsHostile(Owner, DeadActor))
+            {
+                if (AUtilityAIController* UtilController = Cast<AUtilityAIController>(AIController))
+                {
+                    if (UtilController->MentalState)
+                    {
+                        float OldThreat = UtilController->MentalState->Perceived_Threat;
+                        UtilController->MentalState->Perceived_Threat = 0.0f;
+                        UE_LOG(LogTemp, Warning, TEXT("[Sensory] ✅ Hostile enemy dead! Reset Perceived_Threat: %.2f -> 0.0"), OldThreat);
+                        
+                        // Also update Interpolator target to prevent bounce-back from LLM
+                        if (UtilController->CognitionComp && UtilController->CognitionComp->Interpolator)
+                        {
+                            UtilController->CognitionComp->Interpolator->SetTargetValue(TEXT("Perceived_Threat"), 0.0f);
+                        }
+                    }
+                }
+            }
         }
         
         // ✅ Mark all memories about the dead actor as RESOLVED
@@ -696,10 +722,7 @@ void USensoryComponent::HandleDeath(AActor* DeadActor, AActor* Killer)
     
     MarkTargetPerceived(DeadActor); // Update timestamp so we don't "see" it again instantly as a corpse
 
-    // Legacy: Broadcast text
-    OnStimulusProduced.Broadcast(Desc);
-
-    // New: Generate Semantic Event
+    // Generate Semantic Event
     FSemanticEvent Event;
     Event.Instigator = Killer ? Killer : DeadActor; // 凶手或死者
     Event.Target = DeadActor;

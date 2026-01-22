@@ -344,3 +344,12 @@ This file contains a log of commit messages for the AINPC project.
 - `Source/AINPC/Components/MemoryComponent.h/.cpp`
 - `Source/AINPC/Components/MetabolismComponent.h/.cpp`
 - `Source/AINPC/Variant_Combat/AI/CombatEnemy.h/.cpp`
+
+## [2026-01-21] Fixes - PAM, Threat Architecture & Self-Interruption
+**Type**: fix/refactor
+**Scope**: UtilityAI, Sensory
+**Description**:
+- **Fixed PAM**: Resolved `PersonalityComponent` lookup failure by checking Controller. Corrected `Brave` vs `Cautious` Neuroticism values.
+- **Threat Architecture**: Implemented "Hybrid Control" for `Perceived_Threat`. Engine now strictly resets Threat to 0 when a **Hostile** enemy dies, preventing "scared of corpse" bugs.
+- **Cooldown Fix**: Modified `UtilityActionBase` to bypass Cooldown check if the action is currently running (preventing self-interruption).
+- **Docs**: Added `docs/design/Action_Transition_System_Plan.md` outlining future Refactor for centralized transition logic.

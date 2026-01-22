@@ -62,4 +62,8 @@ public:
 private:
 	// 是否请求了调试日志
 	bool bPendingDebugLog = false;
+	
+	// 上次状态日志时间（每个实例独立）
+	// Last status log time (per-instance)
+	float LastStatusLogTime = 0.0f;
 };

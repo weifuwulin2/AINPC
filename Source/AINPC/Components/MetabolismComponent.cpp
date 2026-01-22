@@ -149,12 +149,14 @@ void UMetabolismComponent::TickComponent(float DeltaTime, ELevelTick TickType, F
     }
     else if (bWasThreatened && State->Perceived_Threat < 0.1f)
     {
-        // Safe again! Resolve hostile memories on the Pawn's MemoryComponent
-        if (CachedController && CachedController->GetPawn())
+        // Safe again! Resolve hostile memories on the Controller's MemoryComponent
+        // ✅ FIX: MemoryComponent is on Controller, not Pawn
+        if (CachedController)
         {
-             if (UMemoryComponent* MemComp = CachedController->GetPawn()->FindComponentByClass<UMemoryComponent>())
+             if (UMemoryComponent* MemComp = CachedController->FindComponentByClass<UMemoryComponent>())
              {
                  MemComp->MarkAllHostileMemoriesResolved();
+                 AINPC_LOG(Log, "🕊️ Safety restored - hostile memories marked as resolved");
              }
         }
         bWasThreatened = false;
@@ -163,7 +165,6 @@ void UMetabolismComponent::TickComponent(float DeltaTime, ELevelTick TickType, F
     // === 3. 情绪分数衰减（简化版）===
     // Emotion Score Decay (Simplified)
     // 每 10 秒衰减 0.2，当 Score < 0.3 时变回 Neutral
-    static float LastEmotionDecayTime = 0.0f;
     float EmotionDecayTime = GetWorld()->GetTimeSeconds();
     
     // 5秒迭代一次，每次 -0.2，总共约20秒衰减完毕 (1.0 -> 0.2 需要4次)

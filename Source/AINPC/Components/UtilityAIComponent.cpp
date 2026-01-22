@@ -121,10 +121,9 @@ void UUtilityAIComponent::TickComponent(float DeltaTime, ELevelTick TickType, FA
     }
 
     // 🔍 定期打印当前动作状态（每 5 秒）
-    // Periodic debug logging (every 5 seconds, synced with Metabolism)
-    static float LastStatusLog = 0.0f;
+    // Periodic debug logging (every 5 seconds, per-instance)
     float CurrentTime = GetWorld()->GetTimeSeconds();
-    if (CurrentTime - LastStatusLog > 5.0f)
+    if (CurrentTime - LastStatusLogTime > 5.0f)
     {
         if (CurrentAction)
         {
@@ -136,7 +135,7 @@ void UUtilityAIComponent::TickComponent(float DeltaTime, ELevelTick TickType, FA
             UTILITY_LOG(Warning, "%s - No Action", 
                    *OwnerController->GetName());
         }
-        LastStatusLog = CurrentTime;
+        LastStatusLogTime = CurrentTime;
         
         // Force a detailed log on next evaluation
         bPendingDebugLog = true;
