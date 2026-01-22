@@ -47,15 +47,26 @@ void UAction_SmartObject::Enter_Implementation(AAIController* Controller)
 			UE_LOG(LogTemp, Log, TEXT("[%s] Reserved Resource: %s"), *ActionName, *ReservedResource->GetName());
 			
 			// 4. Move to it
-			EPathFollowingRequestResult::Type MoveResult = Controller->MoveToActor(ReservedResource, 150.0f); // 1.5m radius
+			USmartObjectComponent* SmartComp = ReservedResource->FindComponentByClass<USmartObjectComponent>();
+			bool bUsedOffset = false;
 			
-			if (MoveResult == EPathFollowingRequestResult::RequestSuccessful)
+			if (SmartComp && !SmartComp->InteractionOffset.IsNearlyZero())
 			{
+				FVector TargetLoc = SmartComp->GetInteractionLocation();
+				Controller->MoveToLocation(TargetLoc, 100.0f, true, true, true); // Radius 100cm, StopOnOverlap, Pathfinding, ProjectToNav
+				UE_LOG(LogTemp, Log, TEXT("[%s] Moving to Interaction Point: %s (Offset: %s)"), 
+					   *ActionName, *TargetLoc.ToString(), *SmartComp->InteractionOffset.ToString());
+				bUsedOffset = true;
+			}
+			else
+			{
+				Controller->MoveToActor(ReservedResource, 150.0f); // 1.5m radius
 				UE_LOG(LogTemp, Log, TEXT("[%s] Moving to Smart Object: %s"), *ActionName, *ReservedResource->GetName());
 			}
-			else if (MoveResult == EPathFollowingRequestResult::AlreadyAtGoal)
+			
+			if (EPathFollowingRequestResult::RequestSuccessful == Controller->GetMoveStatus())
 			{
-				UE_LOG(LogTemp, Log, TEXT("[%s] Already at Smart Object: %s"), *ActionName, *ReservedResource->GetName());
+				// Log handled above
 			}
 			
 			// ✅ 5. Setup Recovery Timer (1 second interval)
@@ -77,7 +88,24 @@ void UAction_SmartObject::Execute_Implementation(AAIController* Controller)
 {
 	if (!Controller) return;
 
-	// ✅ 如果没有目标，尝试重新查找
+	// Determine Target Destination (Actor or Offset)
+	FVector Destination = FVector::ZeroVector;
+	bool bUseOffset = false;
+	
+	if (TargetSmartObject)
+	{
+		Destination = TargetSmartObject->GetActorLocation();
+		if (USmartObjectComponent* SmartComp = TargetSmartObject->FindComponentByClass<USmartObjectComponent>())
+		{
+			if (!SmartComp->InteractionOffset.IsNearlyZero())
+			{
+				Destination = SmartComp->GetInteractionLocation();
+				bUseOffset = true;
+			}
+		}
+	}
+	
+	// ✅ 如果没有目标（或Retry），尝试重新查找
 	// If no target, try to find one again
 	if (!TargetSmartObject)
 	{
@@ -87,8 +115,28 @@ void UAction_SmartObject::Execute_Implementation(AAIController* Controller)
 			TargetSmartObject = SensoryComp->FindBestSmartObject(SmartObjectTag);
 			if (TargetSmartObject)
 			{
-				Controller->MoveToActor(TargetSmartObject, 200.0f); // 使用 200cm
-				UE_LOG(LogTemp, Log, TEXT("[%s] (Retry) Moving to Smart Object: %s"), *ActionName, *TargetSmartObject->GetName());
+				// Recalculate destination for new target
+				Destination = TargetSmartObject->GetActorLocation();
+				bUseOffset = false;
+				if (USmartObjectComponent* SmartComp = TargetSmartObject->FindComponentByClass<USmartObjectComponent>())
+				{
+					if (!SmartComp->InteractionOffset.IsNearlyZero())
+					{
+						Destination = SmartComp->GetInteractionLocation();
+						bUseOffset = true;
+					}
+				}
+
+				if (bUseOffset)
+				{
+					Controller->MoveToLocation(Destination, 100.0f, true, true, true);
+					UE_LOG(LogTemp, Log, TEXT("[%s] (Retry) Moving to Interaction Point: %s"), *ActionName, *Destination.ToString());
+				}
+				else
+				{
+					Controller->MoveToActor(TargetSmartObject, 200.0f); 
+					UE_LOG(LogTemp, Log, TEXT("[%s] (Retry) Moving to Smart Object: %s"), *ActionName, *TargetSmartObject->GetName());
+				}
 			}
 		}
 		
@@ -103,10 +151,11 @@ void UAction_SmartObject::Execute_Implementation(AAIController* Controller)
 	float CurrentTime = Controller->GetWorld()->GetTimeSeconds();
 	if (CurrentTime - LastDebugTime > 2.0f)
 	{
-		float DistSq = FVector::DistSquared(Controller->GetPawn()->GetActorLocation(), TargetSmartObject->GetActorLocation());
-		float Dist = FMath::Sqrt(DistSq);
-		UE_LOG(LogTemp, Log, TEXT("[%s] MoveStatus: %d, Distance: %.0f cm, bIsInteracting: %s"), 
-		       *ActionName, (int)Status, Dist, bIsInteracting ? TEXT("Yes") : TEXT("No"));
+		// ✅ 使用 2D 距离 (忽略高度 Z 轴差异)
+		float DistSq2D = FVector::DistSquaredXY(Controller->GetPawn()->GetActorLocation(), Destination);
+		float Dist2D = FMath::Sqrt(DistSq2D);
+		UE_LOG(LogTemp, Log, TEXT("[%s] MoveStatus: %d, Dist2D: %.0f cm (Ignored Z), bIsInteracting: %s"), 
+		       *ActionName, (int)Status, Dist2D, bIsInteracting ? TEXT("Yes") : TEXT("No"));
 		LastDebugTime = CurrentTime;
 	}
 	
@@ -114,14 +163,23 @@ void UAction_SmartObject::Execute_Implementation(AAIController* Controller)
 	if (Status == EPathFollowingStatus::Idle)
 	{
 		// Double check distance to be sure (使用 200cm = 2m)
-		float DistSq = FVector::DistSquared(Controller->GetPawn()->GetActorLocation(), TargetSmartObject->GetActorLocation());
-		if (DistSq < 200.0f * 200.0f) // Within 2m
+		// Use Destination which accounts for Offset
+		// ✅ CHANGE: Use DistSquaredXY to ignore height differences (e.g. object underground)
+		float DistSq2D = FVector::DistSquaredXY(Controller->GetPawn()->GetActorLocation(), Destination);
+		if (DistSq2D < 200.0f * 200.0f) // Within 2m horizontally
 		{
 			if (!bIsInteracting)
 			{
 				// ✅ 刚到达，开始交互 / Just arrived, start interaction
 				bIsInteracting = true;
 				ActionStartTime = Controller->GetWorld()->GetTimeSeconds();
+
+				// ✅ 设定朝向：交互时必须朝向 Smart Object (例如挖矿时面朝矿石)
+				// Set facing: Must face the Smart Object during interaction
+				if (TargetSmartObject)
+				{
+					Controller->SetFocalPoint(TargetSmartObject->GetActorLocation());
+				}
 
 				// ✅ 确保 Timer 已设置（可能 Enter 失败了）
 				// Ensure timer is set up (Enter might have failed)
@@ -172,7 +230,10 @@ void UAction_SmartObject::Execute_Implementation(AAIController* Controller)
 		else
 		{
 			// Maybe got stuck? Retry move?
-			Controller->MoveToActor(TargetSmartObject, 50.0f);
+			if (bUseOffset)
+				Controller->MoveToLocation(Destination, 50.0f, true, true, true);
+			else
+				Controller->MoveToActor(TargetSmartObject, 50.0f);
 		}
 	}
 }
@@ -226,6 +287,7 @@ void UAction_SmartObject::Exit_Implementation(AAIController* Controller)
 	if (Controller)
 	{
 		Controller->StopMovement();
+		Controller->ClearFocus(EAIFocusPriority::Gameplay); // Clear the focus we set on arrival
 	}
 	
 	UE_LOG(LogTemp, Log, TEXT("[%s] Exit - Reset state"), *ActionName);

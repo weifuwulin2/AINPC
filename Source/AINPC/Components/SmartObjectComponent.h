@@ -24,6 +24,17 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Social", meta = (ClampMin = "0.0", ClampMax = "1.0"))
 	float RestoreValue = 0.2f;
 
+    // 交互点相对于Actor的偏移量 (可以在编辑器视口中直接拖拽调整)
+    // Interaction point offset relative to the Actor (Can be dragged in Editor viewport)
+    // Useful when the object is underground or unreachable directly.
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Social", meta = (MakeEditWidget = true))
+    FVector InteractionOffset;
+
+    // 获取实际的世界坐标交互点
+    // Get the actual world space interaction location
+    UFUNCTION(BlueprintCallable, Category = "Social")
+    FVector GetInteractionLocation() const;
+
 	// --- ISmartObjectInterface Implementation ---
 	virtual void GetAffordances_Implementation(TMap<FString, float>& OutAffordances) override;
 	virtual bool Interact_Implementation(AActor* User) override;

@@ -353,3 +353,12 @@ This file contains a log of commit messages for the AINPC project.
 - **Threat Architecture**: Implemented "Hybrid Control" for `Perceived_Threat`. Engine now strictly resets Threat to 0 when a **Hostile** enemy dies, preventing "scared of corpse" bugs.
 - **Cooldown Fix**: Modified `UtilityActionBase` to bypass Cooldown check if the action is currently running (preventing self-interruption).
 - **Docs**: Added `docs/design/Action_Transition_System_Plan.md` outlining future Refactor for centralized transition logic.
+
+## [2026-01-22] Documentation Localization & License Update
+**Type**: docs
+**Scope**: Documentation
+**Description**:
+- **Localization**: Translated README.md to English.
+- **License**: Updated license to Limited License in README and badge.
+- **Docs**: Synchronized README Latest Updates with Changelog.
+

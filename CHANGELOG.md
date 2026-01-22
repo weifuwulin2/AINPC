@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased] - 2026-01-22
+
+### ✨ Features - SmartObject Interaction
+- **Implemented InteractionOffset**: Added `InteractionOffset` to `SmartObjectComponent` (with 3D widget).
+  - Allows level designers to specify an exact interaction point (e.g., above ground for buried ore).
+  - `Action_SmartObject` use 2D Distance Check (`DistSquaredXY`), ignoring height differences (Z-axis).
+  - **Dynamic Facing**: NPC moves naturally to the offset, but turns to face the Smart Object only upon arrival (before animation starts).
+  - Supports `MoveToLocation` with navigation projection to ensure reachability.
+
+### 📝 Documentation
+- **Localization**: Translated README.md to English.
+- **License**: Changed project license to "Limited License".
+- **Updates**: Synchronized README Latest Updates with Changelog.
+
 ## [Unreleased] - 2026-01-21
 
 ### 🔧 Fixes - Utility AI & Architecture

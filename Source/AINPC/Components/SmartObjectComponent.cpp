@@ -11,6 +11,17 @@ void USmartObjectComponent::BeginPlay()
 	Super::BeginPlay();
 }
 
+FVector USmartObjectComponent::GetInteractionLocation() const
+{
+	if (const AActor* Owner = GetOwner())
+	{
+		// Transform local offset to world space
+		// If Offset is zero, it just returns Actor Location
+		return Owner->GetActorTransform().TransformPosition(InteractionOffset);
+	}
+	return FVector::ZeroVector;
+}
+
 void USmartObjectComponent::GetAffordances_Implementation(TMap<FString, float>& OutAffordances)
 {
 	// Bridge the new Semantics system to the legacy Affordances map
