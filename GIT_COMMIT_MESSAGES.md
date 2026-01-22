@@ -362,3 +362,74 @@ This file contains a log of commit messages for the AINPC project.
 - **License**: Updated license to Limited License in README and badge.
 - **Docs**: Synchronized README Latest Updates with Changelog.
 
+
+## [2026-01-23] Future Plans & Roadmap Update
+**Type**: docs
+**Scope**: Documentation
+**Description**:
+- **Roadmap**: Updated README.md with Phase 5 'Emergent Gameplay' plans.
+  - Added 'The Saboteur' mechanics (sabotage Smart Objects).
+  - Added 'Disaster Events' (monster invasion, chaos simulation).
+  - Added 'Social Engineering' (gossip, faction manipulation).
+
+
+## [2026-01-23] Readme Refresh - Core Features
+**Type**: docs
+**Scope**: Documentation
+**Description**:
+- **Readme**: Rewrote 'Core Features' section to reflect current architecture.
+  - Added 'OCEAN Personality Engine' (Big Five Model).
+  - Added 'Maslow's Hierarchy of Needs' (Physiological, Safety, Social, Self-Actualization).
+  - Added 'Hybrid Architecture V3' (LLM Intention + Utility Execution).
+  - Added 'Smart Object Ecosystem' (Semantic Tagging, Offsets).
+  - Removed outdated technical details from the top level (Single-Point Config, Concurrent Mgmt).
+
+
+## [2026-01-23] Readme Update - Full Feature Set
+**Type**: docs
+**Scope**: Documentation
+**Description**:
+- **Readme**: Added comprehensive feature descriptions.
+  - **Narrative & Identity**: Soul Injection, Trauma System, Modular Backstories.
+  - **Optimization**: Context LOD, Request Throttling, Amygdala Hijack.
+  - **Living Schedule**: Time Manager, Professional Shifts, Work Fulfillment.
+  - **GOAP-Lite**: Goal Arbitration, Contextual LOD, Emergency Overrides.
+
+
+## [2026-01-23] Readme Maintenance - TOC Update
+**Type**: docs
+**Scope**: Documentation
+**Description**:
+- **TOC**: Updated Table of contents to match renamed sections.
+  - Linked 'Future Plans & Roadmap'.
+  - Ensured navigation anchors are correct.
+
+
+## [2026-01-23] Readme Update - Technical Roadmap Links
+**Type**: docs
+**Scope**: Documentation
+**Description**:
+- **Roadmap**: Added links to detailed design documents in Technical Roadmap.
+  - Linked 'Phase 4: Optimization & Agency' plan.
+  - Linked 'Action Transition System 2.0' plan.
+  - Removed duplicate header caused by encoding issues.
+
+
+## [2026-01-23] Readme Update - Phase 5 Alignment
+**Type**: docs
+**Scope**: Documentation
+**Description**:
+- **Roadmap**: Aligned Phase 5 plans with 'Advanced_AI_Features.md'.
+  - Added 'The Soul Layer': Lore & Context injection.
+  - Added 'The Conflict Layer': Internal decision conflicts.
+  - Added 'Self-Evolution': Nightly reflection & dynamic value adjustment.
+  - Added 'Emergent Behavior': Bard & Stage mechanism.
+
+
+## [2026-01-23] Readme Update - AI Roadmap Expansion
+**Type**: docs
+**Scope**: Documentation
+**Description**:
+- **Roadmap**: Added Phase 7 (Human-in-the-Loop RLHF), Phase 8 (Agent-in-the-Loop), and Phase 10 (Utility AI Self-Calibration).
+- **Sync**: Fully aligned `README.md` with `Advanced_AI_Features.md`.
+

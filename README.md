@@ -22,7 +22,7 @@
 - [Project Structure](#-project-structure)
 - [Documentation](#-documentation)
 - [Latest Updates](#-latest-updates)
-- [Roadmap](#-roadmap)
+- [Future Plans & Roadmap](#-future-plans--roadmap)
 
 ---
 
@@ -46,53 +46,55 @@
 
 ## ✨ Core Features
 
-### 🔧 Single-Point Configuration
+### 🧬 OCEAN Personality Engine
+**True Individuality** - NPCs are no longer cookie-cutter agents.
+- **Big Five Model**: `Openness`, `Conscientiousness`, `Extraversion`, `Agreeableness`, `Neuroticism`.
+- **Behavioral Impact**: A "Neurotic" NPC creates drama; A "Conscientious" NPC obsesses over work.
+- **Data-Driven**: Configurable via `DT_Personalities` with presets (e.g., *ReclusiveScholar* vs *BraveWarrior*).
 
-**Automated Configuration System** - Defined once via macros, effective globally:
+### △ Maslow's Hierarchy of Needs
+**Scientific Motivation System** - Replaces simple "state machines" with organic needs.
+- **Physiological**: Hunger, Fatigue (Engine-managed, time-dependent).
+- **Safety**: Threat detection, Shelter seeking.
+- **Social**: Loneliness, Conversation (Proactive social seeking).
+- **Esteem/Self-Actualization**: Boredom drives Work and creative acts.
+*Priorities are dynamically arbitrated by the `GoalComponent`.*
 
-```cpp
-// MentalStateFields.h - The only place to modify
-#define MENTAL_STATE_FIELDS(FIELD) \
-    FIELD(Anger, 0.0f, "Anger", "Affects aggression") \
-    FIELD(Fear, 0.0f, "Fear", "Affects fleeing behavior") \
-    FIELD(Confidence, 0.5f, "Confidence", "Affects confrontation strategy")
-```
+###  Hybrid Architecture V3
+**The "Bicameral" Mind** - Decoupling high-level intent from low-level execution.
+- **LLM (The Soul)**: Handles "Why" and "What". Outputs intent tags (e.g., `Intention.Attack`) and social context.
+- **Utility AI (The Body)**: Handles "How" and "When". Calculates scores based on distance, needs, and stats (50ms response).
+- **Veto System**: LLM can override survival instincts (e.g., a "Brave" NPC attacking a Giant despite fear).
 
-**Auto-generated**:
-- ✅ `FMentalState` struct fields
-- ✅ `UNPCMentalState` class properties (with full UPROPERTY metadata)
-- ✅ Constructor initialization code
-- ✅ `ResetState()` function
-- ✅ `UpdateFromStruct()` / `ToStruct()` conversion functions
-- ✅ LLM Prompt field list
-- ✅ Utility AI `GetConsiderationValue()` switch cases
+###  Smart Object Ecosystem
+**A World That Makes Sense** - Interactions are semantic, not just scripted.
+- **Semantic Tagging**: Objects broadcast what they offer (`Interaction.Rest`, `Interaction.Work.Mine`).
+- **Offset System**: NPCs know exactly where to stand (e.g., digging *into* the ground vs standing *at* a table).
+- **Reservation Protocol**: Prevents awkward queuing or stacking on a single bed.
 
-**Maintenance Cost**: Adding new attributes only requires modifying **2 files** (previously 8).
+### 🎭 Narrative & Identity (Soul Injection)
+**More Than Just Stats** - Every NPC has a story.
+- **Modular Backstory**: `SocialProfile` defines Role, Motivation, and Values.
+- **Trauma System**: Significant past events (e.g., "Attack Victim") shape current behavior.
+- **Context Injection**: LLM prompts are dynamically assembled from these narrative modules.
 
-### 🧩 Modular Component Architecture
+### ⚡ Optimization Systems
+**Performance at Scale** - Running complex AI without melting the CPU.
+- **Context LOD**: Prompt length scales with distance (Full Identity up close ↔ Minimal Stats far away).
+- **Request Throttling**: Prevents API spam during high-stress situations (Combat).
+- **Amygdala Hijack**: Bypasses LLM for split-second survival reactions.
 
-```
-UtilityAIController (Controller)
-├── SensoryComponent      # Sensory Translation (Physical Signal → Text)
-├── CognitionComponent    # Cognitive Processing (Memory + LLM)
-├── UtilityAIComponent    # Decision Execution (Utility Scoring)
-└── MentalState           # Shared Emotional State
-```
+### ⏰ Living Schedule System
+**Day/Night Cycle & Professions** - NPCs have lives, not just spawn points.
+- **Time Manager**: Global day/night cycle broadcasting hourly events.
+- **Professions**: Customizable daily schedules (e.g., `Merchant`: Work 8-5, `Guard`: Night Shift).
+- **Work Fulfillment**: Boredom drives NPCs to work; Work reduces Boredom.
 
-### 🌙 Dreaming System
-
-Periodically organizes memories to extract long-term insights:
-- Triggers automatically every 5 minutes (Configurable)
-- Sends short-term memories to LLM for summarization
-- Extracts key information into long-term memory
-- Prevents memory queue overflow
-
-### 🔄 Concurrent Request Management
-
-Uses `TMap` to manage multiple concurrent LLM requests:
-- ✅ Dreaming and perception events can trigger simultaneously
-- ✅ Independent callback handling for each request
-- ✅ Request ID tracking for easy debugging
+### ⚖️ GOAP-Lite Goal Arbitration
+**Smart Priority Management** - No more jittery behavior.
+- **Goal Component**: Dynamically arbitrates between conflicting directives.
+- **LOD System**: Priorities shift based on context (Survival > Social > Schedule).
+- **Emergency Overrides**: Hunger/Threat extremes interrupt any routine instantly.
 
 ---
 
@@ -476,29 +478,50 @@ See full log: [CHANGELOG.md](CHANGELOG.md)
 
 ---
 
-## 🗺️ Roadmap
+## 🗺️ Future Plans & Roadmap
 
-### ✅ Completed
+### 🚧 Phase 5: Emergent Gameplay ("Soul Injection")
+Ref: [Advanced_AI_Features.md](docs/design/Advanced_AI_Features.md)
 
-- [x] Basic Utility AI Framework
-- [x] LLM Communication Module
-- [x] Single-Point Configuration System
-- [x] Dreaming Memory Organization
-- [x] Concurrent Request Management
-- [x] **Phase 3: Player Interaction & Modular Identity**
-- [x] Comprehensive Documentation System
+- [ ] **Self-Evolution (Automated RL)**
+  - **Nightly Reflection**: NPCs analyze daily logs during sleep.
+  - **Dynamic Values**: Adjust `Trust` or `Boredom` sensitivity based on daily outcomes (e.g., getting hurt reduces Trust).
 
-### 🚧 In Progress
+- [ ] **Emergent Behavior (Bard & Stage)**
+  - **Dynamic Stage**: SmartObject with conditional slots (Performer triggers Audience slots).
+  - Crowds form naturally via Utility AI (Boredom -> Watch Performance), not scripts.
 
-- [ ] **Phase 4: AI System Enhancement (Memory, Agency, Debug)**
+### 🚧 Phase 7: Human-in-the-Loop RLHF (Dialogue Tuning)
+**Character Authoring Tool** - Refining personas through interaction.
+- **Feedback Loop**: Chat with NPC → "Like/Edit" response → System updates dynamic prompt.
+- **Distillation**: Meta-LLM extracts style consistency from feedback.
+
+### 🚧 Phase 8: Agent-in-the-Loop (Automated "Director")
+**Massive Scale Tuning** - Replacing the human with a Critic Agent.
+- **The Director**: An LLM with a "Casting Brief" (e.g., "Grumpy Dwarf").
+- **The Actor**: The NPC being tuned.
+- **Automated Rehearsal**: Director critiques Actor's lines 100x/night until the persona is perfect.
+
+### 🚧 Phase 10: Future Research (Utility AI Self-Calibration)
+**Inverse Reinforcement Learning (IRL)** - The AI learns "How to be itself".
+- **Observation**: System records behavior (e.g., "Did the Workaholic keep working when hungry?").
+- **Calibration**: Logic automatically adjusts Utility Weights to match the desired Personality Profile.
+- **Goal**: An AI that *behaves* like its personality, not just speaks like it.
+
+### 📋 Technical Roadmap
+
+See detailed design docs for implementation plans:
+- [**Phase 4: Optimization & Agency**](docs/design/Phase4_AI_System_Enhancement_Plan.md)
+- [**Action Transition System 2.0**](docs/design/Action_Transition_System_Plan.md)
+
+- [ ] **Phase 4 Continuation**:
   - [x] P0: Log Channels & UI Fixes
   - [ ] P1: Memory Refactor (Decay & Resolution)
-  - [ ] P2: Agency (Gossip & Hidden Agenda)
-
-### 📋 Planned
-
-- [ ] Multi-NPC Social Interaction
-- [ ] More Emotional Visualization UI
+  - [ ] P2: Agency (Hidden Agendas)
+  
+- [ ] **Multi-NPC Coordination**
+  - Group tactics for Combat.
+  - Social clusters for chatting.
 
 
 
