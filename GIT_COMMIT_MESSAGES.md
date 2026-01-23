@@ -430,6 +430,6 @@ This file contains a log of commit messages for the AINPC project.
 **Type**: docs
 **Scope**: Documentation
 **Description**:
-- **Roadmap**: Added Phase 7 (Human-in-the-Loop RLHF), Phase 8 (Agent-in-the-Loop), and Phase 10 (Utility AI Self-Calibration).
+- **Roadmap**: Added Phase 7 (Human-in-the-Loop RLHF), Phase 8 (Agent-in-the-Loop), **Phase 9 (Local Model Distillation)**, and Phase 10 (Utility AI Self-Calibration).
 - **Sync**: Fully aligned `README.md` with `Advanced_AI_Features.md`.
 

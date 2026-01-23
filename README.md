@@ -485,7 +485,7 @@ Ref: [Advanced_AI_Features.md](docs/design/Advanced_AI_Features.md)
 
 - [ ] **Self-Evolution (Automated RL)**
   - **Nightly Reflection**: NPCs analyze daily logs during sleep.
-  - **Dynamic Values**: Adjust `Trust` or `Boredom` sensitivity based on daily outcomes (e.g., getting hurt reduces Trust).
+  - **Dynamic Values**: Adjust `Indignity` or `Boredom` sensitivity based on daily outcomes (e.g., getting hurt reduces Trust).
 
 - [ ] **Emergent Behavior (Bard & Stage)**
   - **Dynamic Stage**: SmartObject with conditional slots (Performer triggers Audience slots).
@@ -501,6 +501,12 @@ Ref: [Advanced_AI_Features.md](docs/design/Advanced_AI_Features.md)
 - **The Director**: An LLM with a "Casting Brief" (e.g., "Grumpy Dwarf").
 - **The Actor**: The NPC being tuned.
 - **Automated Rehearsal**: Director critiques Actor's lines 100x/night until the persona is perfect.
+
+### 🚧 Phase 9: Local Model Distillation (Edge AI)
+**From Cloud to Consumer** - Compressing intelligence into a shippable format.
+- **Dataset**: Use Phase 8's "Perfect Logs" as training data.
+- **Fine-Tuning**: Train a small local model (Llama-3-8B/Mistral) to mimic the "Director-Approved" behavior.
+- **Result**: Offline, zero-cost, high-fidelity NPCs running on the player's GPU.
 
 ### 🚧 Phase 10: Future Research (Utility AI Self-Calibration)
 **Inverse Reinforcement Learning (IRL)** - The AI learns "How to be itself".

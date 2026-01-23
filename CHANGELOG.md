@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Localization**: Translated README.md to English.
 - **License**: Changed project license to "Limited License".
 - **Updates**: Synchronized README Latest Updates with Changelog.
-- **Roadmap**: Added Phase 7 (RLHF), Phase 8 (Director), and Phase 10 (Self-Calibration) to README.md.
+- **Roadmap**: Added Phase 7 (RLHF), Phase 8 (Director), **Phase 9 (Local Distillation)**, and Phase 10 (Self-Calibration) to README.md.
 
 ## [Unreleased] - 2026-01-21
 
