@@ -53,6 +53,12 @@ private:
 	void LoadActionsFromTable();
 	// 内部函数：选择最佳动作
 	void EvaluateAndDecide();
+    
+    // =========================================================
+    // Transition System: The Constitution
+    // =========================================================
+    // Centralized transition logic (replaces scattered if/else)
+    bool CanTransition(UUtilityActionBase* Current, UUtilityActionBase* Candidate, float CandidateScore);
 
 public:
 	// 请求下一帧打印调试日志 (通常在感知到刺激后调用)

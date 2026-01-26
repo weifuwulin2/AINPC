@@ -287,32 +287,11 @@ void UUtilityAIComponent::EvaluateAndDecide()
     // 只有当最佳动作不同于当前动作时才考虑切换
     if (BestAction && BestAction != CurrentAction)
     {
-        // ✅ 如果当前 Action 不想退出（比如 SmartObject Duration 还没到），检查是否有紧急情况
-        // If current action doesn't want to exit (e.g., SmartObject Duration not expired), check for emergencies
-        if (CurrentAction && !CurrentAction->ShouldExit(OwnerController))
+        // ✅ Use centralized Transition System
+        if (!CanTransition(CurrentAction, BestAction, BestScore))
         {
-            // 紧急打断条件：高威胁（被攻击时惊醒）
-            // Emergency interrupt: High threat (wake up when attacked)
-            bool bEmergencyInterrupt = false;
-            
-            AUtilityAIController* UtilController = Cast<AUtilityAIController>(OwnerController);
-            if (UtilController && UtilController->MentalState)
-            {
-                // 如果威胁感知很高（Perceived_Threat > 0.5），允许打断
-                if (UtilController->MentalState->Perceived_Threat > 0.5f)
-                {
-                    bEmergencyInterrupt = true;
-                    UE_LOG(LogTemp, Warning, TEXT("[UtilityAI|%s] ⚠️ Emergency interrupt! Threat: %.2f"), 
-                           *PersonalityID, UtilController->MentalState->Perceived_Threat);
-                }
-            }
-            
-            if (!bEmergencyInterrupt)
-            {
-                // 没有紧急情况，当前动作仍在进行中，不切换
-                // No emergency, current action still in progress, don't switch
-                return;
-            }
+            // Transition denied - stay on current action
+            return;
         }
         
         // 退出旧的
@@ -325,10 +304,92 @@ void UUtilityAIComponent::EvaluateAndDecide()
         CurrentAction = BestAction;
         CurrentAction->Enter(OwnerController);
         
+        // Store score for inertia comparison
+        CurrentAction->LastScore = BestScore;
+        
         // 记录时间用于冷却计算
         CurrentAction->MarkExecutionTime(GetWorld()->GetTimeSeconds());
 
         // 打印切换日志
-        AINPC_LOG(Warning, "[%s] ✅ Switch Action: %s (Score: %.2f)", *PersonalityID, *CurrentAction->ActionName, BestScore);
+        AINPC_LOG(Warning, "[%s] ✅ Switch Action: %s (Score: %.2f, Priority: %d)", 
+                  *PersonalityID, *CurrentAction->ActionName, BestScore, (int32)CurrentAction->Priority);
     }
+}
+
+// =========================================================
+// Transition System: CanTransition ("The Constitution")
+// =========================================================
+bool UUtilityAIComponent::CanTransition(UUtilityActionBase* Current, UUtilityActionBase* Candidate, float CandidateScore)
+{
+    if (!Candidate) return false;
+    if (!Current) return true; // No current action = always allow
+
+    float CurrentTime = GetWorld()->GetTimeSeconds();
+
+    // Rule 1: Priority Gate
+    // Lower priority cannot interrupt higher priority
+    if (Candidate->Priority < Current->Priority)
+    {
+        UE_LOG(LogTemp, Verbose, TEXT("[Transition] Denied: %s(%d) < %s(%d) Priority"),
+               *Candidate->ActionName, (int32)Candidate->Priority,
+               *Current->ActionName, (int32)Current->Priority);
+        return false;
+    }
+    
+    // Rule 2: Commitment Lock
+    // If current action is committed, only Threat+ can break it
+    if (Current->IsCommitted(CurrentTime))
+    {
+        if (Candidate->Priority < EActionPriority::Threat)
+        {
+            UE_LOG(LogTemp, Log, TEXT("[Transition] Denied: %s blocked by %s Commitment (%.1fs left)"),
+                   *Candidate->ActionName, *Current->ActionName,
+                   Current->CommitmentTime - (CurrentTime - Current->CommitmentStartTime));
+            return false;
+        }
+        else
+        {
+            UE_LOG(LogTemp, Warning, TEXT("[Transition] ⚡ Emergency: %s(Threat+) breaks %s Commitment!"),
+                   *Candidate->ActionName, *Current->ActionName);
+            return true;
+        }
+    }
+    
+    // Rule 3: Same-Priority Inertia
+    // Must beat current score by inertia margin
+    if (Candidate->Priority == Current->Priority)
+    {
+        float InertiaThreshold = Current->LastScore * (1.0f + Current->InertiaBonus);
+        if (CandidateScore <= InertiaThreshold)
+        {
+            UE_LOG(LogTemp, Verbose, TEXT("[Transition] Denied: %s(%.2f) <= %s(%.2f + %.0f%% inertia)"),
+                   *Candidate->ActionName, CandidateScore,
+                   *Current->ActionName, Current->LastScore, Current->InertiaBonus * 100.0f);
+            return false;
+        }
+    }
+    
+    // Rule 4: Data-Driven Exit Conditions
+    // Check if current action should exit based on its configured conditions
+    if (OwnerController && OwnerController->MentalState)
+    {
+        if (Current->CheckExitConditions(OwnerController->MentalState, OwnerController))
+        {
+            UE_LOG(LogTemp, Log, TEXT("[Transition] %s exit conditions met -> allowing switch to %s"),
+                   *Current->ActionName, *Candidate->ActionName);
+            return true;
+        }
+    }
+    
+    // Rule 5: Higher priority always wins (unless blocked by Rules 1-2)
+    if (Candidate->Priority > Current->Priority)
+    {
+        UE_LOG(LogTemp, Log, TEXT("[Transition] Allowed: %s(%d) > %s(%d) Priority"),
+               *Candidate->ActionName, (int32)Candidate->Priority,
+               *Current->ActionName, (int32)Current->Priority);
+        return true;
+    }
+    
+    // Default: Allow if we passed all checks
+    return true;
 }

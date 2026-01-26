@@ -56,6 +56,10 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Goal")
 	FGameplayTag GetCurrentDirective() const { return CurrentDirective; }
 
+	// Returns the current scheduled activity (e.g., Interaction.Eat, Interaction.Work)
+	UFUNCTION(BlueprintCallable, Category = "Goal")
+	FGameplayTag GetScheduledActivity() const { return CachedScheduleActivity; }
+
 	UFUNCTION(BlueprintPure, Category = "Goal")
 	EContextLOD GetCurrentLOD() const { return CurrentLOD; }
 
@@ -69,15 +73,19 @@ protected:
 	void SetLOD(EContextLOD NewLOD);
 
 protected:
-	UPROPERTY(VisibleAnywhere, Category = "Goal")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Goal")
 	FGameplayTag CurrentDirective;
 
-	UPROPERTY(VisibleAnywhere, Category = "Goal")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Goal")
 	EContextLOD CurrentLOD = EContextLOD::Standard;
 
-	// Cached result from Schedule (updated via Time Slicing)
-	UPROPERTY()
+	// Cached schedule state to avoid re-scanning every frame
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Goal")
 	FGameplayTag CachedScheduleDirective;
+
+	// Cached scheduled activity
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Goal")
+	FGameplayTag CachedScheduleActivity;
 
 	// Timer for Schedule checks
 	float TimeSinceLastScheduleCheck = 0.0f;

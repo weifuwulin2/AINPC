@@ -430,6 +430,17 @@ This file contains a log of commit messages for the AINPC project.
 **Type**: docs
 **Scope**: Documentation
 **Description**:
-- **Roadmap**: Added Phase 7 (Human-in-the-Loop RLHF), Phase 8 (Agent-in-the-Loop), **Phase 9 (Local Model Distillation)**, and Phase 10 (Utility AI Self-Calibration).
+- **Roadmap**: Added Phase 7 (RLHF), Phase 8 (Director), **Phase 9 (Local Distillation)**, Phase 10 (Self-Calibration), and **Phase X (Neural Utility)** to `README.md`.
 - **Sync**: Fully aligned `README.md` with `Advanced_AI_Features.md`.
 
+
+## [2026-01-23] Design - Neural Utility Architecture
+**Type**: docs
+**Scope**: Documentation
+**Description**:
+- **Design**: Created `docs/design/Neural_Utility_Architecture.md`.
+  - Defined "System 1" (Vector Utility) and "System 2" (Local LLM) architecture.
+  - Added "Appendix A: The Math" (Dot Product Logic).
+  - Added "Appendix B: TinyStories" (Small Model Strategy).
+  - Added "Appendix C: Social Memory" (Generative Agents Insight).
+- **Roadmap**: Added "Phase X: Neural Utility Architecture" to `README.md` as the long-term North Star.

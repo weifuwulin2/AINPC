@@ -1,586 +1,548 @@
 [
-	{
-		"Name": "Attack",
-		"ActionClass": "/Script/CoreUObject.Class'/Script/AINPC.TestAction_Attack'",
-		"Considerations": [
-			{
-				"ConsiderationType": "Motivation",
-				"InputType": "Indignity",
-				"CurveType": "Linear",
-				"ResponseCurve": "None"
-			},
-			{
-				"ConsiderationType": "Motivation",
-				"InputType": "PerceivedThreat",
-				"CurveType": "Linear",
-				"ResponseCurve": "None"
-			}
-		],
-		"BaseReward": 3,
-		"CooldownTime": 0,
-		"InertiaBonus": 0,
-		"SmartObjectTag":
-		{
-			"TagName": "None"
-		},
-		"InteractionMontage": "None",
-		"bLoopAnimation": true,
-		"ActionDuration": 0,
-		"ActivityTag":
-		{
-			"TagName": "Interaction.Combat"
-		},
-		"IntentionTag":
-		{
-			"TagName": "Intention.Attack"
-		},
-		"DirectiveTag":
-		{
-			"TagName": "Directive.Survival"
-		},
-		"ActionName": "Attack",
-		"RequiredProfessionID": "None",
-		"PersonalityInfluence":
-		{
-			"Neuroticism": -1
-		}
-	},
-	{
-		"Name": "Flee",
-		"ActionClass": "/Script/CoreUObject.Class'/Script/AINPC.TestAction_Flee'",
-		"Considerations": [
-			{
-				"ConsiderationType": "Motivation",
-				"InputType": "PerceivedThreat",
-				"CurveType": "Linear",
-				"ResponseCurve": "None"
-			}
-		],
-		"BaseReward": 3,
-		"CooldownTime": 0,
-		"InertiaBonus": 0,
-		"SmartObjectTag":
-		{
-			"TagName": "None"
-		},
-		"InteractionMontage": "None",
-		"bLoopAnimation": true,
-		"ActionDuration": 0,
-		"ActivityTag":
-		{
-			"TagName": "Interaction.Flee"
-		},
-		"IntentionTag":
-		{
-			"TagName": "Intention.Flee"
-		},
-		"DirectiveTag":
-		{
-			"TagName": "Directive.Survival"
-		},
-		"ActionName": "Flee",
-		"RequiredProfessionID": "None",
-		"PersonalityInfluence":
-		{
-			"Neuroticism": 1
-		}
-	},
-	{
-		"Name": "Idle",
-		"ActionClass": "/Script/CoreUObject.Class'/Script/AINPC.TestAction_Idle'",
-		"Considerations": [
-			{
-				"ConsiderationType": "Motivation",
-				"InputType": "Boredom",
-				"CurveType": "Inverse",
-				"ResponseCurve": "None"
-			}
-		],
-		"BaseReward": 1,
-		"CooldownTime": 2,
-		"InertiaBonus": 0.05,
-		"SmartObjectTag":
-		{
-			"TagName": "None"
-		},
-		"InteractionMontage": "None",
-		"bLoopAnimation": true,
-		"ActionDuration": 0,
-		"ActivityTag":
-		{
-			"TagName": "Interaction.Rest"
-		},
-		"IntentionTag":
-		{
-			"TagName": "Intention.Idle"
-		},
-		"DirectiveTag":
-		{
-			"TagName": "None"
-		},
-		"ActionName": "Idle",
-		"RequiredProfessionID": "None",
-		"PersonalityInfluence":
-		{
-		}
-	},
-	{
-		"Name": "Talk",
-		"ActionClass": "/Script/CoreUObject.Class'/Script/AINPC.TestAction_TalkTo'",
-		"Considerations": [
-			{
-				"ConsiderationType": "Motivation",
-				"InputType": "Loneliness",
-				"CurveType": "Linear",
-				"ResponseCurve": "None"
-			},
-			{
-				"ConsiderationType": "Context",
-				"InputType": "HasFriendlyNearby",
-				"CurveType": "Linear",
-				"ResponseCurve": "None"
-			},
-			{
-				"ConsiderationType": "Motivation",
-				"InputType": "Boredom",
-				"CurveType": "Linear",
-				"ResponseCurve": "None"
-			}
-		],
-		"BaseReward": 1,
-		"CooldownTime": 0,
-		"InertiaBonus": 0,
-		"SmartObjectTag":
-		{
-			"TagName": "None"
-		},
-		"InteractionMontage": "None",
-		"bLoopAnimation": true,
-		"ActionDuration": 0,
-		"ActivityTag":
-		{
-			"TagName": "Interaction.Social"
-		},
-		"IntentionTag":
-		{
-			"TagName": "Intention.Talk"
-		},
-		"DirectiveTag":
-		{
-			"TagName": "Directive.Social"
-		},
-		"ActionName": "Talk",
-		"RequiredProfessionID": "None",
-		"PersonalityInfluence":
-		{
-		}
-	},
-	{
-		"Name": "Eat",
-		"ActionClass": "/Script/CoreUObject.Class'/Script/AINPC.Action_SmartObject'",
-		"Considerations": [
-			{
-				"ConsiderationType": "Motivation",
-				"InputType": "Hunger",
-				"CurveType": "Linear",
-				"ResponseCurve": "None"
-			},
-			{
-				"ConsiderationType": "Context",
-				"InputType": "HasFoodNearby",
-				"CurveType": "Linear",
-				"ResponseCurve": "None"
-			}
-		],
-		"BaseReward": 4,
-		"CooldownTime": 0,
-		"InertiaBonus": 0.5,
-		"SmartObjectTag":
-		{
-			"TagName": "Interaction.Eat"
-		},
-		"InteractionMontage": "/Script/Engine.AnimMontage'/Game/AINPC/Animations/MAL/AnimationsLibrary/SocialAnimsBundle2/PartyAnimations/Animations/AS_EatingOnParty_Montage.AS_EatingOnParty_Montage'",
-		"bLoopAnimation": true,
-		"ActionDuration": 10,
-		"ActivityTag":
-		{
-			"TagName": "Interaction.Eat"
-		},
-		"IntentionTag":
-		{
-			"TagName": "None"
-		},
-		"DirectiveTag":
-		{
-			"TagName": "Directive.Survival"
-		},
-		"ActionName": "Eat",
-		"RequiredProfessionID": "None",
-		"PersonalityInfluence":
-		{
-		}
-	},
-	{
-		"Name": "Sleep",
-		"ActionClass": "/Script/CoreUObject.Class'/Script/AINPC.Action_SmartObject'",
-		"Considerations": [
-			{
-				"ConsiderationType": "Motivation",
-				"InputType": "Fatigue",
-				"CurveType": "Linear",
-				"ResponseCurve": "None"
-			},
-			{
-				"ConsiderationType": "Context",
-				"InputType": "HasBedNearby",
-				"CurveType": "Linear",
-				"ResponseCurve": "None"
-			}
-		],
-		"BaseReward": 4,
-		"CooldownTime": 0,
-		"InertiaBonus": 0,
-		"SmartObjectTag":
-		{
-			"TagName": "Interaction.Rest"
-		},
-		"InteractionMontage": "/Script/Engine.AnimMontage'/Game/AINPC/Animations/Montages/Sleep.Sleep'",
-		"bLoopAnimation": true,
-		"ActionDuration": 20,
-		"ActivityTag":
-		{
-			"TagName": "Interaction.Rest"
-		},
-		"IntentionTag":
-		{
-			"TagName": "None"
-		},
-		"DirectiveTag":
-		{
-			"TagName": "Directive.Survival"
-		},
-		"ActionName": "Sleep",
-		"RequiredProfessionID": "None",
-		"PersonalityInfluence":
-		{
-		}
-	},
-	{
-		"Name": "Work_Mine",
-		"ActionClass": "/Script/CoreUObject.Class'/Script/AINPC.Action_SmartObject'",
-		"Considerations": [
-			{
-				"ConsiderationType": "Motivation",
-				"InputType": "Boredom",
-				"CurveType": "Linear",
-				"ResponseCurve": "None"
-			}
-		],
-		"BaseReward": 2,
-		"CooldownTime": 0,
-		"InertiaBonus": 1,
-		"SmartObjectTag":
-		{
-			"TagName": "Interaction.Work.Mine"
-		},
-		"InteractionMontage": "/Script/Engine.AnimMontage'/Game/AINPC/Animations/Montages/Stone_mining_Montage.Stone_mining_Montage'",
-		"bLoopAnimation": true,
-		"ActionDuration": 30,
-		"ActivityTag":
-		{
-			"TagName": "Interaction.Work.Mine"
-		},
-		"IntentionTag":
-		{
-			"TagName": "Intention.Work"
-		},
-		"DirectiveTag":
-		{
-			"TagName": "Directive.Work"
-		},
-		"ActionName": "Mining Action",
-		"RequiredProfessionID": "Miner",
-		"PersonalityInfluence":
-		{
-		}
-	},
-	{
-		"Name": "Work_Farm",
-		"ActionClass": "/Script/CoreUObject.Class'/Script/AINPC.Action_SmartObject'",
-		"Considerations": [
-			{
-				"ConsiderationType": "Motivation",
-				"InputType": "Boredom",
-				"CurveType": "Linear",
-				"ResponseCurve": "None"
-			}
-		],
-		"BaseReward": 2,
-		"CooldownTime": 0,
-		"InertiaBonus": 1,
-		"SmartObjectTag":
-		{
-			"TagName": "Interaction.Work.Farm"
-		},
-		"InteractionMontage": "None",
-		"bLoopAnimation": true,
-		"ActionDuration": 30,
-		"ActivityTag":
-		{
-			"TagName": "Interaction.Work.Farm"
-		},
-		"IntentionTag":
-		{
-			"TagName": "Intention.Work"
-		},
-		"DirectiveTag":
-		{
-			"TagName": "Directive.Work"
-		},
-		"ActionName": "Farming Action",
-		"RequiredProfessionID": "Farmer",
-		"PersonalityInfluence":
-		{
-		}
-	},
-	{
-		"Name": "Work_Guard",
-		"ActionClass": "/Script/CoreUObject.Class'/Script/AINPC.Action_SmartObject'",
-		"Considerations": [
-			{
-				"ConsiderationType": "Motivation",
-				"InputType": "Boredom",
-				"CurveType": "Linear",
-				"ResponseCurve": "None"
-			}
-		],
-		"BaseReward": 2,
-		"CooldownTime": 0,
-		"InertiaBonus": 1,
-		"SmartObjectTag":
-		{
-			"TagName": "Interaction.Work.Guard"
-		},
-		"InteractionMontage": "None",
-		"bLoopAnimation": true,
-		"ActionDuration": 60,
-		"ActivityTag":
-		{
-			"TagName": "Interaction.Work.Guard"
-		},
-		"IntentionTag":
-		{
-			"TagName": "Intention.Work"
-		},
-		"DirectiveTag":
-		{
-			"TagName": "Directive.Work"
-		},
-		"ActionName": "Guard Patrol",
-		"RequiredProfessionID": "Guard_Day",
-		"PersonalityInfluence":
-		{
-		}
-	},
-	{
-		"Name": "Work_Guard_Night",
-		"ActionClass": "/Script/CoreUObject.Class'/Script/AINPC.Action_SmartObject'",
-		"Considerations": [
-			{
-				"ConsiderationType": "Motivation",
-				"InputType": "Boredom",
-				"CurveType": "Linear",
-				"ResponseCurve": "None"
-			}
-		],
-		"BaseReward": 2,
-		"CooldownTime": 0,
-		"InertiaBonus": 1,
-		"SmartObjectTag":
-		{
-			"TagName": "Interaction.Work.Guard"
-		},
-		"InteractionMontage": "None",
-		"bLoopAnimation": true,
-		"ActionDuration": 60,
-		"ActivityTag":
-		{
-			"TagName": "Interaction.Work.Guard"
-		},
-		"IntentionTag":
-		{
-			"TagName": "Intention.Work"
-		},
-		"DirectiveTag":
-		{
-			"TagName": "Directive.Work"
-		},
-		"ActionName": "Night Guard Patrol",
-		"RequiredProfessionID": "Guard_Night",
-		"PersonalityInfluence":
-		{
-		}
-	},
-	{
-		"Name": "Work_Trade",
-		"ActionClass": "/Script/CoreUObject.Class'/Script/AINPC.Action_SmartObject'",
-		"Considerations": [
-			{
-				"ConsiderationType": "Motivation",
-				"InputType": "Boredom",
-				"CurveType": "Linear",
-				"ResponseCurve": "None"
-			},
-			{
-				"ConsiderationType": "Context",
-				"InputType": "HasFriendlyNearby",
-				"CurveType": "Step",
-				"ResponseCurve": "None"
-			}
-		],
-		"BaseReward": 2,
-		"CooldownTime": 0,
-		"InertiaBonus": 2,
-		"SmartObjectTag":
-		{
-			"TagName": "Interaction.Work.Trade"
-		},
-		"InteractionMontage": "None",
-		"bLoopAnimation": true,
-		"ActionDuration": 60,
-		"ActivityTag":
-		{
-			"TagName": "Interaction.Work.Trade"
-		},
-		"IntentionTag":
-		{
-			"TagName": "Intention.Work"
-		},
-		"DirectiveTag":
-		{
-			"TagName": "Directive.Work"
-		},
-		"ActionName": "Merchant Stand",
-		"RequiredProfessionID": "Merchant",
-		"PersonalityInfluence":
-		{
-		}
-	},
-	{
-		"Name": "Work_Scavenge",
-		"ActionClass": "/Script/CoreUObject.Class'/Script/AINPC.Action_SmartObject'",
-		"Considerations": [
-			{
-				"ConsiderationType": "Motivation",
-				"InputType": "Boredom",
-				"CurveType": "Linear",
-				"ResponseCurve": "None"
-			}
-		],
-		"BaseReward": 2,
-		"CooldownTime": 0,
-		"InertiaBonus": 1,
-		"SmartObjectTag":
-		{
-			"TagName": "Interaction.Work.Scavenge"
-		},
-		"InteractionMontage": "None",
-		"bLoopAnimation": true,
-		"ActionDuration": 20,
-		"ActivityTag":
-		{
-			"TagName": "Interaction.Work.Scavenge"
-		},
-		"IntentionTag":
-		{
-			"TagName": "Intention.Beg"
-		},
-		"DirectiveTag":
-		{
-			"TagName": "Directive.Work"
-		},
-		"ActionName": "Scavenging",
-		"RequiredProfessionID": "Scavenger",
-		"PersonalityInfluence":
-		{
-		}
-	},
-	{
-		"Name": "Work_Pray",
-		"ActionClass": "/Script/CoreUObject.Class'/Script/AINPC.Action_SmartObject'",
-		"Considerations": [
-			{
-				"ConsiderationType": "Motivation",
-				"InputType": "Boredom",
-				"CurveType": "Linear",
-				"ResponseCurve": "None"
-			}
-		],
-		"BaseReward": 2,
-		"CooldownTime": 0,
-		"InertiaBonus": 2,
-		"SmartObjectTag":
-		{
-			"TagName": "Interaction.Work.Pray"
-		},
-		"InteractionMontage": "None",
-		"bLoopAnimation": true,
-		"ActionDuration": 120,
-		"ActivityTag":
-		{
-			"TagName": "Interaction.Work.Pray"
-		},
-		"IntentionTag":
-		{
-			"TagName": "Intention.Idle"
-		},
-		"DirectiveTag":
-		{
-			"TagName": "Directive.Work"
-		},
-		"ActionName": "Praying Ritual",
-		"RequiredProfessionID": "Zealot",
-		"PersonalityInfluence":
-		{
-		}
-	},
-	{
-		"Name": "Work_Study",
-		"ActionClass": "/Script/CoreUObject.Class'/Script/AINPC.Action_SmartObject'",
-		"Considerations": [
-			{
-				"ConsiderationType": "Motivation",
-				"InputType": "Boredom",
-				"CurveType": "Linear",
-				"ResponseCurve": "None"
-			}
-		],
-		"BaseReward": 2,
-		"CooldownTime": 0,
-		"InertiaBonus": 2,
-		"SmartObjectTag":
-		{
-			"TagName": "Interaction.Work.Study"
-		},
-		"InteractionMontage": "None",
-		"bLoopAnimation": true,
-		"ActionDuration": 60,
-		"ActivityTag":
-		{
-			"TagName": "Interaction.Work.Study"
-		},
-		"IntentionTag":
-		{
-			"TagName": "Intention.Investigate"
-		},
-		"DirectiveTag":
-		{
-			"TagName": "Directive.Work"
-		},
-		"ActionName": "Scholarly Study",
-		"RequiredProfessionID": "Scholar",
-		"PersonalityInfluence":
-		{
-		}
-	}
+    {
+        "Name": "Attack",
+        "ActionClass": "/Script/CoreUObject.Class'/Script/AINPC.TestAction_Attack'",
+        "Considerations": [
+            {
+                "ConsiderationType": "Motivation",
+                "InputType": "Indignity",
+                "CurveType": "Linear",
+                "ResponseCurve": "None"
+            },
+            {
+                "ConsiderationType": "Motivation",
+                "InputType": "PerceivedThreat",
+                "CurveType": "Linear",
+                "ResponseCurve": "None"
+            }
+        ],
+        "BaseReward": 3,
+        "CooldownTime": 0,
+        "InertiaBonus": 0,
+        "SmartObjectTag": {
+            "TagName": "None"
+        },
+        "InteractionMontage": "None",
+        "bLoopAnimation": true,
+        "ActionDuration": 0,
+        "ActivityTag": {
+            "TagName": "Interaction.Combat"
+        },
+        "IntentionTag": {
+            "TagName": "Intention.Attack"
+        },
+        "DirectiveTag": {
+            "TagName": "Directive.Survival"
+        },
+        "ActionName": "Attack",
+        "RequiredProfessionID": "None",
+        "PersonalityInfluence": {
+            "Neuroticism": -1.0
+        },
+        "Priority": "Threat",
+        "CommitmentTime": 0,
+        "ExitConditions": []
+    },
+    {
+        "Name": "Flee",
+        "ActionClass": "/Script/CoreUObject.Class'/Script/AINPC.TestAction_Flee'",
+        "Considerations": [
+            {
+                "ConsiderationType": "Motivation",
+                "InputType": "PerceivedThreat",
+                "CurveType": "Linear",
+                "ResponseCurve": "None"
+            }
+        ],
+        "BaseReward": 3,
+        "CooldownTime": 0,
+        "InertiaBonus": 0,
+        "SmartObjectTag": {
+            "TagName": "None"
+        },
+        "InteractionMontage": "None",
+        "bLoopAnimation": true,
+        "ActionDuration": 0,
+        "ActivityTag": {
+            "TagName": "Interaction.Flee"
+        },
+        "IntentionTag": {
+            "TagName": "Intention.Flee"
+        },
+        "DirectiveTag": {
+            "TagName": "Directive.Survival"
+        },
+        "ActionName": "Flee",
+        "RequiredProfessionID": "None",
+        "PersonalityInfluence": {
+            "Neuroticism": 1.0
+        },
+        "Priority": "Threat",
+        "CommitmentTime": 0,
+        "ExitConditions": []
+    },
+    {
+        "Name": "Idle",
+        "ActionClass": "/Script/CoreUObject.Class'/Script/AINPC.TestAction_Idle'",
+        "Considerations": [
+            {
+                "ConsiderationType": "Motivation",
+                "InputType": "Boredom",
+                "CurveType": "Inverse",
+                "ResponseCurve": "None"
+            }
+        ],
+        "BaseReward": 1,
+        "CooldownTime": 2,
+        "InertiaBonus": 0.05,
+        "SmartObjectTag": {
+            "TagName": "None"
+        },
+        "InteractionMontage": "None",
+        "bLoopAnimation": true,
+        "ActionDuration": 0,
+        "ActivityTag": {
+            "TagName": "Interaction.Rest"
+        },
+        "IntentionTag": {
+            "TagName": "Intention.Idle"
+        },
+        "DirectiveTag": {
+            "TagName": "None"
+        },
+        "ActionName": "Idle",
+        "RequiredProfessionID": "None",
+        "Priority": "Idle",
+        "CommitmentTime": 0,
+        "ExitConditions": []
+    },
+    {
+        "Name": "Talk",
+        "ActionClass": "/Script/CoreUObject.Class'/Script/AINPC.Action_TalkTo'",
+        "Considerations": [
+            {
+                "ConsiderationType": "Motivation",
+                "InputType": "Loneliness",
+                "CurveType": "Linear",
+                "ResponseCurve": "None"
+            },
+            {
+                "ConsiderationType": "Context",
+                "InputType": "HasFriendlyNearby",
+                "CurveType": "Linear",
+                "ResponseCurve": "None"
+            },
+            {
+                "ConsiderationType": "Motivation",
+                "InputType": "Boredom",
+                "CurveType": "Linear",
+                "ResponseCurve": "None"
+            }
+        ],
+        "BaseReward": 1,
+        "CooldownTime": 0,
+        "InertiaBonus": 0,
+        "SmartObjectTag": {
+            "TagName": "None"
+        },
+        "InteractionMontage": "None",
+        "bLoopAnimation": true,
+        "ActionDuration": 0,
+        "ActivityTag": {
+            "TagName": "Interaction.Social"
+        },
+        "IntentionTag": {
+            "TagName": "Intention.Talk"
+        },
+        "DirectiveTag": {
+            "TagName": "Directive.Social"
+        },
+        "ActionName": "Talk",
+        "RequiredProfessionID": "None",
+        "Priority": "Social",
+        "CommitmentTime": 5,
+        "ExitConditions": []
+    },
+    {
+        "Name": "Eat",
+        "ActionClass": "/Script/CoreUObject.Class'/Script/AINPC.Action_SmartObject'",
+        "Considerations": [
+            {
+                "ConsiderationType": "Motivation",
+                "InputType": "Hunger",
+                "CurveType": "Linear",
+                "ResponseCurve": "None"
+            },
+            {
+                "ConsiderationType": "Context",
+                "InputType": "HasFoodNearby",
+                "CurveType": "Linear",
+                "ResponseCurve": "None"
+            }
+        ],
+        "BaseReward": 4,
+        "CooldownTime": 0,
+        "InertiaBonus": 0.5,
+        "SmartObjectTag": {
+            "TagName": "Interaction.Eat"
+        },
+        "InteractionMontage": "/Script/Engine.AnimMontage'/Game/AINPC/Animations/MAL/AnimationsLibrary/SocialAnimsBundle2/PartyAnimations/Animations/AS_EatingOnParty_Montage.AS_EatingOnParty_Montage'",
+        "bLoopAnimation": true,
+        "ActionDuration": 10,
+        "ActivityTag": {
+            "TagName": "Interaction.Eat"
+        },
+        "IntentionTag": {
+            "TagName": "None"
+        },
+        "DirectiveTag": {
+            "TagName": "Directive.Survival"
+        },
+        "ActionName": "Eat",
+        "RequiredProfessionID": "None",
+        "Priority": "Needs",
+        "CommitmentTime": 5,
+        "ExitConditions": [
+            {
+                "Variable": "Hunger",
+                "Operator": "LessThan",
+                "Threshold": 0.2,
+                "bWaitForDuration": true
+            }
+        ]
+    },
+    {
+        "Name": "Sleep",
+        "ActionClass": "/Script/CoreUObject.Class'/Script/AINPC.Action_SmartObject'",
+        "Considerations": [
+            {
+                "ConsiderationType": "Motivation",
+                "InputType": "Fatigue",
+                "CurveType": "Linear",
+                "ResponseCurve": "None"
+            },
+            {
+                "ConsiderationType": "Context",
+                "InputType": "HasBedNearby",
+                "CurveType": "Linear",
+                "ResponseCurve": "None"
+            }
+        ],
+        "BaseReward": 4,
+        "CooldownTime": 0,
+        "InertiaBonus": 0,
+        "SmartObjectTag": {
+            "TagName": "Interaction.Rest"
+        },
+        "InteractionMontage": "/Script/Engine.AnimMontage'/Game/AINPC/Animations/Montages/Sleep.Sleep'",
+        "bLoopAnimation": true,
+        "ActionDuration": 20,
+        "ActivityTag": {
+            "TagName": "Interaction.Rest"
+        },
+        "IntentionTag": {
+            "TagName": "None"
+        },
+        "DirectiveTag": {
+            "TagName": "Directive.Survival"
+        },
+        "ActionName": "Sleep",
+        "RequiredProfessionID": "None",
+        "Priority": "Needs",
+        "CommitmentTime": 10,
+        "ExitConditions": [
+            {
+                "Variable": "Fatigue",
+                "Operator": "LessThan",
+                "Threshold": 0.2,
+                "bWaitForDuration": true
+            }
+        ]
+    },
+    {
+        "Name": "Work_Mine",
+        "ActionClass": "/Script/CoreUObject.Class'/Script/AINPC.Action_SmartObject'",
+        "Considerations": [
+            {
+                "ConsiderationType": "Motivation",
+                "InputType": "Boredom",
+                "CurveType": "Linear",
+                "ResponseCurve": "None"
+            }
+        ],
+        "BaseReward": 2,
+        "CooldownTime": 0,
+        "InertiaBonus": 1,
+        "SmartObjectTag": {
+            "TagName": "Interaction.Work.Mine"
+        },
+        "InteractionMontage": "None",
+        "bLoopAnimation": true,
+        "ActionDuration": 30,
+        "ActivityTag": {
+            "TagName": "Interaction.Work.Mine"
+        },
+        "IntentionTag": {
+            "TagName": "Intention.Work"
+        },
+        "DirectiveTag": {
+            "TagName": "Directive.Work"
+        },
+        "ActionName": "Mining Action",
+        "RequiredProfessionID": "Miner",
+        "Priority": "Work",
+        "CommitmentTime": 10,
+        "ExitConditions": []
+    },
+    {
+        "Name": "Work_Farm",
+        "ActionClass": "/Script/CoreUObject.Class'/Script/AINPC.Action_SmartObject'",
+        "Considerations": [
+            {
+                "ConsiderationType": "Motivation",
+                "InputType": "Boredom",
+                "CurveType": "Linear",
+                "ResponseCurve": "None"
+            }
+        ],
+        "BaseReward": 2,
+        "CooldownTime": 0,
+        "InertiaBonus": 1,
+        "SmartObjectTag": {
+            "TagName": "Interaction.Work.Farm"
+        },
+        "InteractionMontage": "None",
+        "bLoopAnimation": true,
+        "ActionDuration": 30,
+        "ActivityTag": {
+            "TagName": "Interaction.Work.Farm"
+        },
+        "IntentionTag": {
+            "TagName": "Intention.Work"
+        },
+        "DirectiveTag": {
+            "TagName": "Directive.Work"
+        },
+        "ActionName": "Farming Action",
+        "RequiredProfessionID": "Farmer",
+        "Priority": "Work",
+        "CommitmentTime": 10,
+        "ExitConditions": []
+    },
+    {
+        "Name": "Work_Guard",
+        "ActionClass": "/Script/CoreUObject.Class'/Script/AINPC.Action_SmartObject'",
+        "Considerations": [
+            {
+                "ConsiderationType": "Motivation",
+                "InputType": "Boredom",
+                "CurveType": "Linear",
+                "ResponseCurve": "None"
+            }
+        ],
+        "BaseReward": 2,
+        "CooldownTime": 0,
+        "InertiaBonus": 1,
+        "SmartObjectTag": {
+            "TagName": "Interaction.Work.Guard"
+        },
+        "InteractionMontage": "None",
+        "bLoopAnimation": true,
+        "ActionDuration": 60,
+        "ActivityTag": {
+            "TagName": "Interaction.Work.Guard"
+        },
+        "IntentionTag": {
+            "TagName": "Intention.Work"
+        },
+        "DirectiveTag": {
+            "TagName": "Directive.Work"
+        },
+        "ActionName": "Guard Patrol",
+        "RequiredProfessionID": "Guard_Day",
+        "Priority": "Work",
+        "CommitmentTime": 15,
+        "ExitConditions": []
+    },
+    {
+        "Name": "Work_Guard_Night",
+        "ActionClass": "/Script/CoreUObject.Class'/Script/AINPC.Action_SmartObject'",
+        "Considerations": [
+            {
+                "ConsiderationType": "Motivation",
+                "InputType": "Boredom",
+                "CurveType": "Linear",
+                "ResponseCurve": "None"
+            }
+        ],
+        "BaseReward": 2,
+        "CooldownTime": 0,
+        "InertiaBonus": 1,
+        "SmartObjectTag": {
+            "TagName": "Interaction.Work.Guard"
+        },
+        "InteractionMontage": "None",
+        "bLoopAnimation": true,
+        "ActionDuration": 60,
+        "ActivityTag": {
+            "TagName": "Interaction.Work.Guard"
+        },
+        "IntentionTag": {
+            "TagName": "Intention.Work"
+        },
+        "DirectiveTag": {
+            "TagName": "Directive.Work"
+        },
+        "ActionName": "Night Guard Patrol",
+        "RequiredProfessionID": "Guard_Night",
+        "Priority": "Work",
+        "CommitmentTime": 15,
+        "ExitConditions": []
+    },
+    {
+        "Name": "Work_Trade",
+        "ActionClass": "/Script/CoreUObject.Class'/Script/AINPC.Action_SmartObject'",
+        "Considerations": [
+            {
+                "ConsiderationType": "Motivation",
+                "InputType": "Boredom",
+                "CurveType": "Linear",
+                "ResponseCurve": "None"
+            },
+            {
+                "ConsiderationType": "Context",
+                "InputType": "HasFriendlyNearby",
+                "CurveType": "Step",
+                "ResponseCurve": "None"
+            }
+        ],
+        "BaseReward": 2,
+        "CooldownTime": 0,
+        "InertiaBonus": 2,
+        "SmartObjectTag": {
+            "TagName": "Interaction.Work.Trade"
+        },
+        "InteractionMontage": "None",
+        "bLoopAnimation": true,
+        "ActionDuration": 60,
+        "ActivityTag": {
+            "TagName": "Interaction.Work.Trade"
+        },
+        "IntentionTag": {
+            "TagName": "Intention.Work"
+        },
+        "DirectiveTag": {
+            "TagName": "Directive.Work"
+        },
+        "ActionName": "Merchant Stand",
+        "RequiredProfessionID": "Merchant",
+        "Priority": "Work",
+        "CommitmentTime": 20,
+        "ExitConditions": []
+    },
+    {
+        "Name": "Work_Scavenge",
+        "ActionClass": "/Script/CoreUObject.Class'/Script/AINPC.Action_SmartObject'",
+        "Considerations": [
+            {
+                "ConsiderationType": "Motivation",
+                "InputType": "Boredom",
+                "CurveType": "Linear",
+                "ResponseCurve": "None"
+            }
+        ],
+        "BaseReward": 2,
+        "CooldownTime": 0,
+        "InertiaBonus": 1,
+        "SmartObjectTag": {
+            "TagName": "Interaction.Work.Scavenge"
+        },
+        "InteractionMontage": "None",
+        "bLoopAnimation": true,
+        "ActionDuration": 20,
+        "ActivityTag": {
+            "TagName": "Interaction.Work.Scavenge"
+        },
+        "IntentionTag": {
+            "TagName": "Intention.Beg"
+        },
+        "DirectiveTag": {
+            "TagName": "Directive.Work"
+        },
+        "ActionName": "Scavenging",
+        "RequiredProfessionID": "Scavenger",
+        "Priority": "Work",
+        "CommitmentTime": 5,
+        "ExitConditions": []
+    },
+    {
+        "Name": "Work_Pray",
+        "ActionClass": "/Script/CoreUObject.Class'/Script/AINPC.Action_SmartObject'",
+        "Considerations": [
+            {
+                "ConsiderationType": "Motivation",
+                "InputType": "Boredom",
+                "CurveType": "Linear",
+                "ResponseCurve": "None"
+            }
+        ],
+        "BaseReward": 2,
+        "CooldownTime": 0,
+        "InertiaBonus": 2,
+        "SmartObjectTag": {
+            "TagName": "Interaction.Work.Pray"
+        },
+        "InteractionMontage": "None",
+        "bLoopAnimation": true,
+        "ActionDuration": 120,
+        "ActivityTag": {
+            "TagName": "Interaction.Work.Pray"
+        },
+        "IntentionTag": {
+            "TagName": "Intention.Idle"
+        },
+        "DirectiveTag": {
+            "TagName": "Directive.Work"
+        },
+        "ActionName": "Praying Ritual",
+        "RequiredProfessionID": "Zealot",
+        "Priority": "Work",
+        "CommitmentTime": 30,
+        "ExitConditions": []
+    },
+    {
+        "Name": "Work_Study",
+        "ActionClass": "/Script/CoreUObject.Class'/Script/AINPC.Action_SmartObject'",
+        "Considerations": [
+            {
+                "ConsiderationType": "Motivation",
+                "InputType": "Boredom",
+                "CurveType": "Linear",
+                "ResponseCurve": "None"
+            }
+        ],
+        "BaseReward": 2,
+        "CooldownTime": 0,
+        "InertiaBonus": 2,
+        "SmartObjectTag": {
+            "TagName": "Interaction.Work.Study"
+        },
+        "InteractionMontage": "None",
+        "bLoopAnimation": true,
+        "ActionDuration": 60,
+        "ActivityTag": {
+            "TagName": "Interaction.Work.Study"
+        },
+        "IntentionTag": {
+            "TagName": "Intention.Investigate"
+        },
+        "DirectiveTag": {
+            "TagName": "Directive.Work"
+        },
+        "ActionName": "Scholarly Study",
+        "RequiredProfessionID": "Scholar",
+        "Priority": "Work",
+        "CommitmentTime": 20,
+        "ExitConditions": []
+    }
 ]

@@ -9,11 +9,13 @@
 
 void UAction_SmartObject::Enter_Implementation(AAIController* Controller)
 {
+	// ✅ Call base class to set ActionStartTime and CommitmentStartTime
+	Super::Enter_Implementation(Controller);
+
 	if (!Controller) return;
 
 	TargetSmartObject = nullptr;
 	bIsInteracting = false;
-	ActionStartTime = 0.0f;
 
 	// 1. Get SmartObject Manager
 	USmartObjectManager* SmartObjectMgr = nullptr;
@@ -293,87 +295,14 @@ void UAction_SmartObject::Exit_Implementation(AAIController* Controller)
 	UE_LOG(LogTemp, Log, TEXT("[%s] Exit - Reset state"), *ActionName);
 }
 
-bool UAction_SmartObject::ShouldExit(AAIController* Controller) const
-{
-	// ✅ 0. 紧急情况检查（Critical Needs - Always Allow Exit）
-	// Emergency check - allow exit even during ActionDuration
-	AUtilityAIController* UtilController = Cast<AUtilityAIController>(Controller);
-	if (UtilController && UtilController->MentalState)
-	{
-		UNPCMentalState* State = UtilController->MentalState;
-		
-		// Critical hunger, fatigue, or threat - allow immediate exit
-		if (State->Hunger > 0.8f || State->Fatigue > 0.8f || State->Perceived_Threat > 0.5f)
-		{
-			UE_LOG(LogTemp, Warning, TEXT("[%s] ⚠️ EMERGENCY EXIT: Hunger=%.2f, Fatigue=%.2f, Threat=%.2f"), 
-			       *ActionName, State->Hunger, State->Fatigue, State->Perceived_Threat);
-			return true;  // Emergency exit allowed
-		}
-	}
-
-	// ✅ 1. 持续时长检查（仅在交互时阻止切换）
-	// Duration check (only block switching when actually interacting)
-	if (ActionDuration > 0.0f)
-	{
-		// 如果还没开始交互（正在走路），允许切换到更好的动作
-		// If not yet interacting (still moving), allow switching to better action
-		if (!bIsInteracting)
-		{
-			return true;  // Allow switching during movement phase
-		}
-		
-		// 正在交互中，检查是否超过持续时长
-		// Currently interacting, check if duration expired
-		if (Controller && Controller->GetWorld())
-		{
-			float ElapsedTime = Controller->GetWorld()->GetTimeSeconds() - ActionStartTime;
-			// 只有时长到期才退出
-			return ElapsedTime >= ActionDuration;
-		}
-		return false;
-	}
-	
-	// ✅ 2. 需求满足检查（仅当没有设置 Duration 时）
-	// Need satisfaction check (only when Duration is not set)
-	// Reuse UtilController from emergency check above
-	if (UtilController && UtilController->MentalState)
-	{
-		UNPCMentalState* State = UtilController->MentalState;
-		
-		// Eat -> Check Hunger
-		if (SmartObjectTag == AINPCTags::Interaction_Eat)
-		{
-			if (State->Hunger < 0.2f) // Well-fed threshold
-			{
-				return true;
-			}
-		}
-		// Sleep -> Check Fatigue
-		else if (SmartObjectTag == AINPCTags::Interaction_Rest)
-		{
-			if (State->Fatigue < 0.2f) // Well-rested threshold
-			{
-				return true;
-			}
-		}
-		// 针对工作类动作，增加惯性 (Add inertia for work actions)
-		else if (SmartObjectTag.MatchesTag(AINPCTags::Interaction_Work))
-		{
-			// 工作持续时间较长，容易被打断，增加惯性保护
-			if (ActionDuration > 0.0f && Controller && Controller->GetWorld())
-			{
-				float ElapsedTime = Controller->GetWorld()->GetTimeSeconds() - ActionStartTime;
-				// 如果还没工作够时长，给予惯性加成 (e.g., allow exit only after 50% of duration)
-				if (ElapsedTime < ActionDuration * 0.5f) // Example: Don't exit if less than half duration
-				{
-					return false; // Prevent exit due to inertia
-				}
-			}
-		}
-	}
-
-	return false;
-}
+// =========================================================
+// ✅ ShouldExit REMOVED - Now handled by Transition System
+// Previous hardcoded logic (Emergency checks, Duration, Need satisfaction)
+// is now data-driven via:
+// - Priority (EActionPriority::Needs)
+// - CommitmentTime (replaces ActionDuration lock)
+// - ExitConditions (replaces Hunger < 0.2, Fatigue < 0.2 checks)
+// =========================================================
 
 void UAction_SmartObject::SetupRecoveryTimer(AAIController* Controller)
 {

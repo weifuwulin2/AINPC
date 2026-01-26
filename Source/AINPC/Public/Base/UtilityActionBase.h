@@ -82,6 +82,61 @@ enum class EUtilityCurveType : uint8
     Inverse           // 反向 (y = 1 - x) - 用于反向 Context，例如"没有敌人时才能聊天"
 };
 
+// =========================================================
+// Action Priority Levels (for Transition System)
+// =========================================================
+UENUM(BlueprintType)
+enum class EActionPriority : uint8
+{
+    None = 0,
+    Idle = 10,       // Can always be interrupted (Wander, Patrol)
+    Ambient = 20,    // Random acts (Looking around)
+    Work = 30,       // Job tasks (Mining, Crafting)
+    Social = 35,     // Dialogue/Interaction
+    Needs = 40,      // Eating/Sleeping - High Inertia
+    Threat = 50,     // Combat/Fleeing - Hard to interrupt
+    Critical = 60    // Death/Stun - Uninterruptible
+};
+
+// =========================================================
+// Comparison Operators (for Exit Conditions)
+// =========================================================
+UENUM(BlueprintType)
+enum class EComparisonOperator : uint8
+{
+    LessThan,
+    LessThanOrEqual,
+    GreaterThan,
+    GreaterThanOrEqual,
+    Equals
+};
+
+// =========================================================
+// Data-Driven Exit Condition
+// =========================================================
+USTRUCT(BlueprintType)
+struct FActionExitCondition
+{
+    GENERATED_BODY()
+    
+    // Variable to check (e.g., Hunger, Fatigue)
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    EUtilityInputType Variable = EUtilityInputType::Hunger;
+    
+    // Comparison operator (e.g., LessThan)
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    EComparisonOperator Operator = EComparisonOperator::LessThan;
+    
+    // Threshold value (e.g., 0.2)
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    float Threshold = 0.2f;
+
+    // If true, only check this condition after ActionDuration has passed
+    // Useful for "Eat until full, but at least chew for 5 seconds"
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    bool bWaitForDuration = false;
+};
+
 USTRUCT(BlueprintType)
 struct FUtilityConsideration
 {
@@ -204,6 +259,27 @@ struct FUtilityActionConfig : public FTableRowBase
 	// Example: Attack { Neuroticism: -1.0 } -> Low N (Brave) gets bonus
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Personality")
 	TMap<EOCEANTrait, float> PersonalityInfluence;
+
+    // =========================================================
+    // Transition System Configuration
+    // =========================================================
+    
+    // Action Priority Level (determines interrupt rules)
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Transition",
+              meta = (DisplayName = "Priority Level"))
+    EActionPriority Priority = EActionPriority::Idle;
+
+    // Commitment Time: After Enter(), this action cannot be interrupted by lower-priority actions for X seconds
+    // (Distinct from Cooldown, which is post-Exit lockout)
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Transition",
+              meta = (DisplayName = "Commitment Time (seconds)"))
+    float CommitmentTime = 0.0f;
+
+    // Data-Driven Exit Conditions (replaces hardcoded ShouldExit logic)
+    // Example: Eat exits when Hunger < 0.2
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Transition",
+              meta = (DisplayName = "Exit Conditions"))
+    TArray<FActionExitCondition> ExitConditions;
 };
 
 // =========================================================
@@ -258,9 +334,31 @@ public:
     UPROPERTY(Transient)
     FString ActionName;
 
+    // =========================================================
+    // Transition System Runtime Fields
+    // =========================================================
+    
+    UPROPERTY(Transient)
+    EActionPriority Priority = EActionPriority::Idle;
+
+    UPROPERTY(Transient)
+    float CommitmentTime = 0.0f;
+
+    UPROPERTY(Transient)
+    TArray<FActionExitCondition> ExitConditions;
+
+    // Runtime: When did the Commitment period start?
+    float CommitmentStartTime = 0.0f;
+
+    // Runtime: Last calculated score (for inertia comparison)
+    float LastScore = 0.0f;
+
     // --- 运行时状态 ---
     // 上次成功执行的时间 (用于计算冷却)
     float LastExecutedTime = -9999.0f;
+
+    // Action start time (for duration tracking)
+    float ActionStartTime = 0.0f;
 
     // --- 核心函数 ---
 
@@ -272,6 +370,16 @@ public:
 
     // 标记执行：当动作被选中并执行时调用，用于刷新冷却时间
     void MarkExecutionTime(float CurrentTime);
+
+    // =========================================================
+    // Transition System Helpers
+    // =========================================================
+    
+    // Is this action currently in its Commitment period?
+    bool IsCommitted(float CurrentTime) const;
+
+    // Check data-driven exit conditions (returns true if should exit)
+    bool CheckExitConditions(UNPCMentalState* MentalState, AAIController* Controller) const;
 
 protected:
     // 辅助函数：统一获取输入值
@@ -287,7 +395,7 @@ public:
     
     UFUNCTION(BlueprintNativeEvent)
     void Enter(AAIController* Controller);
-    virtual void Enter_Implementation(AAIController* Controller) {}
+    virtual void Enter_Implementation(AAIController* Controller);
     
     UFUNCTION(BlueprintNativeEvent)
     void Execute(AAIController* Controller);
@@ -302,5 +410,5 @@ public:
     // 默认返回 true（允许切换），SmartObject 等有持续时长的动作会返回 false 阻止切换
     // Default returns true (allow switching), SmartObject with Duration returns false to block
     UFUNCTION(BlueprintCallable, Category = "Utility Action")
-    virtual bool ShouldExit(AAIController* Controller) const { return true; }
+    virtual bool ShouldExit(AAIController* Controller) const;
 };

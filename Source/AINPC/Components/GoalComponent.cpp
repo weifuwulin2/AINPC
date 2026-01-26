@@ -259,10 +259,12 @@ void UGoalComponent::CheckSchedule()
 	if (CurrentTask && CurrentTask->IsValid())
 	{
 		CachedScheduleDirective = CurrentTask->TaskTag;
+		CachedScheduleActivity = CurrentTask->ActivityTag; // ✅ Cache Activity Tag
 	}
 	else
 	{
 		CachedScheduleDirective = AINPCTags::Directive_Idle;
+		CachedScheduleActivity = FGameplayTag::EmptyTag;
 	}
 }
 

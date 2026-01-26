@@ -18,9 +18,7 @@ public:
 	virtual void Execute_Implementation(AAIController* Controller) override;
 	virtual void Exit_Implementation(AAIController* Controller) override;
 
-	// 检查是否应该退出（持续时长到期）
-	// Check if action should exit (duration expired)
-	bool ShouldExit(AAIController* Controller) const;
+	// ✅ ShouldExit removed - now handled by Transition System (Priority + CommitmentTime + ExitConditions)
 
 	// 动画配置 / Animation Configuration
 	// 可在 DataTable 中配置，或者在派生 Blueprint 中设置

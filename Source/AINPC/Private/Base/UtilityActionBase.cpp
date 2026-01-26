@@ -37,9 +37,14 @@ void UUtilityActionBase::InitFromConfig(const FUtilityActionConfig& Config)
     IntentionTag = Config.IntentionTag; // 用于 LLM Intention 匹配
 	DirectiveTag = Config.DirectiveTag; // 用于 Goal Directive 匹配
     PersonalityInfluence = Config.PersonalityInfluence; // 数据驱动 PAM 配置
+
+    // ✅ Transition System fields
+    Priority = Config.Priority;
+    CommitmentTime = Config.CommitmentTime;
+    ExitConditions = Config.ExitConditions;
     
-    UE_LOG(LogTemp, Warning, TEXT("[InitFromConfig] %s: PersonalityInfluence entries = %d"), 
-           *Config.ActionName, PersonalityInfluence.Num());
+    UE_LOG(LogTemp, Warning, TEXT("[InitFromConfig] %s: Priority=%d, Commitment=%.1fs, ExitConditions=%d"), 
+           *Config.ActionName, (int32)Priority, CommitmentTime, ExitConditions.Num());
 
     // Fix: Assign name from config if available
     if (!Config.ActionName.IsEmpty())
@@ -299,10 +304,41 @@ float UUtilityActionBase::CalculateScore(UNPCMentalState* MentalState, AAIContro
         
     
 
+    // 4.5. 计算 Schedule Activity 加成 (Schedule Bonus)
+    // ---------------------------------------------------------
+    // 如果当前时刻的 Schedule Activity 与本动作的 ActivityTag 匹配，给予额外动机加成
+    // If current Schedule Activity matches this action's ActivityTag, give extra motivation bonus
+    // 这确保即使没有生理需求 (Hunger=0)，NPC 也会执行日程安排的任务 (强制吃饭/强制工作)
+    // This ensures NPC performs scheduled tasks (Forced Eat/Work) even without physical need
+    
+    float ScheduleBonus = 0.0f;
+    if (ActivityTag.IsValid())
+    {
+        // Find GoalComponent (check Controller first, then Pawn)
+        // Note: Optimization - we could cache GoalComponent, but for now finding it is safe
+        UGoalComponent* GoalComp = nullptr;
+        if (Controller) GoalComp = Controller->FindComponentByClass<UGoalComponent>();
+        if (!GoalComp && Controller && Controller->GetPawn()) GoalComp = Controller->GetPawn()->FindComponentByClass<UGoalComponent>();
+
+        if (GoalComp)
+        {
+            FGameplayTag ScheduledActivity = GoalComp->GetScheduledActivity();
+            if (ScheduledActivity.IsValid() && ScheduledActivity.MatchesTag(ActivityTag))
+            {
+                ScheduleBonus = 1.0f; // Additive Bonus like Intention
+                if (bLogDebug)
+                {
+                    UE_LOG(LogTemp, Warning, TEXT("      [Schedule] 📅 SCHEDULE MATCH! ActivityTag:'%s' matches Schedule:'%s'. Bonus:+1.0"), 
+                           *ActivityTag.ToString(), *ScheduledActivity.ToString());
+                }
+            }
+        }
+    }
+
     // 5. 最终得分计算 / Final Score Calculation
     // 公式 / Formula:
-    // Score = BaseReward × (MotivationSum + IntentionBonus) × ContextProduct
-    float EffectiveMotivation = MotivationSum + IntentionBonus;
+    // Score = BaseReward × (MotivationSum + IntentionBonus + ScheduleBonus) × ContextProduct
+    float EffectiveMotivation = MotivationSum + IntentionBonus + ScheduleBonus;
     float FinalScore = BaseReward * EffectiveMotivation * ContextProduct;
 
     // =========================================================
@@ -802,8 +838,98 @@ FString UUtilityActionBase::GetVariableNameFromInputType(EUtilityInputType Input
         case EUtilityInputType::HasFriendlyNearby: return TEXT("HasFriendlyNearby");
         case EUtilityInputType::HasFoodNearby:     return TEXT("HasFoodNearby");
         case EUtilityInputType::HasBedNearby:      return TEXT("HasBedNearby");
-        
+        case EUtilityInputType::GoalDirectiveMatch:return TEXT("GoalDirectiveMatch");
+
         default:
             return TEXT("Unknown");
+    }
+}
+
+bool UUtilityActionBase::ShouldExit(AAIController* Controller) const
+{
+    // 默认行为：允许随时退出
+    // Default behavior: Allow exit at any time
+    return true;
+}
+
+// =========================================================
+// Transition System: IsCommitted
+// =========================================================
+bool UUtilityActionBase::IsCommitted(float CurrentTime) const
+{
+    if (CommitmentTime <= 0.0f) return false;
+    
+    float ElapsedSinceCommit = CurrentTime - CommitmentStartTime;
+    return ElapsedSinceCommit < CommitmentTime;
+}
+
+// =========================================================
+// Transition System: CheckExitConditions (Data-Driven)
+// =========================================================
+bool UUtilityActionBase::CheckExitConditions(UNPCMentalState* MentalState, AAIController* Controller) const
+{
+    if (ExitConditions.Num() == 0) return false;
+
+    for (const FActionExitCondition& Condition : ExitConditions)
+    {
+        // Skip if waiting for duration and duration hasn't elapsed
+        if (Condition.bWaitForDuration && Controller && Controller->GetWorld())
+        {
+            float Elapsed = Controller->GetWorld()->GetTimeSeconds() - ActionStartTime;
+            // Use ActionDuration from base class (requires it to be set)
+            // For simplicity, use CommitmentTime as the "minimum duration" if ActionDuration is 0
+            float MinDuration = CommitmentTime > 0.0f ? CommitmentTime : 0.0f;
+            if (Elapsed < MinDuration) continue;
+        }
+        
+        // Get the current value of the variable
+        float CurrentValue = const_cast<UUtilityActionBase*>(this)->GetConsiderationValue(Condition.Variable, MentalState, Controller, false);
+        
+        // Evaluate condition
+        bool bConditionMet = false;
+        switch (Condition.Operator)
+        {
+            case EComparisonOperator::LessThan:
+                bConditionMet = CurrentValue < Condition.Threshold;
+                break;
+            case EComparisonOperator::LessThanOrEqual:
+                bConditionMet = CurrentValue <= Condition.Threshold;
+                break;
+            case EComparisonOperator::GreaterThan:
+                bConditionMet = CurrentValue > Condition.Threshold;
+                break;
+            case EComparisonOperator::GreaterThanOrEqual:
+                bConditionMet = CurrentValue >= Condition.Threshold;
+                break;
+            case EComparisonOperator::Equals:
+                bConditionMet = FMath::IsNearlyEqual(CurrentValue, Condition.Threshold, 0.01f);
+                break;
+        }
+        
+        if (bConditionMet)
+        {
+            UE_LOG(LogTemp, Log, TEXT("[%s] Exit condition met: %s %s %.2f (Current: %.2f)"),
+                   *ActionName,
+                   *UEnum::GetValueAsString(Condition.Variable),
+                   *UEnum::GetValueAsString(Condition.Operator),
+                   Condition.Threshold,
+                   CurrentValue);
+            return true;
+        }
+    }
+    
+    return false; // No conditions met
+}
+
+// =========================================================
+// Base Enter_Implementation (sets ActionStartTime, CommitmentStartTime)
+// =========================================================
+void UUtilityActionBase::Enter_Implementation(AAIController* Controller)
+{
+    if (Controller && Controller->GetWorld())
+    {
+        float CurrentTime = Controller->GetWorld()->GetTimeSeconds();
+        ActionStartTime = CurrentTime;
+        CommitmentStartTime = CurrentTime;
     }
 }

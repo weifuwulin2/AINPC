@@ -514,6 +514,12 @@ Ref: [Advanced_AI_Features.md](docs/design/Advanced_AI_Features.md)
 - **Calibration**: Logic automatically adjusts Utility Weights to match the desired Personality Profile.
 - **Goal**: An AI that *behaves* like its personality, not just speaks like it.
 
+### 🔮 Phase X: The "North Star" (Neural Utility Architecture)
+**The Ultimate Goal** - A Neuro-Symbolic "Double Brain" System.
+- **Concept**: Combine **Vector Math (System 1)** for speed with **Local LLM (System 2)** for reasoning.
+- **Mechanism**: Hard-coded Utility Functions are replaced by **Semantic Vector Matching**.
+- **Design Doc**: [Neural_Utility_Architecture.md](docs/design/Neural_Utility_Architecture.md)
+
 ### 📋 Technical Roadmap
 
 See detailed design docs for implementation plans:
