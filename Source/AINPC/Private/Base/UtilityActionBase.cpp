@@ -393,9 +393,9 @@ float UUtilityActionBase::CalculateScore(UNPCMentalState* MentalState, AAIContro
             float OldScore = FinalScore;
             FinalScore *= Modifier;
             
-            // ✅ Always log PAM (not dependent on bLogDebug)
-            UE_LOG(LogTemp, Warning, TEXT("    ↳ [PAM] %s: %.2f | Factor: %.1f -> Mod: %.2fx (%.2f -> %.2f)"),
-                   *UEnum::GetValueAsString(Trait), TraitValue, InfluenceFactor, Modifier, OldScore, FinalScore);
+            // ✅ Always log PAM - Disabled by user request
+            // UE_LOG(LogTemp, Warning, TEXT("    ↳ [PAM] %s: %.2f | Factor: %.1f -> Mod: %.2fx (%.2f -> %.2f)"),
+            //        *UEnum::GetValueAsString(Trait), TraitValue, InfluenceFactor, Modifier, OldScore, FinalScore);
         }
     }
     else

@@ -9,6 +9,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - 2026-01-26
 
+### ✨ Features - Smart Object Slot System
+- **Multi-Slot Support**: Smart Objects can now support multiple users simultaneously.
+  - Added `SlotOffsets` array to `SmartObjectComponent` for configuring multiple interaction points.
+  - Editor-draggable offsets via `MakeEditWidget` meta.
+  - Runtime debug arrows visualize slot positions (Editor/PIE only).
+- **Slot Reservation**: NPCs now reserve individual slots instead of entire objects.
+  - `TryReserveSlot()` / `ReleaseSlot()` API on `SmartObjectComponent`.
+  - `SmartObjectManager::FindBestSmartObject()` checks `HasAvailableSlot()` before returning.
+- **Auto-Registration**: Smart Objects automatically register/unregister with `SmartObjectManager` on BeginPlay/EndPlay.
+
+### 🔧 Fixes - Navigation & Pathfinding
+- **NavMesh Projection**: Added `ProjectToNavMesh()` helper to project underground targets to walkable surfaces.
+- **Improved Retry Logic**: Progressive retry with increasing acceptance radius (150cm → 300cm).
+  - Fallback to `MoveToActor` if `MoveToLocation` returns Failed.
+  - Force-start interaction if NPC is within 500cm after 5 retries.
+- **Z-Coordinate Fix**: Slot locations now use Actor's Z instead of transformed Z (prevents underground targets).
+
+### 🔄 Refactor - Logging & Code Cleanup
+- **Unified Logging**: Replaced `UE_LOG(LogTemp, ...)` with `AINPC_LOG(...)` macros across Smart Object system.
+- **Removed Legacy Fallback**: Removed `SensoryComponent::FindBestSmartObject` fallback from `Action_SmartObject`.
+
 ### 🔄 Refactor - Action Transition System
 - **Unified Action Transition Logic**: Implemented a centralized, priority-based transition system.
   - Replaced scattered `ShouldExit()` overrides with data-driven configuration in `DT_UtilityActions`.

@@ -55,7 +55,15 @@ private:
 	float ActionStartTime = 0.0f;
 
 	// 调试日志时间戳 / Debug log timestamp
+	// 调试日志时间戳 / Debug log timestamp
 	float LastDebugTime = 0.0f;
+
+	// ✅ Move To Retry Throttling
+	float LastMoveRetryTime = 0.0f;
+	int32 MoveRetryCount = 0;
+
+	// ✅ NEW: Slot-based reservation
+	int32 ReservedSlotIndex = -1;
 
 	// ✅ 恢复定时器 / Recovery Timer
 	FTimerHandle RecoveryTimerHandle;

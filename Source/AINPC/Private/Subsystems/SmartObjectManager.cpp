@@ -1,17 +1,8 @@
 #include "Subsystems/SmartObjectManager.h"
 #include "VisualLogger/VisualLogger.h"
-
-// Helper struct definition needs to be known if we use it, but I put it in Header.
-// Wait, I put it as FSmartObjectListWrapper in the map decl but defined FSmartObjectList. Fixed in cpp logic? 
-// No, I need to fix the header first or assume the next write_to_file fixes it.
-// Actually, I can just use TMap<FGameplayTag, FSmartObjectList> in the header if I define the struct inside or before.
-// I will rely on the next step to fix the C++ compilation if the header was messy, but let's try to write a clean CPP that assumes the Header is fixed/valid.
-
-// Wait, I messed up the header struct name in the tool call: `FSmartObjectListWrapper` vs `FSmartObjectList`.
-// I should fix the header file first to be correct.
-
 #include "Engine/World.h"
 #include "GameFramework/Actor.h"
+#include "Components/SmartObjectComponent.h"
 
 void USmartObjectManager::Initialize(FSubsystemCollectionBase& Collection)
 {
@@ -81,13 +72,26 @@ AActor* USmartObjectManager::FindBestSmartObject(AActor* RequestingActor, FGamep
 			continue;
 		}
 
-		// 1. Check Reservation
-		if (IsReserved(Candidate))
+		// ✅ NEW: Check Slot Availability via SmartObjectComponent
+		// 新增：通过 SmartObjectComponent 检查槽位可用性
+		USmartObjectComponent* SmartComp = Candidate->FindComponentByClass<USmartObjectComponent>();
+		if (SmartComp)
 		{
-			// Skip if reserved (unless reserved by me? No, FindBest usually implies finding a NEW one)
-			if (GetReserver(Candidate) != RequestingActor)
+			if (!SmartComp->HasAvailableSlot())
 			{
+				// All slots occupied, skip this object
 				continue;
+			}
+		}
+		else
+		{
+			// Legacy: Fallback to simple reservation check
+			if (IsReserved(Candidate))
+			{
+				if (GetReserver(Candidate) != RequestingActor)
+				{
+					continue;
+				}
 			}
 		}
 
@@ -95,7 +99,6 @@ AActor* USmartObjectManager::FindBestSmartObject(AActor* RequestingActor, FGamep
 		float DistSq = FVector::DistSquared(Origin, Candidate->GetActorLocation());
 		if (DistSq < BestDistSq)
 		{
-			// Optional: Check Reachability (NavMesh) - expensive, maybe skip for now
 			BestDistSq = DistSq;
 			BestCandidate = Candidate;
 		}

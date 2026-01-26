@@ -13,6 +13,19 @@ This file contains a log of commit messages for the AINPC project.
 - **Cleanup**: Removed legacy `ShouldExit` overrides and `bInConversation` flags.
 - **Stability**: Added commitment time to prevent action flickering.
 
+## [2026-01-26] Smart Object Slot System & Navigation Fixes
+**Type**: feat/fix
+**Scope**: SmartObjectComponent, SmartObjectManager, Action_SmartObject
+**Description**:
+- **Slot System**: Implemented multi-slot support for Smart Objects (campfire, bench, etc.).
+  - `SlotOffsets` array for configuring multiple interaction points.
+  - `TryReserveSlot()` / `ReleaseSlot()` API for slot-based reservation.
+  - Debug arrows visualize slots in Editor/PIE.
+- **Auto-Registration**: Smart Objects now auto-register with `SmartObjectManager` on BeginPlay.
+- **NavMesh Projection**: Added `ProjectToNavMesh()` to fix underground target issues.
+- **Improved Retry Logic**: Progressive acceptance radius (150→300cm), fallback to MoveToActor.
+- **Unified Logging**: Replaced `LogTemp` with `AINPC_LOG` macros.
+
 
 
 ## [2026-01-18] Work System & Maslow's Hierarchy Directive Implementation

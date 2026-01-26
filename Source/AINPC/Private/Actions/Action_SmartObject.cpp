@@ -1,11 +1,40 @@
 #include "Actions/Action_SmartObject.h"
-#include "Social/SocialGameplayTags.h" // ✅ Use Canonical Tags
+#include "Social/SocialGameplayTags.h"
 #include "Controller/UtilityAIController.h"
 #include "Components/SensoryComponent.h"
 #include "Components/SmartObjectComponent.h"
 #include "Subsystems/SmartObjectManager.h"
-#include "Social/SocialGameplayTags.h"
 #include "Navigation/PathFollowingComponent.h"
+#include "NavigationSystem.h"
+#include "AINPC.h"
+
+// Helper: Project a location to the NavMesh
+static FVector ProjectToNavMesh(UWorld* World, const FVector& Location, float QueryExtent = 500.0f)
+{
+	if (!World) return Location;
+
+	UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(World);
+	if (!NavSys) return Location;
+
+	FNavLocation NavLocation;
+	const FVector QueryExtentVec(QueryExtent, QueryExtent, QueryExtent);
+	
+	if (NavSys->ProjectPointToNavigation(Location, NavLocation, QueryExtentVec))
+	{
+		return NavLocation.Location;
+	}
+
+	// Fallback: Try with larger extent for very underground objects
+	const FVector LargeExtent(1000.0f, 1000.0f, 1000.0f);
+	if (NavSys->ProjectPointToNavigation(Location, NavLocation, LargeExtent))
+	{
+		AINPC_LOG(Warning, "Had to use large query extent to find NavMesh for location %s", *Location.ToString());
+		return NavLocation.Location;
+	}
+
+	AINPC_LOG(Error, "Failed to project location %s to NavMesh!", *Location.ToString());
+	return Location;
+}
 
 void UAction_SmartObject::Enter_Implementation(AAIController* Controller)
 {
@@ -16,6 +45,11 @@ void UAction_SmartObject::Enter_Implementation(AAIController* Controller)
 
 	TargetSmartObject = nullptr;
 	bIsInteracting = false;
+	ReservedSlotIndex = -1;
+
+	// ✅ Reset Retry Counters
+	LastMoveRetryTime = -100.0f;
+	MoveRetryCount = 0;
 
 	// 1. Get SmartObject Manager
 	USmartObjectManager* SmartObjectMgr = nullptr;
@@ -26,63 +60,72 @@ void UAction_SmartObject::Enter_Implementation(AAIController* Controller)
 
 	if (!SmartObjectMgr) 
 	{
-		UE_LOG(LogTemp, Error, TEXT("[%s] Failed: SmartObjectManager not found!"), *ActionName);
+		AINPC_LOG_ERROR("SmartObjectManager not found!");
 		return;
 	}
 
 	// 2. Find Best Object matching our Configured Tag
 	if (!SmartObjectTag.IsValid())
 	{
-		UE_LOG(LogTemp, Error, TEXT("[%s] Failed: SmartObjectTag is empty! Check DataTable."), *ActionName);
+		AINPC_LOG_ERROR("SmartObjectTag is empty! Check DataTable.");
 		return;
 	}
 
-	// Use Manager to find Unreserved object
+	// Use Manager to find object with available slot
 	TargetSmartObject = SmartObjectMgr->FindBestSmartObject(Controller->GetPawn(), SmartObjectTag);
 
 	if (TargetSmartObject)
 	{
-		// 3. Try Reserve
-		if (SmartObjectMgr->TryReserveSmartObject(TargetSmartObject, Controller->GetPawn()))
+		// 3. ✅ NEW: Try Reserve a SLOT (not the whole object)
+		USmartObjectComponent* SmartComp = TargetSmartObject->FindComponentByClass<USmartObjectComponent>();
+		if (SmartComp)
 		{
-			ReservedResource = TargetSmartObject;
-			UE_LOG(LogTemp, Log, TEXT("[%s] Reserved Resource: %s"), *ActionName, *ReservedResource->GetName());
-			
-			// 4. Move to it
-			USmartObjectComponent* SmartComp = ReservedResource->FindComponentByClass<USmartObjectComponent>();
-			bool bUsedOffset = false;
-			
-			if (SmartComp && !SmartComp->InteractionOffset.IsNearlyZero())
+			ReservedSlotIndex = SmartComp->TryReserveSlot(Controller->GetPawn());
+			if (ReservedSlotIndex >= 0)
 			{
-				FVector TargetLoc = SmartComp->GetInteractionLocation();
-				Controller->MoveToLocation(TargetLoc, 100.0f, true, true, true); // Radius 100cm, StopOnOverlap, Pathfinding, ProjectToNav
-				UE_LOG(LogTemp, Log, TEXT("[%s] Moving to Interaction Point: %s (Offset: %s)"), 
-					   *ActionName, *TargetLoc.ToString(), *SmartComp->InteractionOffset.ToString());
-				bUsedOffset = true;
+				ReservedResource = TargetSmartObject;
+				AINPC_LOG(Log, "[%s] Reserved Slot %d on %s", *ActionName, ReservedSlotIndex, *ReservedResource->GetName());
+				
+				// 4. Move to the reserved slot location (PROJECT TO NAVMESH)
+				FVector TargetLoc = SmartComp->GetInteractionLocation(ReservedSlotIndex);
+				TargetLoc = ProjectToNavMesh(Controller->GetWorld(), TargetLoc);
+				
+				Controller->MoveToLocation(TargetLoc, 100.0f, true, true, true);
+				AINPC_LOG(Log, "[%s] Moving to Slot %d at: %s", *ActionName, ReservedSlotIndex, *TargetLoc.ToString());
+				
+				// Initialize MoveRetryTime
+				LastMoveRetryTime = Controller->GetWorld()->GetTimeSeconds();
+				
+				// 5. Setup Recovery Timer
+				SetupRecoveryTimer(Controller);
 			}
 			else
 			{
-				Controller->MoveToActor(ReservedResource, 150.0f); // 1.5m radius
-				UE_LOG(LogTemp, Log, TEXT("[%s] Moving to Smart Object: %s"), *ActionName, *ReservedResource->GetName());
+				AINPC_LOG(Warning, "[%s] Failed to reserve slot on %s (All occupied?)", *ActionName, *TargetSmartObject->GetName());
+				TargetSmartObject = nullptr;
 			}
-			
-			if (EPathFollowingRequestResult::RequestSuccessful == Controller->GetMoveStatus())
-			{
-				// Log handled above
-			}
-			
-			// ✅ 5. Setup Recovery Timer (1 second interval)
-			SetupRecoveryTimer(Controller);
 		}
 		else
 		{
-			UE_LOG(LogTemp, Warning, TEXT("[%s] Failed to reserve resource: %s (Was taken?)"), *ActionName, *TargetSmartObject->GetName());
-			TargetSmartObject = nullptr; // Reset to fail gracefully
+			// Fallback: Legacy reservation (no SmartObjectComponent)
+			if (SmartObjectMgr->TryReserveSmartObject(TargetSmartObject, Controller->GetPawn()))
+			{
+				ReservedResource = TargetSmartObject;
+				Controller->MoveToActor(ReservedResource, 150.0f);
+				AINPC_LOG(Log, "[%s] (Legacy) Reserved and moving to: %s", *ActionName, *ReservedResource->GetName());
+				LastMoveRetryTime = Controller->GetWorld()->GetTimeSeconds();
+				SetupRecoveryTimer(Controller);
+			}
+			else
+			{
+				AINPC_LOG(Warning, "[%s] Failed to reserve resource: %s", *ActionName, *TargetSmartObject->GetName());
+				TargetSmartObject = nullptr;
+			}
 		}
 	}
 	else
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[%s] No valid unreserved Smart Object found for tag: %s"), *ActionName, *SmartObjectTag.ToString());
+		AINPC_LOG(Warning, "[%s] No valid unreserved Smart Object found for tag: %s", *ActionName, *SmartObjectTag.ToString());
 	}
 }
 
@@ -90,54 +133,75 @@ void UAction_SmartObject::Execute_Implementation(AAIController* Controller)
 {
 	if (!Controller) return;
 
-	// Determine Target Destination (Actor or Offset)
+	// Determine Target Destination (use slot location if reserved)
 	FVector Destination = FVector::ZeroVector;
-	bool bUseOffset = false;
 	
 	if (TargetSmartObject)
 	{
-		Destination = TargetSmartObject->GetActorLocation();
-		if (USmartObjectComponent* SmartComp = TargetSmartObject->FindComponentByClass<USmartObjectComponent>())
+		USmartObjectComponent* SmartComp = TargetSmartObject->FindComponentByClass<USmartObjectComponent>();
+		if (SmartComp && ReservedSlotIndex >= 0)
 		{
-			if (!SmartComp->InteractionOffset.IsNearlyZero())
-			{
-				Destination = SmartComp->GetInteractionLocation();
-				bUseOffset = true;
-			}
+			Destination = SmartComp->GetInteractionLocation(ReservedSlotIndex);
 		}
+		else
+		{
+			Destination = TargetSmartObject->GetActorLocation();
+		}
+		
+		// ✅ Project to NavMesh to avoid underground targets
+		Destination = ProjectToNavMesh(Controller->GetWorld(), Destination);
 	}
 	
 	// ✅ 如果没有目标（或Retry），尝试重新查找
 	// If no target, try to find one again
 	if (!TargetSmartObject)
 	{
-		USensoryComponent* SensoryComp = Controller->FindComponentByClass<USensoryComponent>();
-		if (SensoryComp && SmartObjectTag.IsValid())
+		USmartObjectManager* SmartObjectMgr = nullptr;
+		if (UWorld* World = Controller->GetWorld())
 		{
-			TargetSmartObject = SensoryComp->FindBestSmartObject(SmartObjectTag);
+			SmartObjectMgr = World->GetSubsystem<USmartObjectManager>();
+		}
+
+		if (SmartObjectMgr && SmartObjectTag.IsValid())
+		{
+			TargetSmartObject = SmartObjectMgr->FindBestSmartObject(Controller->GetPawn(), SmartObjectTag);
+			
 			if (TargetSmartObject)
 			{
-				// Recalculate destination for new target
-				Destination = TargetSmartObject->GetActorLocation();
-				bUseOffset = false;
-				if (USmartObjectComponent* SmartComp = TargetSmartObject->FindComponentByClass<USmartObjectComponent>())
+				USmartObjectComponent* SmartComp = TargetSmartObject->FindComponentByClass<USmartObjectComponent>();
+				if (SmartComp)
 				{
-					if (!SmartComp->InteractionOffset.IsNearlyZero())
+					ReservedSlotIndex = SmartComp->TryReserveSlot(Controller->GetPawn());
+					if (ReservedSlotIndex >= 0)
 					{
-						Destination = SmartComp->GetInteractionLocation();
-						bUseOffset = true;
+						ReservedResource = TargetSmartObject;
+						Destination = SmartComp->GetInteractionLocation(ReservedSlotIndex);
+						Controller->MoveToLocation(Destination, 100.0f, true, true, true);
+						UE_LOG(LogTemp, Log, TEXT("[%s] (Retry) Reserved Slot %d, moving to: %s"), *ActionName, ReservedSlotIndex, *Destination.ToString());
+						LastMoveRetryTime = Controller->GetWorld()->GetTimeSeconds();
+						SetupRecoveryTimer(Controller);
 					}
-				}
-
-				if (bUseOffset)
-				{
-					Controller->MoveToLocation(Destination, 100.0f, true, true, true);
-					UE_LOG(LogTemp, Log, TEXT("[%s] (Retry) Moving to Interaction Point: %s"), *ActionName, *Destination.ToString());
+					else
+					{
+						TargetSmartObject = nullptr;
+					}
 				}
 				else
 				{
-					Controller->MoveToActor(TargetSmartObject, 200.0f); 
-					UE_LOG(LogTemp, Log, TEXT("[%s] (Retry) Moving to Smart Object: %s"), *ActionName, *TargetSmartObject->GetName());
+					// Legacy fallback
+					if (SmartObjectMgr->TryReserveSmartObject(TargetSmartObject, Controller->GetPawn()))
+					{
+						ReservedResource = TargetSmartObject;
+						Destination = TargetSmartObject->GetActorLocation();
+						Controller->MoveToActor(TargetSmartObject, 200.0f);
+						UE_LOG(LogTemp, Log, TEXT("[%s] (Retry Legacy) Moving to: %s"), *ActionName, *TargetSmartObject->GetName());
+						LastMoveRetryTime = Controller->GetWorld()->GetTimeSeconds();
+						SetupRecoveryTimer(Controller);
+					}
+					else
+					{
+						TargetSmartObject = nullptr;
+					}
 				}
 			}
 		}
@@ -148,16 +212,16 @@ void UAction_SmartObject::Execute_Implementation(AAIController* Controller)
 
 	// 1. Check if reached
 	EPathFollowingStatus::Type Status = Controller->GetMoveStatus();
+	float CurrentTime = Controller->GetWorld()->GetTimeSeconds();
 	
 	// 🔍 调试：显示移动状态（每 2 秒）
-	float CurrentTime = Controller->GetWorld()->GetTimeSeconds();
 	if (CurrentTime - LastDebugTime > 2.0f)
 	{
 		// ✅ 使用 2D 距离 (忽略高度 Z 轴差异)
 		float DistSq2D = FVector::DistSquaredXY(Controller->GetPawn()->GetActorLocation(), Destination);
 		float Dist2D = FMath::Sqrt(DistSq2D);
 		UE_LOG(LogTemp, Log, TEXT("[%s] MoveStatus: %d, Dist2D: %.0f cm (Ignored Z), bIsInteracting: %s"), 
-		       *ActionName, (int)Status, Dist2D, bIsInteracting ? TEXT("Yes") : TEXT("No"));
+			   *ActionName, (int)Status, Dist2D, bIsInteracting ? TEXT("Yes") : TEXT("No"));
 		LastDebugTime = CurrentTime;
 	}
 	
@@ -169,7 +233,7 @@ void UAction_SmartObject::Execute_Implementation(AAIController* Controller)
 		// ✅ CHANGE: Use DistSquaredXY to ignore height differences (e.g. object underground)
 		float DistSq2D = FVector::DistSquaredXY(Controller->GetPawn()->GetActorLocation(), Destination);
 		if (DistSq2D < 200.0f * 200.0f) // Within 2m horizontally
-		{
+			{
 			if (!bIsInteracting)
 			{
 				// ✅ 刚到达，开始交互 / Just arrived, start interaction
@@ -228,14 +292,74 @@ void UAction_SmartObject::Execute_Implementation(AAIController* Controller)
 					// The Utility AI will re-evaluate next frame and may switch actions
 				}
 			}
-		}
+			}
 		else
 		{
 			// Maybe got stuck? Retry move?
-			if (bUseOffset)
-				Controller->MoveToLocation(Destination, 50.0f, true, true, true);
-			else
-				Controller->MoveToActor(TargetSmartObject, 50.0f);
+			// ✅ Throttle Retries: Only retry every 3.0 seconds
+			if (CurrentTime - LastMoveRetryTime > 3.0f)
+			{
+				MoveRetryCount++;
+				
+				if (MoveRetryCount <= 3)
+				{
+					// Try with progressively larger acceptance radius
+					float AcceptRadius = 100.0f + (MoveRetryCount * 50.0f);
+					EPathFollowingRequestResult::Type MoveResult = Controller->MoveToLocation(
+						Destination, AcceptRadius, true, true, true);
+					
+					if (MoveResult == EPathFollowingRequestResult::Failed)
+					{
+						AINPC_LOG(Warning, "[%s] (Retry #%d) Path to %s is UNREACHABLE! Will try MoveToActor.", 
+							*ActionName, MoveRetryCount, *Destination.ToString());
+						
+						// Fallback: Try MoveToActor instead (uses pathfinding to actor's navmesh position)
+						if (TargetSmartObject)
+						{
+							Controller->MoveToActor(TargetSmartObject, AcceptRadius);
+						}
+					}
+					else
+					{
+						AINPC_LOG(Warning, "[%s] (Retry #%d) Moving to: %s (Radius: %.0f)", 
+							*ActionName, MoveRetryCount, *Destination.ToString(), AcceptRadius);
+					}
+				}
+				else if (MoveRetryCount == 4)
+				{
+					// Last resort: Just move NEAR the target actor with very large radius
+					if (TargetSmartObject)
+					{
+						Controller->MoveToActor(TargetSmartObject, 300.0f);
+						AINPC_LOG(Warning, "[%s] (Retry #%d) Final attempt - moving NEAR actor with 300cm radius", 
+							*ActionName, MoveRetryCount);
+					}
+				}
+				else if (MoveRetryCount == 5)
+				{
+					// Give up on movement but start interaction anyway if close enough
+					float Dist2D = FVector::DistXY(Controller->GetPawn()->GetActorLocation(), Destination);
+					if (Dist2D < 500.0f) // Within 5 meters
+						{
+						AINPC_LOG(Warning, "[%s] Close enough (%.0f cm), starting interaction despite path issues", 
+							*ActionName, Dist2D);
+						bIsInteracting = true;
+						ActionStartTime = Controller->GetWorld()->GetTimeSeconds();
+						if (TargetSmartObject)
+						{
+							Controller->SetFocalPoint(TargetSmartObject->GetActorLocation());
+						}
+						SetupRecoveryTimer(Controller);
+						}
+					else
+					{
+						AINPC_LOG_ERROR("[%s] ❌ Failed to reach target after 5 retries. Too far (%.0f cm).", 
+							*ActionName, Dist2D);
+					}
+				
+					LastMoveRetryTime = CurrentTime;
+				}
+			}
 		}
 	}
 }
@@ -270,26 +394,39 @@ void UAction_SmartObject::Exit_Implementation(AAIController* Controller)
 	// ✅ 重置状态 / Reset state
 	bIsInteracting = false;
 	
-	// Release Reservation
+	// ✅ Release Slot Reservation (NEW)
 	if (ReservedResource && Controller)
 	{
-		if (UWorld* World = Controller->GetWorld())
+		if (USmartObjectComponent* SmartComp = ReservedResource->FindComponentByClass<USmartObjectComponent>())
 		{
-			if (USmartObjectManager* SmartObjectMgr = World->GetSubsystem<USmartObjectManager>())
+			if (ReservedSlotIndex >= 0)
 			{
-				SmartObjectMgr->ReleaseReservation(ReservedResource, Controller->GetPawn());
-				UE_LOG(LogTemp, Log, TEXT("[%s] Released Reservation on %s"), *ActionName, *ReservedResource->GetName());
+				SmartComp->ReleaseSlot(ReservedSlotIndex, Controller->GetPawn());
+				UE_LOG(LogTemp, Log, TEXT("[%s] Released Slot %d on %s"), *ActionName, ReservedSlotIndex, *ReservedResource->GetName());
+			}
+		}
+		else
+		{
+			// Legacy: Release via Manager
+			if (UWorld* World = Controller->GetWorld())
+			{
+				if (USmartObjectManager* SmartObjectMgr = World->GetSubsystem<USmartObjectManager>())
+				{
+					SmartObjectMgr->ReleaseReservation(ReservedResource, Controller->GetPawn());
+					UE_LOG(LogTemp, Log, TEXT("[%s] (Legacy) Released Reservation on %s"), *ActionName, *ReservedResource->GetName());
+				}
 			}
 		}
 	}
 
 	TargetSmartObject = nullptr;
 	ReservedResource = nullptr;
+	ReservedSlotIndex = -1;
 	
 	if (Controller)
 	{
 		Controller->StopMovement();
-		Controller->ClearFocus(EAIFocusPriority::Gameplay); // Clear the focus we set on arrival
+		Controller->ClearFocus(EAIFocusPriority::Gameplay);
 	}
 	
 	UE_LOG(LogTemp, Log, TEXT("[%s] Exit - Reset state"), *ActionName);
