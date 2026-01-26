@@ -254,6 +254,14 @@ We maintain a detailed documentation library. Please visit **[📚 Knowledge Bas
 
 ## 🎉 Latest Updates
 
+### v0.6.1 - Action Transition System (2026-01-26)
+
+#### 🔄 Core Refactor
+- **Unified Action Transitions**:
+  - Replaced scattered boolean flags (`ShouldExit`, `bInConversation`) with a centralized **Priority System**.
+  - **Commitment Time**: Prevents rapid action flickering by enforcing minimum execution time.
+- **Data-Driven**: Action priorities (0-10) and exit rules are now fully configurable in `DT_UtilityActions`.
+
 ### v0.6.0 - Phase 4: Gameplay Depth & "Living World" (2026-01-22)
 
 #### 🧬 Smart Object Interaction Refinement

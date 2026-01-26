@@ -4,6 +4,17 @@ This file contains a log of commit messages for the AINPC project.
 
 ---
 
+## [2026-01-26] Action Transition System Implementation
+**Type**: refactor
+**Scope**: UtilityAI, Action System
+**Description**:
+- **Centralized Transition Logic**: Moved action exit logic from individual classes to a unified priority system.
+- **Data-Driven Configuration**: Added `Priority` and `CommitmentTime` to `DT_UtilityActions`.
+- **Cleanup**: Removed legacy `ShouldExit` overrides and `bInConversation` flags.
+- **Stability**: Added commitment time to prevent action flickering.
+
+
+
 ## [2026-01-18] Work System & Maslow's Hierarchy Directive Implementation
 **Type**: feat/fix
 **Scope**: GoalComponent, UtilityActionBase, Action_SmartObject, Metabolism, TimeManager

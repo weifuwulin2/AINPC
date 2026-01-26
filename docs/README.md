@@ -36,7 +36,7 @@ Welcome to the AINPC Knowledge Base. This index serves as the central hub for al
 *   [**Phase 3: Player Interaction**](../CHANGELOG.md#v053---phase-3-player-interaction--modular-identity-2026-01-19) - Summary of the player dialogue and modular identity system.
 *   [**Faction System Update**](updates/Faction_System_Update.md) - Simplification to three core factions (Human, Monster, Neutral) with improved hostility logic.
 *   [**Metabolism System Fix**](guides/Metabolism_Logic_Fix_Summary.md) - Complete overhaul of Hunger/Fatigue system with Engine-exclusive protection.
-*   [**Action Transition System Plan**](design/Action_Transition_System_Plan.md) - **(Planned)** Proposal for a unified, priority-based action transition system to replace scattered logic.
+*   [**Action Transition System Plan**](design/Action_Transition_System_Plan.md) - **(Implemented)** Unified, priority-based action transition system that replaced scattered logic.
 
 ### 📊 Reports
 *   [**Executive Summary**](reports/EXECUTIVE_SUMMARY.md)
@@ -44,4 +44,4 @@ Welcome to the AINPC Knowledge Base. This index serves as the central hub for al
 *   [**Concurrent Request Fix**](reports/Bug4_Fix_Report.md)
 
 ---
-*Last Updated: 2026-01-22*
+*Last Updated: 2026-01-26*

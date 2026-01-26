@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased] - 2026-01-26
+
+### 🔄 Refactor - Action Transition System
+- **Unified Action Transition Logic**: Implemented a centralized, priority-based transition system.
+  - Replaced scattered `ShouldExit()` overrides with data-driven configuration in `DT_UtilityActions`.
+  - **Priority System**: Added `Priority` column (0-10) to govern action interruption rules.
+  - **Commitment System**: Added `CommitmentTime` to Actions to prevent rapid switching (flickering).
+- **Legacy Code Removal**:
+  - Removed `bInConversation` flags from `Action_TalkTo` and `UtilityAIController` (now handled by Priority System).
+  - Removed `bIsInteracting` duration checks in `Action_SmartObject` (replaced by `CommitmentTime`).
+- **Configuration**: Updated `DT_UtilityActions` with new Priority, CommitmentTime, and ExitConditions.
+
 ## [Unreleased] - 2026-01-22
 
 ### ✨ Features - SmartObject Interaction
