@@ -4,6 +4,24 @@ This file contains a log of commit messages for the AINPC project.
 
 ---
 
+## [2026-01-27] Fix NPC Faction Identity Mismatch
+**Type**: fix
+**Scope**: CognitionComponent, FactionReputationComponent, Personality System
+**Description**:
+- **Root Cause**: `CognitionComponent` was checking Controller's `NPCDefinitionComponent` instead of Pawn's, resulting in "Neutral" faction for `CombatEnemy`.
+- **Solution**: Updated `CognitionComponent::ProcessStimulus` to prioritize Pawn's `NPCDefinitionComponent` when retrieving FactionID.
+- **Auto-Sync**: Added logic in `FactionReputationComponent::BeginPlay` to automatically pull FactionID from Pawn's NPCDefinitionComponent if currently set to default "Neutral".
+- **Enhanced Faction Descriptions**: Expanded `DT_Factions.json` with detailed roleplay instructions:
+  - Orcs: Broken, guttural speech with poor grammar ("Me strong!", "Ragnok kill you!")
+  - Elves: Refined, formal language with subtle arrogance and superiority complex
+  - Humans: Natural, casual speech with everyday language
+  - Monsters: Mindless grunts/hisses/moans only
+- **Personality DataTable Refactor**: Removed job/faction references from `DT_Personalities.json` to prevent conflicting LLM prompts.
+  - Refactored existing personalities (Brave, Cautious, Friendly) to only describe personality traits, not jobs
+  - Added 7 new personality types: Cunning, Cheerful, Grumpy, Ambitious, Lazy, Paranoid, Compassionate
+  - Each personality now has unique OCEAN values and behavioral guidelines independent of job/race
+- **Impact**: NPCs now correctly identify as their configured race in dialogue, with appropriate speech patterns and attitudes.
+
 ## [2026-01-26] Action Transition System Implementation
 **Type**: refactor
 **Scope**: UtilityAI, Action System
@@ -468,3 +486,13 @@ This file contains a log of commit messages for the AINPC project.
   - Added "Appendix B: TinyStories" (Small Model Strategy).
   - Added "Appendix C: Social Memory" (Generative Agents Insight).
 - **Roadmap**: Added "Phase X: Neural Utility Architecture" to `README.md` as the long-term North Star.
+
+## [2026-01-26] Faction System & NPC Definitions
+**Type**: feat
+**Scope**: FactionSubsystem, NPCDefinitionComponent, Content
+**Description**:
+- **Faction System**: Implemented data-driven faction logic with `DT_Factions`, `FactionSubsystem`, and `FactionReputationComponent`.
+- **NPC Templates**: Added `FNPCDefinitionRow` and `LoadFromTemplate()` to `NPCDefinitionComponent` for easy NPC configuration.
+- **Auto-Randomization**: Implemented `RandomizeModularIdentity()` to automatically generate Names, Backstories, and Past Events from rich DataTables.
+- **Content Generation**: Created `DT_Names`, `DT_SocialProfiles`, and `DT_PastEvents` with 50+ unique entries each.
+- **Monster Logic**: Added `MonsterComponent` to automate zombie setup and disable LLM optimization for mindless mobs.

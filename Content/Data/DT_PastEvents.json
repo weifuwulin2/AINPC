@@ -1,0 +1,404 @@
+[
+    {
+        "Name": "PE_01",
+        "EventDescription": "Survived a brutal bandit rain on their village.",
+        "ResultingPhobias": [
+            "Phobia.Crowds"
+        ],
+        "MentalScar": "Flinches at sudden movements."
+    },
+    {
+        "Name": "PE_02",
+        "EventDescription": "Lost their family to a plague.",
+        "ResultingPhobias": [
+            "Phobia.Disease"
+        ],
+        "MentalScar": "Obsessed with cleanliness."
+    },
+    {
+        "Name": "PE_03",
+        "EventDescription": "Witnessed a dragon attack.",
+        "ResultingPhobias": [
+            "Phobia.Fire",
+            "Phobia.LoudNoises"
+        ],
+        "MentalScar": "Nightmares of burning skies."
+    },
+    {
+        "Name": "PE_04",
+        "EventDescription": "Was falsely accused of a crime and imprisoned.",
+        "ResultingPhobias": [
+            "Phobia.Confinement"
+        ],
+        "MentalScar": "Trusts no one."
+    },
+    {
+        "Name": "PE_05",
+        "EventDescription": "Survived a shipwreck and was stranded for weeks.",
+        "ResultingPhobias": [
+            "Phobia.Confinement"
+        ],
+        "MentalScar": "Hoards food."
+    },
+    {
+        "Name": "PE_06",
+        "EventDescription": "Served as a soldier in a long, bloody war.",
+        "ResultingPhobias": [
+            "Phobia.LoudNoises"
+        ],
+        "MentalScar": "Thousand-yard stare."
+    },
+    {
+        "Name": "PE_07",
+        "EventDescription": "Was betrayed by a close business partner.",
+        "ResultingPhobias": [
+            "Phobia.Betrayal"
+        ],
+        "MentalScar": "Checks contracts three times."
+    },
+    {
+        "Name": "PE_08",
+        "EventDescription": "Lost a child in a tragic accident.",
+        "ResultingPhobias": [],
+        "MentalScar": "Becomes quiet around children."
+    },
+    {
+        "Name": "PE_09",
+        "EventDescription": "Was enslaved by Orc raiders.",
+        "ResultingPhobias": [
+            "Phobia.Crowds",
+            "Phobia.Confinement"
+        ],
+        "MentalScar": "Hates Orcs with a burning passion."
+    },
+    {
+        "Name": "PE_10",
+        "EventDescription": "Grew up on the streets as a beggar.",
+        "ResultingPhobias": [
+            "Trauma.Poverty"
+        ],
+        "MentalScar": "Never wastes food."
+    },
+    {
+        "Name": "PE_11",
+        "EventDescription": "Was an apprentice to a cruel wizard.",
+        "ResultingPhobias": [
+            "Phobia.Magic"
+        ],
+        "MentalScar": "Distrusts mages."
+    },
+    {
+        "Name": "PE_12",
+        "EventDescription": "Survived a collapsing mine.",
+        "ResultingPhobias": [
+            "Phobia.Confinement"
+        ],
+        "MentalScar": "Claustrophobia."
+    },
+    {
+        "Name": "PE_13",
+        "EventDescription": "Witnessed a public execution.",
+        "ResultingPhobias": [
+            "Phobia.Crowds"
+        ],
+        "MentalScar": "Avoids city guards."
+    },
+    {
+        "Name": "PE_14",
+        "EventDescription": "Lost everything in a great fire.",
+        "ResultingPhobias": [
+            "Phobia.Fire"
+        ],
+        "MentalScar": "Panics at the smell of smoke."
+    },
+    {
+        "Name": "PE_15",
+        "EventDescription": "Was hunted by a wild beast for days.",
+        "ResultingPhobias": [
+            "Phobia.Crowds"
+        ],
+        "MentalScar": "Sleeps with a weapon."
+    },
+    {
+        "Name": "PE_16",
+        "EventDescription": "Grew up in a cult.",
+        "ResultingPhobias": [
+            "Phobia.Magic"
+        ],
+        "MentalScar": "Speaks in riddles sometimes."
+    },
+    {
+        "Name": "PE_17",
+        "EventDescription": "Was a refugee from a destroyed kingdom.",
+        "ResultingPhobias": [
+            "Trauma.LoudNoises"
+        ],
+        "MentalScar": "Always keeps a packed bag."
+    },
+    {
+        "Name": "PE_18",
+        "EventDescription": "Killed a man in self-defense.",
+        "ResultingPhobias": [
+            "Phobia.Touch"
+        ],
+        "MentalScar": "Hesitates to fight."
+    },
+    {
+        "Name": "PE_19",
+        "EventDescription": "Was cursed by a witch.",
+        "ResultingPhobias": [
+            "Phobia.Magic"
+        ],
+        "MentalScar": "Superstitious."
+    },
+    {
+        "Name": "PE_20",
+        "EventDescription": "Almost drowned in a frozen lake.",
+        "ResultingPhobias": [
+            "Phobia.Touch",
+            "Phobia.Confinement"
+        ],
+        "MentalScar": "Dislikes cold weather."
+    },
+    {
+        "Name": "PE_21",
+        "EventDescription": "Was a spy who was caught and tortured.",
+        "ResultingPhobias": [
+            "Phobia.Touch"
+        ],
+        "MentalScar": "Has physical scars."
+    },
+    {
+        "Name": "PE_22",
+        "EventDescription": "Lost a limb in a factory accident.",
+        "ResultingPhobias": [
+            "Phobia.LoudNoises"
+        ],
+        "MentalScar": "Uses a prosthetic."
+    },
+    {
+        "Name": "PE_23",
+        "EventDescription": "Was left at the altar.",
+        "ResultingPhobias": [
+            "Phobia.Betrayal"
+        ],
+        "MentalScar": "Cynical about love."
+    },
+    {
+        "Name": "PE_24",
+        "EventDescription": "Gambled away the family fortune.",
+        "ResultingPhobias": [
+            "Trauma.Poverty"
+        ],
+        "MentalScar": "Obsessed with money."
+    },
+    {
+        "Name": "PE_25",
+        "EventDescription": "Was a famous performer who lost their voice.",
+        "ResultingPhobias": [
+            "Phobia.LoudNoises"
+        ],
+        "MentalScar": "Communicates through gestures."
+    },
+    {
+        "Name": "PE_26",
+        "EventDescription": "Discovered a dark secret about the local lord.",
+        "ResultingPhobias": [
+            "Trauma.Humiliation"
+        ],
+        "MentalScar": "Paranoid."
+    },
+    {
+        "Name": "PE_27",
+        "EventDescription": "Was attacked by a swarm of giant spiders.",
+        "ResultingPhobias": [
+            "Phobia.Touch"
+        ],
+        "MentalScar": "Checks corners for webs."
+    },
+    {
+        "Name": "PE_28",
+        "EventDescription": "Survived a famine.",
+        "ResultingPhobias": [
+            "Trauma.Poverty"
+        ],
+        "MentalScar": "Hoards dry goods."
+    },
+    {
+        "Name": "PE_29",
+        "EventDescription": "Was a test subject for an alchemist.",
+        "ResultingPhobias": [
+            "Phobia.Magic"
+        ],
+        "MentalScar": "Strange skin discoloration."
+    },
+    {
+        "Name": "PE_30",
+        "EventDescription": "Lived alone in the wilderness for years.",
+        "ResultingPhobias": [
+            "Phobia.Crowds"
+        ],
+        "MentalScar": "Socially awkward."
+    },
+    {
+        "Name": "PE_31",
+        "EventDescription": "Was a guard who failed to protect their charge.",
+        "ResultingPhobias": [
+            "Trauma.Humiliation"
+        ],
+        "MentalScar": "Overprotective."
+    },
+    {
+        "Name": "PE_32",
+        "EventDescription": "Saw a ghost.",
+        "ResultingPhobias": [
+            "Phobia.Magic"
+        ],
+        "MentalScar": "Believes in the supernatural."
+    },
+    {
+        "Name": "PE_33",
+        "EventDescription": "Was bitten by a werewolf.",
+        "ResultingPhobias": [
+            "Phobia.Touch"
+        ],
+        "MentalScar": "Gets restless at night."
+    },
+    {
+        "Name": "PE_34",
+        "EventDescription": "Was a pirate who turned straight.",
+        "ResultingPhobias": [
+            "Phobia.Betrayal"
+        ],
+        "MentalScar": "Uses nautical slang."
+    },
+    {
+        "Name": "PE_35",
+        "EventDescription": "Lost their memory in an accident.",
+        "ResultingPhobias": [
+            "Phobia.Confinement"
+        ],
+        "MentalScar": "Often confused."
+    },
+    {
+        "Name": "PE_36",
+        "EventDescription": "Was a noble who fell from grace.",
+        "ResultingPhobias": [
+            "Trauma.Poverty",
+            "Trauma.Humiliation"
+        ],
+        "MentalScar": "Arrogant despite poverty."
+    },
+    {
+        "Name": "PE_37",
+        "EventDescription": "Was a medic in a plague ward.",
+        "ResultingPhobias": [
+            "Phobia.Disease"
+        ],
+        "MentalScar": "Washes hands constantly."
+    },
+    {
+        "Name": "PE_38",
+        "EventDescription": "Was a thief who stole from the wrong person.",
+        "ResultingPhobias": [
+            "Phobia.Betrayal"
+        ],
+        "MentalScar": "Always looks over shoulder."
+    },
+    {
+        "Name": "PE_39",
+        "EventDescription": "Was a gladiator who won their freedom.",
+        "ResultingPhobias": [
+            "Phobia.Crowds"
+        ],
+        "MentalScar": "Battle-hardened."
+    },
+    {
+        "Name": "PE_40",
+        "EventDescription": "Witnessed a dark ritual.",
+        "ResultingPhobias": [
+            "Phobia.Magic"
+        ],
+        "MentalScar": "Has disturbing visions."
+    },
+    {
+        "Name": "PE_41",
+        "EventDescription": "Was a messenger who delivered bad news.",
+        "ResultingPhobias": [
+            "Phobia.Betrayal"
+        ],
+        "MentalScar": "Hates delivering messages."
+    },
+    {
+        "Name": "PE_42",
+        "EventDescription": "Was a scribe who read a forbidden book.",
+        "ResultingPhobias": [
+            "Phobia.Magic"
+        ],
+        "MentalScar": "Whispers when reading."
+    },
+    {
+        "Name": "PE_43",
+        "EventDescription": "Was a cook who accidentally poisoned someone.",
+        "ResultingPhobias": [
+            "Phobia.Fire"
+        ],
+        "MentalScar": "Refuses to cook."
+    },
+    {
+        "Name": "PE_44",
+        "EventDescription": "Was a sailor who saw a sea monster.",
+        "ResultingPhobias": [
+            "Phobia.Confinement"
+        ],
+        "MentalScar": "Stays on land."
+    },
+    {
+        "Name": "PE_45",
+        "EventDescription": "Was a merchant who was robbed of everything.",
+        "ResultingPhobias": [
+            "Phobia.Crowds"
+        ],
+        "MentalScar": "Hides money in boots."
+    },
+    {
+        "Name": "PE_46",
+        "EventDescription": "Was a hunter who became the hunted.",
+        "ResultingPhobias": [
+            "Phobia.Crowds"
+        ],
+        "MentalScar": "Always alert."
+    },
+    {
+        "Name": "PE_47",
+        "EventDescription": "Was a child who got lost in the woods.",
+        "ResultingPhobias": [
+            "Phobia.Confinement"
+        ],
+        "MentalScar": "Carries a compass."
+    },
+    {
+        "Name": "PE_48",
+        "EventDescription": "Was a blacksmith who burned their hand.",
+        "ResultingPhobias": [
+            "Phobia.Fire"
+        ],
+        "MentalScar": "Wears gloves."
+    },
+    {
+        "Name": "PE_49",
+        "EventDescription": "Was a farmer who lost their crops to locusts.",
+        "ResultingPhobias": [
+            "Phobia.Touch"
+        ],
+        "MentalScar": "Hates bugs."
+    },
+    {
+        "Name": "PE_50",
+        "EventDescription": "Was a dreamer who woke up.",
+        "ResultingPhobias": [
+            "Phobia.Magic"
+        ],
+        "MentalScar": "Daydreams constantly."
+    }
+]

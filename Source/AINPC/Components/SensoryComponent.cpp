@@ -4,6 +4,7 @@
 #include "Components/NPCDefinitionComponent.h"
 #include "Components/EmotionDisplayComponent.h"
 #include "Components/MemoryComponent.h"
+#include "Components/FactionReputationComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Social/SocialGameplayTags.h"
 #include "AINPC.h"
@@ -101,8 +102,8 @@ bool USensoryComponent::ProcessEventFilter(FSemanticEvent& Event)
 		// 高 Magnitude (>= 0.5) 表示高优先级目标（玩家或敌对阵营）
 		bool bIsHighPriority = Event.Magnitude >= 0.5f;
 		
-		UE_LOG(LogTemp, Warning, TEXT("[Sensory] Checking high-priority: Magnitude=%.2f, IsHighPriority=%s"), 
-			Event.Magnitude, bIsHighPriority ? TEXT("YES") : TEXT("NO"));
+		AINPC_LOG(Warning, "[Sensory] Checking high-priority for %s: Magnitude=%.2f, IsHighPriority=%s", 
+			*Event.Target->GetName(), Event.Magnitude, bIsHighPriority ? TEXT("YES") : TEXT("NO"));
 		
 		if (bIsHighPriority)
 		{
@@ -120,7 +121,7 @@ bool USensoryComponent::ProcessEventFilter(FSemanticEvent& Event)
 				bIsPlayer ? TEXT("Player, ") : TEXT(""),
 				*TargetFaction.ToString());
 			
-			UE_LOG(LogTemp, Warning, TEXT("[Sensory] → PASS: High-Priority Target (Magnitude: %.2f)"), Event.Magnitude);
+			AINPC_LOG(Warning, "[Sensory] → PASS: High-Priority Target (Magnitude: %.2f)", Event.Magnitude);
 			
 			// Reset accumulation to prevent duplicate events
 			ResetVisualAccumulation(Event.Target);
@@ -142,7 +143,7 @@ bool USensoryComponent::ProcessEventFilter(FSemanticEvent& Event)
 		// Increment accumulation count
 		int32 CurrentCount = IncrementVisualAccumulation(Event.Target);
 		
-		UE_LOG(LogTemp, Warning, TEXT("[Sensory] Visual Accumulation: %s count=%d/%d"), 
+		AINPC_LOG(Warning, "[Sensory] Visual Accumulation: %s count=%d/%d", 
 			*Event.Target->GetName(), CurrentCount, AccumulationThreshold);
 		
 		if (CurrentCount >= AccumulationThreshold)
@@ -157,7 +158,7 @@ bool USensoryComponent::ProcessEventFilter(FSemanticEvent& Event)
 			// Reset counter after triggering
 			ResetVisualAccumulation(Event.Target);
 			
-			UE_LOG(LogTemp, Warning, TEXT("[Sensory] → PASS: Accumulation Threshold Reached"));
+			AINPC_LOG(Warning, "[Sensory] → PASS: Accumulation Threshold Reached");
 			
 			// Let it pass through
 			return true;
@@ -165,7 +166,7 @@ bool USensoryComponent::ProcessEventFilter(FSemanticEvent& Event)
 		else
 		{
 			// Not enough sightings yet, filter it out
-			UE_LOG(LogTemp, Warning, TEXT("[Sensory] → FILTERED: Not enough accumulation yet"));
+			AINPC_LOG(Warning, "[Sensory] → FILTERED: Not enough accumulation yet");
 			return false;
 		}
 	}
@@ -340,7 +341,19 @@ void USensoryComponent::HandleTargetPerceived(AActor* Actor, FAIStimulus Stimulu
             if (AAIController* AIController = Cast<AAIController>(GetOwner()))
             {
                 AIController->SetFocus(Actor, EAIFocusPriority::Gameplay);
-                UE_LOG(LogTemp, Log, TEXT("[Sensory] → Set FocusActor to hostile target: %s"), *Actor->GetName());
+				AINPC_LOG(Log, "[Sensory] → Set FocusActor to hostile target: %s", *Actor->GetName());
+				
+				// ✅ CRITICAL: Directly set Perceived_Threat (AMYGDALA HIJACK for Mindless Creatures)
+				// 关键：直接设置威胁感知（为无意识生物提供杏仁核劫持反应）
+				// This is ESSENTIAL for Zombies who have bEnableReasoning=false!
+				if (AUtilityAIController* UtilController = Cast<AUtilityAIController>(AIController))
+				{
+					if (UtilController->CognitionComp && UtilController->CognitionComp->Interpolator)
+					{
+						UtilController->CognitionComp->Interpolator->SetTargetValue(TEXT("Perceived_Threat"), 0.9f);
+						AINPC_LOG(Warning, "[Sensory] 🧠⚡ HOSTILE DETECTED! Spiking Perceived_Threat to 0.9 (Amygdala Response)");
+					}
+				}
             }
         }
         // 优先级 2: 玩家是中等优先级（进入累积系统）
@@ -348,7 +361,7 @@ void USensoryComponent::HandleTargetPerceived(AActor* Actor, FAIStimulus Stimulu
         else if (Actor->ActorHasTag("Player"))
         {
             Magnitude = 0.3f; // 玩家：中等重要性，需要累积 (Player: Medium importance, requires accumulation)
-            UE_LOG(LogTemp, Warning, TEXT("[Sensory] → Player detected! Magnitude set to 0.3"));
+			AINPC_LOG(Warning, "[Sensory] → Player detected! Magnitude set to 0.3");
         }
         // 优先级 3: 同阵营（友军）
         // Priority 3: Same faction (friendly)
@@ -357,12 +370,12 @@ void USensoryComponent::HandleTargetPerceived(AActor* Actor, FAIStimulus Stimulu
             if (SelfFaction == TargetFaction && SelfFaction != "Neutral")
             {
                 Magnitude = 0.1f; // 同阵营：低重要性，需要累积 (Same faction: Low importance, requires accumulation)
-                UE_LOG(LogTemp, Warning, TEXT("[Sensory] → Same faction! Magnitude set to 0.1"));
+				AINPC_LOG(Warning, "[Sensory] → Same faction! Magnitude set to 0.1");
             }
             else
             {
                 Magnitude = 0.1f; // 中立或未知：默认低重要性 (Neutral/Unknown: Default low importance)
-                UE_LOG(LogTemp, Warning, TEXT("[Sensory] → Neutral/Unknown! Magnitude set to 0.1"));
+				AINPC_LOG(Warning, "[Sensory] → Neutral/Unknown! Magnitude set to 0.1");
             }
         }
 
@@ -390,7 +403,7 @@ void USensoryComponent::HandleTargetPerceived(AActor* Actor, FAIStimulus Stimulu
             // 高重要性事件（敌对单位、危险）：直接传递，不过滤
             // High importance events (hostile, danger): Direct pass, no filter
             bShouldBroadcast = true;
-            UE_LOG(LogTemp, Warning, TEXT("[Sensory] → HIGH PRIORITY (Mag=%.2f): Bypassing filter!"), Magnitude);
+			AINPC_LOG(Warning, "[Sensory] → HIGH PRIORITY (Mag=%.2f): Bypassing filter!", Magnitude);
         }
         else
         {
@@ -616,7 +629,7 @@ void USensoryComponent::HandleDeath(AActor* DeadActor, AActor* Killer)
         
         Magnitude = 1.0f; // 最高重要性
         
-        UE_LOG(LogTemp, Warning, TEXT("[Sensory] SELF DEATH EVENT: %s"), *Desc);
+		AINPC_LOG(Warning, "[Sensory] SELF DEATH EVENT: %s", *Desc);
     }
     else
     {
@@ -664,7 +677,7 @@ void USensoryComponent::HandleDeath(AActor* DeadActor, AActor* Killer)
         
         Magnitude = 0.7f; // 高重要性
         
-        UE_LOG(LogTemp, Warning, TEXT("[Sensory] WITNESSED DEATH: %s"), *Desc);
+		AINPC_LOG(Warning, "[Sensory] WITNESSED DEATH: %s", *Desc);
         
         // ✅ 如果死者是我们的攻击目标，立即清除 Focus
         // If the dead actor was our attack target, clear Focus immediately
@@ -673,7 +686,7 @@ void USensoryComponent::HandleDeath(AActor* DeadActor, AActor* Killer)
             if (AIController->GetFocusActor() == DeadActor)
             {
                 AIController->ClearFocus(EAIFocusPriority::Gameplay);
-                UE_LOG(LogTemp, Warning, TEXT("[Sensory] ⚰️ Target %s is dead! Cleared FocusActor."), *DeadActor->GetName());
+				AINPC_LOG(Warning, "[Sensory] ⚰️ Target %s is dead! Cleared FocusActor.", *DeadActor->GetName());
             }
             
             // ✅ NEW: Reset Perceived_Threat when hostile enemy dies
@@ -688,7 +701,7 @@ void USensoryComponent::HandleDeath(AActor* DeadActor, AActor* Killer)
                     {
                         float OldThreat = UtilController->MentalState->Perceived_Threat;
                         UtilController->MentalState->Perceived_Threat = 0.0f;
-                        UE_LOG(LogTemp, Warning, TEXT("[Sensory] ✅ Hostile enemy dead! Reset Perceived_Threat: %.2f -> 0.0"), OldThreat);
+						AINPC_LOG(Warning, "[Sensory] ✅ Hostile enemy dead! Reset Perceived_Threat: %.2f -> 0.0", OldThreat);
                         
                         // Also update Interpolator target to prevent bounce-back from LLM
                         if (UtilController->CognitionComp && UtilController->CognitionComp->Interpolator)
@@ -914,20 +927,7 @@ void USensoryComponent::ResetVisualAccumulation(AActor* Target)
     VisualAccumulationCount.Remove(Target);
 }
 
-// ==========================================
-// Faction Detection Helpers
-// ==========================================
 
-FName USensoryComponent::GetActorFaction(AActor* Actor) const
-{
-	// Keep internal helper returning string if needed by legacy, 
-    // but ideally we should deprecate it. 
-    // For now, let's map Enum to Name if needed, or just let it be.
-    // Actually, let's redirect this to use the static helper logic
-    // But return Name for legacy compatibility if any.
-    EFactionType F = GetFaction(Actor);
-    return UEnum::GetValueAsName(F);
-}
 
 EFactionType USensoryComponent::GetFaction(AActor* Actor)
 {
@@ -945,40 +945,46 @@ EFactionType USensoryComponent::GetFaction(AActor* Actor)
         }
     }
     
-    // 1. 优先从 PersonalityComponent 读取 (最权威的来源)
-    // Priority: Read from PersonalityComponent (most authoritative source)
+    // ✅ REFACTORED: Faction is now managed by FactionReputationComponent, not PersonalityComponent
+    // 重构：Faction 现在由 FactionReputationComponent 管理，而非 PersonalityComponent
+    // PersonalityConfig no longer has a Faction field
+    
+    // 1. Try FactionReputationComponent first
+    // 1. 优先尝试 FactionReputationComponent
     if (Pawn)
     {
+        if (UFactionReputationComponent* FacComp = Pawn->FindComponentByClass<UFactionReputationComponent>())
+        {
+            // Convert FName to EFactionType
+            FName FactionID = FacComp->CurrentFactionID;
+            if (FactionID == "Human" || FactionID == "Humans") return EFactionType::Human;
+            if (FactionID == "Monster" || FactionID == "Monsters") return EFactionType::Monster;
+            if (FactionID == "Orc" || FactionID == "Orcs") return EFactionType::Monster; // Orcs are hostile
+            if (FactionID == "Elf" || FactionID == "Elves") return EFactionType::Human; // Elves are peaceful
+        }
+        
+        // Try on controller
         if (AController* Controller = Pawn->GetController())
         {
-            if (UPersonalityComponent* PersonalityComp = Controller->FindComponentByClass<UPersonalityComponent>())
+            if (UFactionReputationComponent* FacComp = Controller->FindComponentByClass<UFactionReputationComponent>())
             {
-                // ✅ SMART INITIALIZATION FIX:
-                // If PersonalityID is set but Faction is still Neutral, the Blueprint set the ID
-                // but didn't call SetPersonalityByID(). Trigger reload now.
-                // 智能初始化修复：如果 PersonalityID 已设置但 Faction 仍是 Neutral，
-                // 说明 Blueprint 设置了 ID 但没调用 SetPersonalityByID()，现在触发重载
-                if (PersonalityComp->Personality.Faction == EFactionType::Neutral && 
-                    !PersonalityComp->PersonalityID.IsNone() && 
-                    PersonalityComp->PersonalityID != "Default")
-                {
-                    UE_LOG(LogTemp, Warning, TEXT("[Sensory] Detected late PersonalityID (%s) without loaded Faction. Triggering reload..."), 
-                        *PersonalityComp->PersonalityID.ToString());
-                    
-                    // Trigger reload by calling SetPersonalityByID
-                    // This will load the correct Faction from DataTable
-                    const_cast<UPersonalityComponent*>(PersonalityComp)->SetPersonalityByID(PersonalityComp->PersonalityID);
-                }
-                
-                // Now return the Faction (should be loaded correctly)
-                // 现在返回 Faction（应该已正确加载）
-                if (PersonalityComp->Personality.Faction != EFactionType::Neutral)
-                {
-                    return PersonalityComp->Personality.Faction;
-                }
-                // If still Neutral after reload attempt, fall through to tag-based detection
-                // 如果重载后仍是 Neutral，继续使用基于 Tag 的检测
+                FName FactionID = FacComp->CurrentFactionID;
+                if (FactionID == "Human" || FactionID == "Humans") return EFactionType::Human;
+                if (FactionID == "Monster" || FactionID == "Monsters") return EFactionType::Monster;
+                if (FactionID == "Orc" || FactionID == "Orcs") return EFactionType::Monster;
+                if (FactionID == "Elf" || FactionID == "Elves") return EFactionType::Human;
             }
+        }
+        
+        // ✅ CRITICAL: Fallback to NPCDefinitionComponent (for CombatEnemy which has no FactionReputat ionComponent)
+        // 关键：回退到 NPCDefinitionComponent（适用于没有 FactionReputationComponent 的 CombatEnemy）
+        if (UNPCDefinitionComponent* DefComp = Pawn->FindComponentByClass<UNPCDefinitionComponent>())
+        {
+            FName FactionID = DefComp->FactionID;
+            if (FactionID == "Human" || FactionID == "Humans") return EFactionType::Human;
+            if (FactionID == "Monster" || FactionID == "Monsters") return EFactionType::Monster; 
+            if (FactionID == "Orc" || FactionID == "Orcs") return EFactionType::Monster;
+            if (FactionID == "Elf" || FactionID == "Elves") return EFactionType::Human;
         }
     }
 
@@ -1011,23 +1017,57 @@ EFactionType USensoryComponent::GetFaction(AActor* Actor)
 bool USensoryComponent::AreActorsHostile(AActor* ActorA, AActor* ActorB) const
 {
 	if (!ActorA || !ActorB) return false;
+	if (ActorA == ActorB) return false;
 
+    // ✅ Use FactionReputationComponent for numerical check (0-100)
+    // First try Component on A (Primary Source of Truth)
+    if (UFactionReputationComponent* FacCompA = ActorA->FindComponentByClass<UFactionReputationComponent>())
+    {
+        return FacCompA->IsHostile(ActorB);
+    }
+
+    // Fallback: If A is just a Pawn, maybe its Controller has the component
+    if (APawn* PawnA = Cast<APawn>(ActorA))
+    {
+        if (AController* ConA = PawnA->GetController())
+        {
+             if (UFactionReputationComponent* FacCompCon = ConA->FindComponentByClass<UFactionReputationComponent>())
+             {
+                 return FacCompCon->IsHostile(ActorB);
+             }
+        }
+    }
+
+    // Double Fallback: Check from B's perspective (Mutual Hostility?)
+    if (UFactionReputationComponent* FacCompB = ActorB->FindComponentByClass<UFactionReputationComponent>())
+    {
+        return FacCompB->IsHostile(ActorA);
+    }
+
+    // Final Fallback: Legacy Enum Logic (for actors without components)
     EFactionType FactionA = GetFaction(ActorA);
     EFactionType FactionB = GetFaction(ActorB);
 
-    // ✅ Strict Faction Logic: "Different Faction = Enemy"
-    // Exception: Neutral is not hostile (unless explicitly handled?)
-    // User said: "wildlife might not be friendly" -> Those should be tagged Monster.
-    // True Neutral (rocks, props) should trigger NO hostility.
-    
     if (FactionA == EFactionType::Neutral || FactionB == EFactionType::Neutral)
     {
         return false; 
     }
-
-    // Different Faction = Hostile
     return FactionA != FactionB;
 }
+
+// Non-const implementations for compatibility
+FName USensoryComponent::GetActorFaction(AActor* Actor) const
+{
+	// Try new FactionReputationComponent
+	if (UFactionReputationComponent* FacComp = Actor->FindComponentByClass<UFactionReputationComponent>())
+	{
+		return FacComp->CurrentFactionID;
+	}
+
+	// Fallback: Check FactionReputationComponent static helper
+	return UFactionReputationComponent::GetFactionID(Actor);
+}
+
 
 AActor* USensoryComponent::FindBestSmartObject(FGameplayTag ActivityTag)
 {

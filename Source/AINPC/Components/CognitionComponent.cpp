@@ -1,12 +1,16 @@
 #include "CognitionComponent.h"
 #include "AINPC.h"
+#include "FactionReputationComponent.h"
 #include "UtilityAIComponent.h"
 #include "Controller/UtilityAIController.h"
 #include "Components/PersonalityComponent.h"
 #include "Components/GoalComponent.h"
 #include "Social/ProfessionTypes.h"
+#include "Social/FactionSubsystem.h"
+#include "Social/FactionTypes.h"
 #include "LLM/LLMCommunicator.h"
 #include "Components/NPCDefinitionComponent.h"
+#include "Social/FactionSubsystem.h"
 #include "UtilityAI/SentimentMapping.h"
 #include "UtilityAI/MentalStateInterpolation.h"
 
@@ -146,23 +150,32 @@ void UCognitionComponent::SetLOD(EContextLOD NewLOD)
 	{
 		CurrentLOD = NewLOD;
 		// Optional: Log LOD change
-		// UE_LOG(LogTemp, Log, TEXT("[Cognition] 🧠 Switched to %s"), *UEnum::GetValueAsString(CurrentLOD));
+		// AINPC_LOG(Log, "[Cognition] 🧠 Switched to %s", *UEnum::GetValueAsString(CurrentLOD));
 	}
 }
 
 void UCognitionComponent::ProcessStimulus(FString SituationDescription)
 {
-	// However, ProcessStimulus is called by Controller::RelaySensoryToCognition.
-	// Wait, RelaySensoryToCognition is legacy?
-	// The new path is: Event -> Sensory -> Memory.
-	// The new path for "Thinking" is: ... when does thinking happen?
-	// "Phase 2: Social Layer - 运作流程：触发：当生理层判断事件重要且非战斗时"
-	// So MemoryComponent or Controller should trigger Cognition.
-	
-	// Let's assume ProcessStimulus is now the entry point for "Thinking about a situation".
-	// So we DO need to retrieve memories here.
+	// ✅ AMYGDALA HIJACK (Immediate Threat Response) - MOVED HERE FOR MINDLESS CREATURES
+	// 杏仁核劫持：即时威胁响应（本能反应，不需要高级推理）
+	// If immediate threat detected, trigger amygdala response immediately (don't wait for LLM or reasoning)
+	// This is a BRAINSTEM/AMYGDALA level response - even zombies have this!
+	if (Interpolator && (SituationDescription.Contains(TEXT("HOSTILE")) || SituationDescription.Contains(TEXT("DANGER"))))
+	{
+		// 立即将威胁感拉满 (Immediate Fear/Aggression Spike)
+		Interpolator->SetTargetValue(TEXT("Perceived_Threat"), 0.9f);
+		
+		AINPC_LOG(Warning, "[Cognition] 🧠⚡ AMYGDALA HIJACK! Threat detected, spiking Perceived_Threat to 0.9 immediately.");
+	}
 
-	// 2. 检索检索 (Retrieval)
+	// If Reasoning is disabled (Mindless Zombie), skip LLM and Retrieval entirely.
+	if (!bEnableReasoning)
+	{
+		// ✅ Simple reflex logic completed above (Amygdala Hijack)
+		// The Utility AI (Actions) will handle behavior based on Stat changes (Perceived_Threat).
+		return;
+	}
+
 	FString ContextMemory = "";
 	if (MemoryComp)
 	{
@@ -210,9 +223,49 @@ void UCognitionComponent::ProcessStimulus(FString SituationDescription)
 				// 获取 PersonalityID 和 Faction
 				// Get PersonalityID and Faction
 				PersonalityIDStr = PersonalityComp->PersonalityID.ToString();
-				FactionStr = UEnum::GetValueAsName(PersonalityComp->Personality.Faction).ToString();
 				
-				UE_LOG(LogTemp, Log, TEXT("[Cognition] Using personality from PersonalityComponent: ID=%s, Faction=%s"), 
+				// New Faction Retrieval Logic - Check Pawn's NPCDefinitionComponent FIRST
+				bool bFoundFaction = false;
+				
+				// 1. Try Pawn's NPCDefinitionComponent (Primary source for CombatEnemy)
+				if (AAIController* AICon = Cast<AAIController>(GetOwner()))
+				{
+					if (APawn* ControlledPawn = AICon->GetPawn())
+					{
+						if (UNPCDefinitionComponent* PawnDefComp = ControlledPawn->FindComponentByClass<UNPCDefinitionComponent>())
+						{
+							if (!PawnDefComp->FactionID.IsNone() && PawnDefComp->FactionID != "None")
+							{
+								FactionStr = PawnDefComp->FactionID.ToString();
+								bFoundFaction = true;
+							}
+						}
+					}
+				}
+				
+				// 2. Fallback: Controller's NPCDefinitionComponent
+				if (!bFoundFaction)
+				{
+					if (UNPCDefinitionComponent* DefComp = GetOwner()->FindComponentByClass<UNPCDefinitionComponent>())
+					{
+						if (!DefComp->FactionID.IsNone() && DefComp->FactionID != "None")
+						{
+							FactionStr = DefComp->FactionID.ToString();
+							bFoundFaction = true;
+						}
+					}
+				}
+				
+				// 3. Fallback: FactionReputationComponent
+				if (!bFoundFaction)
+				{
+					if (UFactionReputationComponent* FacComp = GetOwner()->FindComponentByClass<UFactionReputationComponent>())
+					{
+						FactionStr = FacComp->CurrentFactionID.ToString();
+					}
+				}
+				
+				AINPC_LOG(Log, "[Cognition] Using personality from PersonalityComponent: ID=%s, Faction=%s", 
 					*PersonalityIDStr, *FactionStr);
 			}
 		}
@@ -333,12 +386,12 @@ void UCognitionComponent::ProcessStimulus(FString SituationDescription)
 		// 避免重复设置 Timer
 		if (!GetWorld()->GetTimerManager().IsTimerActive(RetryStimulusTimerHandle))
 		{
-			UE_LOG(LogTemp, Log, TEXT("[Cognition] Timer started. Will retry in 0.5s."));
+			AINPC_LOG(Log, "[Cognition] Timer started. Will retry in 0.5s.");
 			GetWorld()->GetTimerManager().SetTimer(RetryStimulusTimerHandle, [this]()
 			{
 				if (!PendingStimulus.IsEmpty())
 				{
-					UE_LOG(LogTemp, Log, TEXT("[Cognition] Retrying pending stimulus..."));
+					AINPC_LOG(Log, "[Cognition] Retrying pending stimulus...");
 					
 					// 先复制并清空，防止 ProcessStimulus 再次 Pending 后被这里误删
 					// Copy and clear first to prevent accidental deletion if ProcessStimulus pends again
@@ -371,9 +424,33 @@ void UCognitionComponent::ProcessStimulus(FString SituationDescription)
 		RoleSection += FString::Printf(TEXT("Rules: %s\n"), *ActualBehavioralGuidelines);
 	}
 	
-	// ⚠️ 根据 PersonalityID 添加性格驱动而非硬性规则
-	// Add personality drives instead of hard rules to allow LLM emergence
-	if (PersonalityIDStr.Contains(TEXT("Zombie")) || FactionStr.Contains(TEXT("Monster")))
+	// ⚠️ 根据 FactionID 从 DataTable 读取 Faction Description
+	// Read Faction Description from DataTable instead of hardcoding
+	FString FactionDescription = "";
+	
+	// Try to get FactionTable from FactionReputationComponent
+	if (UNPCDefinitionComponent* DefComp = GetOwner()->FindComponentByClass<UNPCDefinitionComponent>())
+	{
+		if (UDataTable* FactionTable = DefComp->FactionTable)
+		{
+			FName FactionRowName = FName(*FactionStr);
+			FFactionDef* FactionDef = FactionTable->FindRow<FFactionDef>(FactionRowName, TEXT("CognitionComponent_GetFactionDesc"));
+			if (FactionDef)
+			{
+				FactionDescription = FactionDef->Description;
+				AINPC_LOG(Log, "[Cognition] Loaded Faction Description from DT_Factions: %s", *FactionDescription);
+			}
+		}
+	}
+	
+	// Append Faction Description to Role Section if available
+	if (!FactionDescription.IsEmpty())
+	{
+		RoleSection += FString::Printf(TEXT("Faction Identity: %s\n"), *FactionDescription);
+	}
+	
+	// Zombie 覆盖 (Brain Rot) - Special case for mindless creatures
+	if (PersonalityIDStr.Contains(TEXT("Zombie")) || FactionStr.Contains(TEXT("Zombie")))
 	{
 		// 僵尸：生理限制和原始驱动 / Physiological limits and primal drives
 		RoleSection += TEXT("\n[INSTINCTS] Driven purely by insatiable hunger for living flesh. No fear, no pain, no higher logic.\n[LIMITATION] Brain rot preventing complex speech (can only grunt/hiss/say single broken words).\n");
@@ -394,10 +471,42 @@ void UCognitionComponent::ProcessStimulus(FString SituationDescription)
 	FString FinalSituation = SituationDescription;
 	FString FinalMemories = bFullContext ? ContextMemory : TEXT(""); // No memories in combat unless critical? (Maybe keep basic)
 
+	// ---------------------------------------------------------
+	// ✅ NEW: Retrieve Faction Relationships (Worldview)
+	// ---------------------------------------------------------
+	FString WorldviewSection = "";
+	if (!FactionStr.IsEmpty() && !FactionStr.Equals("Neutral"))
+	{
+		if (UWorld* World = GetWorld())
+		{
+			if (UFactionSubsystem* FacSys = World->GetSubsystem<UFactionSubsystem>())
+			{
+				TMap<FName, float> Relations = FacSys->RuntimeFactionMatrix.FindRef(FName(*FactionStr));
+				if (Relations.Num() > 0)
+				{
+					WorldviewSection = "\n[WORLDVIEW / FACTIONS]\n";
+					for (const auto& Pair : Relations)
+					{
+						FString RelDesc = "Neutral";
+						if (Pair.Value >= 75.0f) RelDesc = "Ally";
+						else if (Pair.Value <= 25.0f) RelDesc = "Enemy";
+						
+						// Skip self
+						if (Pair.Key.ToString() == FactionStr) continue;
+						
+						WorldviewSection += FString::Printf(TEXT("%s: %s (%.0f/100)\n"), 
+							*Pair.Key.ToString(), *RelDesc, Pair.Value);
+					}
+				}
+			}
+		}
+	}
+
 	// 构造精简的 Prompt / Build concise prompt
 	FString Prompt = FString::Printf(TEXT(
 		"%s"
 		"%s\n"
+		"%s\n" 
 		"Situation: %s %s\n"
 		"Memories: %s\n\n"
 		"IMPORTANT Instructions:\n"
@@ -410,33 +519,7 @@ void UCognitionComponent::ProcessStimulus(FString SituationDescription)
 		"\n"
 		"  Speech: string;      // approx 10 words, match personality\n"
 		"}\n"
-	), *FinalRoleSection, *FinalBackstorySection, *FinalSituation, *CurrentDecisionContext, *FinalMemories);
-	
-	// ✅ AMYGDALA HIJACK (Immediate Threat Response)
-	// 如果检测到即时威胁（从记忆或情境中），不等待 LLM，立即触发杏仁核反应
-	// If immediate threat detected, trigger amygdala response immediately (don't wait for LLM)
-	if (FinalSituation.Contains(TEXT("HOSTILE")) || FinalSituation.Contains(TEXT("DANGER")) || 
-		ContextMemory.Contains(TEXT("HOSTILE")) || ContextMemory.Contains(TEXT("DANGER")))
-	{
-		if (Interpolator)
-		{
-			// 立即将威胁感拉满 (Immediate Fear Spike)
-			Interpolator->SetTargetValue(TEXT("Perceived_Threat"), 0.9f);
-			
-			// 如果是僵尸或特定性格，也可能增加愤怒
-			// If Zombie or Aggressive, maybe Anger too
-			if (PersonalityIDStr.Contains(TEXT("Zombie")) || RoleDescription.Contains(TEXT("Aggressive")))
-			{
-				// Aggressive response
-			}
-			else
-			{
-				// Default fear response
-			}
-			
-			UE_LOG(LogTemp, Warning, TEXT("[Cognition] 🧠⚡ AMYGDALA HIJACK! Threat detected, spiking Perceived_Threat to 0.9 immediately."));
-		}
-	}
+	), *FinalRoleSection, *FinalBackstorySection, *WorldviewSection, *FinalSituation, *CurrentDecisionContext, *FinalMemories);
 	
 	// ✅ RATE LIMITING
 	// 防止短时间内发送过多请求，特别是在感知系统不稳定时
@@ -448,7 +531,7 @@ void UCognitionComponent::ProcessStimulus(FString SituationDescription)
 	
 	if (CurrentTime - LastLLMRequestTime < Cooldown)
 	{
-		 UE_LOG(LogTemp, Verbose, TEXT("[Cognition] Request Throttled (Pri=%d). Cooldown: %.1fs"), bIsHighPriority, Cooldown);
+		 AINPC_LOG(Verbose, "[Cognition] Request Throttled (Pri=%d). Cooldown: %.1fs", bIsHighPriority, Cooldown);
 		 return; 
 	}
 	LastLLMRequestTime = CurrentTime;
@@ -466,9 +549,16 @@ void UCognitionComponent::OnLLMReply(bool bSuccess, const FMentalState& NewState
 {
 	if (bSuccess)
 	{
-		// 不要直接广播，而是使用 Interpolator 设置目标值
-		// Don't broadcast directly, use Interpolator to set target values
-		
+		// Force Speech debug
+		if (!NewState.Speech.IsEmpty())
+		{
+			AINPC_LOG(Warning, "[Cognition] 🗣️ LLM Generated Speech: \"%s\"", *NewState.Speech);
+		}
+		else
+		{
+			AINPC_LOG(Warning, "[Cognition] 😶 LLM returned EMPTY Speech.");
+		}
+
 		if (Interpolator)
 		{
 			// 使用宏自动为所有字段设置目标值
@@ -480,8 +570,8 @@ void UCognitionComponent::OnLLMReply(bool bSuccess, const FMentalState& NewState
 			
 			#undef SET_TARGET_VALUE
 			
-			UE_LOG(LogTemp, Log, TEXT("[Cognition] Target values set from LLM"));
-			UE_LOG(LogTemp, Log, TEXT("  Indignity target: %.2f, Boredom target: %.2f"), 
+			AINPC_LOG(Log, "[Cognition] Target values set from LLM");
+			AINPC_LOG(Log, "  Indignity target: %.2f, Boredom target: %.2f", 
 			       NewState.Indignity, NewState.Boredom);
 			
 			// 注意：实际的 MentalState 更新在 TickComponent 中通过插值完成
@@ -531,7 +621,7 @@ void UCognitionComponent::StartDreaming()
 		"Do NOT output markdown."
 	), *DailyLogs);
 
-	UE_LOG(LogTemp, Log, TEXT("[Dreaming] Sending logs to LLM..."));
+	AINPC_LOG(Log, "[Dreaming] Sending logs to LLM...");
 
 	// 3. 发送请求 (注意：这里我们复用 LLMService，但需要 LLMCommunicator 支持返回原始 String 的回调)
 	// 假设你的 LLMCommunicator 有一个 SendRequestRaw 或者你重载了回调，这里展示逻辑核心

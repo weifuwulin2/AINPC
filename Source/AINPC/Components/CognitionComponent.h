@@ -61,6 +61,13 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI | Cognition")
 	FString BehavioralGuidelines = TEXT("");
 
+	/** 
+	 * Whether this brain uses LLM reasoning.
+	 * Disable for "Mindless" NPCs (Zombies, Animals) to save performance and cost.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI | Cognition")
+	bool bEnableReasoning = true;
+
 	// 心理状态插值器 / Mental State Interpolator
 	// 平滑过渡情绪变化
 	UPROPERTY()

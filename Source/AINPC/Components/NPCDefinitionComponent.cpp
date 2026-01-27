@@ -16,6 +16,77 @@ UNPCDefinitionComponent::UNPCDefinitionComponent()
 	
 	NameID = NAME_None;
 	PastEventID = NAME_None;
+	FactionID = NAME_None;
+	DefinitionTemplateID = NAME_None;
+}
+
+void UNPCDefinitionComponent::LoadFromTemplate()
+{
+	// If no template specified, skip
+	if (DefinitionTemplateID.IsNone() || !DefinitionTable)
+	{
+		return;
+	}
+
+	// Find the row in DT_NPCDefinitions
+	FString ContextString = TEXT("NPCDefinition_LoadFromTemplate");
+	const FNPCDefinitionRow* Row = DefinitionTable->FindRow<FNPCDefinitionRow>(DefinitionTemplateID, ContextString);
+	
+	if (!Row)
+	{
+		AINPC_LOG_WARNING("Failed to find template '%s' in DefinitionTable!", *DefinitionTemplateID.ToString());
+		return;
+	}
+
+	// Auto-populate properties from template
+	PersonalityID = Row->PersonalityID;
+	ProfessionID = Row->ProfessionID;
+	FactionID = Row->FactionID;
+
+	AINPC_LOG(Log, "Loaded NPC Definition from template '%s': Personality=%s, Profession=%s, Faction=%s",
+		*DefinitionTemplateID.ToString(),
+		*PersonalityID.ToString(),
+		*ProfessionID.ToString(),
+		*FactionID.ToString());
+}
+
+void UNPCDefinitionComponent::RandomizeModularIdentity()
+{
+	// Randomize Name if not set
+	if (NameID.IsNone() && NameTable)
+	{
+		TArray<FName> RowNames = NameTable->GetRowNames();
+		if (RowNames.Num() > 0)
+		{
+			int32 RandomIndex = FMath::RandRange(0, RowNames.Num() - 1);
+			NameID = RowNames[RandomIndex];
+			AINPC_LOG(Log, "Randomized NameID: %s", *NameID.ToString());
+		}
+	}
+
+	// Randomize Social Profile/Backstory if not set
+	if (SocialProfileID.IsNone() && SocialProfileTable)
+	{
+		TArray<FName> RowNames = SocialProfileTable->GetRowNames();
+		if (RowNames.Num() > 0)
+		{
+			int32 RandomIndex = FMath::RandRange(0, RowNames.Num() - 1);
+			SocialProfileID = RowNames[RandomIndex];
+			AINPC_LOG(Log, "Randomized SocialProfileID: %s", *SocialProfileID.ToString());
+		}
+	}
+
+	// Randomize Past Event if not set
+	if (PastEventID.IsNone() && PastEventTable)
+	{
+		TArray<FName> RowNames = PastEventTable->GetRowNames();
+		if (RowNames.Num() > 0)
+		{
+			int32 RandomIndex = FMath::RandRange(0, RowNames.Num() - 1);
+			PastEventID = RowNames[RandomIndex];
+			AINPC_LOG(Log, "Randomized PastEventID: %s", *PastEventID.ToString());
+		}
+	}
 }
 
 bool UNPCDefinitionComponent::GetSocialProfileDef(FSocialProfileDef& OutDef) const
@@ -25,6 +96,41 @@ bool UNPCDefinitionComponent::GetSocialProfileDef(FSocialProfileDef& OutDef) con
 	if (!Row) return false;
 	OutDef = *Row;
 	return true;
+}
+
+FString UNPCDefinitionComponent::GetDisplayName() const
+{
+	// 1. Try to get configured Name (First + Last)
+	FNPCNameDef NameDef;
+	if (GetNameDef(NameDef))
+	{
+		FString FullName = NameDef.FirstName;
+		if (!NameDef.Surname.IsEmpty())
+		{
+			FullName += " " + NameDef.Surname;
+		}
+		return FullName;
+	}
+
+	// 2. Fallback: Profession (e.g., "Merchant", "Guard")
+	if (!ProfessionID.IsNone() && ProfessionID != TEXT("None"))
+	{
+		return ProfessionID.ToString();
+	}
+
+	// 3. Fallback: Faction-based Identity (e.g., "Zombie", "Citizen")
+	FString FacStr = FactionID.ToString();
+	if (FacStr.Contains("Monster") || FacStr.Contains("Zombie"))
+	{
+		return TEXT("Zombie"); // Or specific monster type
+	}
+	else if (FacStr.Contains("Bandit"))
+	{
+		return TEXT("Bandit");
+	}
+
+	// 4. Ultimate Fallback
+	return TEXT("Citizen");
 }
 
 bool UNPCDefinitionComponent::GetNameDef(FNPCNameDef& OutDef) const
@@ -48,6 +154,12 @@ bool UNPCDefinitionComponent::GetPastEventDef(FPastEventDef& OutDef) const
 void UNPCDefinitionComponent::BeginPlay()
 {
 	Super::BeginPlay();
+	
+	// Load from template if specified
+	LoadFromTemplate();
+	
+	// Auto-randomize Name, Backstory, Past Event if not set
+	RandomizeModularIdentity();
 	
 	// Optional: Auto-apply if Owner is defined? 
 	// Usually better to let the Owner call this when Controller is ready.

@@ -1,0 +1,26 @@
+[
+    {
+        "Name": "Human_Civilian",
+        "PersonalityID": "Neutral_Civilian",
+        "ProfessionID": "None",
+        "FactionID": "Humans"
+    },
+    {
+        "Name": "Elf_Ranger",
+        "PersonalityID": "Cautious_Guard",
+        "ProfessionID": "Guard",
+        "FactionID": "Elves"
+    },
+    {
+        "Name": "Orc_Warrior",
+        "PersonalityID": "Brave_Warrior",
+        "ProfessionID": "Warrior",
+        "FactionID": "Orcs"
+    },
+    {
+        "Name": "Zombie_Basic",
+        "PersonalityID": "Feral_Instinct",
+        "ProfessionID": "None",
+        "FactionID": "Monsters"
+    }
+]

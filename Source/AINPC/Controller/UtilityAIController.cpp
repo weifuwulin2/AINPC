@@ -8,10 +8,14 @@
 #include "Components/EmotionDisplayComponent.h"
 #include "Components/MetabolismComponent.h"
 #include "Components/GoalComponent.h"
+#include "Components/FactionReputationComponent.h"
 #include "UtilityAI/UNPCMentalState.h" 
 #include "UtilityAI/EmotionEvaluator.h" // Add this 
+#include "Components/NPCDefinitionComponent.h" // Add this
+#include "Components/MonsterComponent.h" // Add this
 
 // 感知相关头文件
+#include "AINPC.h"
 #include "Engine/DamageEvents.h"
 #include "LLM/LLMCommunicator.h"
 #include "Perception/AIPerceptionComponent.h"
@@ -82,6 +86,92 @@ AUtilityAIController::AUtilityAIController()
     }
 }
 
+void AUtilityAIController::OnPossess(APawn* InPawn)
+{
+    Super::OnPossess(InPawn);
+
+    AINPC_LOG(Warning, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    AINPC_LOG(Warning, "OnPossess called for Pawn: %s", InPawn ? *InPawn->GetName() : TEXT("NULL"));
+    
+    if (!InPawn) return;
+
+    // ✅ Initialization Arbitration Logic
+    // 1. Check for MonsterComponent (Highest Priority - Overrides everything)
+    UMonsterComponent* MonsterComp = InPawn->FindComponentByClass<UMonsterComponent>();
+    AINPC_LOG(Warning, "MonsterComponent Found: %s", MonsterComp ? TEXT("YES") : TEXT("NO"));
+    
+    if (MonsterComp)
+    {
+        AINPC_LOG(Warning, "✅ Applying Monster Settings (Brainless).");
+        
+        // Apply Monster Settings Manually (since MonsterComponent::BeginPlay might have failed due to race condition)
+        
+        // A. Force Faction
+        bool bFoundFactionComponent = false;
+        if (UFactionReputationComponent* FacComp = InPawn->FindComponentByClass<UFactionReputationComponent>())
+        {
+            FacComp->CurrentFactionID = MonsterComp->MonsterFactionID;
+            AINPC_LOG(Warning, "Set FactionReputationComponent: %s", *MonsterComp->MonsterFactionID.ToString());
+            bFoundFactionComponent = true;
+        }
+        else if (UNPCDefinitionComponent* DefComp = InPawn->FindComponentByClass<UNPCDefinitionComponent>())
+        {
+            DefComp->FactionID = MonsterComp->MonsterFactionID;
+            AINPC_LOG(Warning, "Set NPCDefinition FactionID: %s", *MonsterComp->MonsterFactionID.ToString());
+            bFoundFactionComponent = true;
+        }
+        
+        if (!bFoundFactionComponent)
+        {
+            AINPC_LOG_ERROR("❌ No FactionReputationComponent or NPCDefinitionComponent found!");
+        }
+
+        // B. Force Personality
+        if (PersonalityComp)
+        {
+            PersonalityComp->Personality.RoleDescription = TEXT("[INSTINCTS] You are a MINDLESS MONSTER. Driven purely by hunger. No logic, no mercy. Attack on sight.");
+            PersonalityComp->Personality.BehavioralGuidelines = TEXT("Attack any non-Monster instantly. Never retreat. Make guttural noises.");
+            
+            // Feral OCEAN Stats
+            PersonalityComp->Personality.Openness = 0.1f;
+            PersonalityComp->Personality.Conscientiousness = 0.1f;
+            PersonalityComp->Personality.Extraversion = 0.1f;
+            PersonalityComp->Personality.Agreeableness = 0.0f;
+            PersonalityComp->Personality.Neuroticism = 0.1f;
+            
+            AINPC_LOG(Warning, "✅ Set Feral Personality on PersonalityComponent");
+        }
+        else
+        {
+            AINPC_LOG_ERROR("❌ PersonalityComp is NULL!");
+        }
+
+        // C. Disable Reasoning
+        if (CognitionComp)
+        {
+            // CognitionComp->bEnableReasoning = false; // Re-enabled to allow LLM to generate 'grunts' and 'hisses'
+            AINPC_LOG(Warning, "✅ Cognition Reasoning stays ENABLED for Monster (to allow speech generation). Amygdala Hijack handles threat.");
+        }
+        
+        AINPC_LOG(Warning, "Monster initialization complete. Skipping NPCDefinition.");
+        AINPC_LOG(Warning, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        return; // Skip NPCDefinition
+    }
+
+    // 2. Check for NPCDefinitionComponent (Standard Initialization)
+    if (UNPCDefinitionComponent* DefComp = InPawn->FindComponentByClass<UNPCDefinitionComponent>())
+    {
+        AINPC_LOG(Log, "Found NPCDefinitionComponent. Applying Profile.");
+        DefComp->ApplyDefinition(this);
+    }
+    else
+    {
+        AINPC_LOG(Warning, "⚠️ No MonsterComponent or NPCDefinitionComponent found!");
+    }
+    
+    AINPC_LOG(Warning, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+}
+
 void AUtilityAIController::BeginPlay()
 {
     Super::BeginPlay();
@@ -141,9 +231,19 @@ void AUtilityAIController::BeginPlay()
     // 6. 配置 Metabolism (根据 Faction 决定是否启用)
     // Configure Metabolism (Enable/Disable based on Faction)
     // =========================================================
-    if (MetabolismComp && PersonalityComp)
+    if (MetabolismComp)
     {
-        EFactionType Faction = PersonalityComp->Personality.Faction;
+        // ✅ REFACTORED: Use FactionReputationComponent instead of deprecated Personality.Faction
+        // 重构：使用 FactionReputationComponent 替代已弃用的 Personality.Faction
+        EFactionType Faction = EFactionType::Neutral;
+        
+        // Try to get faction from FactionReputationComponent
+        if (UFactionReputationComponent* FacComp = FindComponentByClass<UFactionReputationComponent>())
+        {
+            FName FactionID = FacComp->CurrentFactionID;
+            if (FactionID == "Monster") Faction = EFactionType::Monster;
+            else if (FactionID == "Human") Faction = EFactionType::Human;
+        }
         
         if (Faction == EFactionType::Monster)
         {

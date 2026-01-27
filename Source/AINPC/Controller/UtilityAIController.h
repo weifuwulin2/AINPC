@@ -110,6 +110,7 @@ public:
 
 protected:
     virtual void BeginPlay() override;
+    virtual void OnPossess(APawn* InPawn) override;
 
     // =========================================================
     // 5. 内部回调 (Callbacks)

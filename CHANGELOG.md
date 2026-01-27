@@ -7,7 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased] - 2026-01-27
+
+### � Fixes - NPC Identity \& Faction System
+- **Fixed Faction Identity Mismatch**: NPCs now correctly identify their race/faction in dialogue.
+  - Updated `CognitionComponent::ProcessStimulus` to prioritize Pawn's `NPCDefinitionComponent` over Controller's when retrieving FactionID.
+  - Added auto-sync logic in `FactionReputationComponent::BeginPlay` to pull FactionID from Pawn's NPCDefinitionComponent if default.
+  - Added detailed Faction descriptions to `DT_Factions.json` that guide LLM roleplay (speech patterns, racial traits, attitudes).
+  
+- **Refactored Personality DataTable**: Removed job/faction references from `DT_Personalities.json` to prevent AI hallucinations.
+  - Personalities now only describe pure personality traits (Brave, Cautious, Friendly, Cunning, etc.) without job titles or racial identities.
+  - Added 7 new personality types: Cunning, Cheerful, Grumpy, Ambitious, Lazy, Paranoid, Compassionate.
+  - Faction and Profession information now exclusively come from their respective DataTables, preventing conflicting prompts.
+
+### �💄 UI & Feedback
+- **Faction Display**: Updated `EmotionDisplayComponent` to show Faction Name in the overhead nameplate (e.g., `[Monsters] [Zombie] Walker`).
+- **Nameplate Update**: Now accepts FactionID as an argument and formats the display string efficiently.
+
+### 🔧 Fixes - Zombie Behavior
+- **Re-enabled Reasoning for Monsters**: Commented out the forced `bEnableReasoning = false` for Monsters.
+  - Allows Zombies to process "Talk" stimuli and generate speech (e.g., Grunts, Hisses) instead of being mute.
+  - Relying on LLM Prompt "Limitation" sections (Brain Rot) to enforce mindless behavior.
+
+### 🔧 Fixes - Faction System
+- **Plural Faction ID Support**: Updated `SensoryComponent` to support plural FactionIDs (Humans, Orcs, Elves) to match `DT_Factions` row names.
+
+
 ## [Unreleased] - 2026-01-26
+
+### ✨ Features - Faction & NPC Identity System
+- **Unified NPC Definition**: `NPCDefinitionComponent` now acts as the central "Passport".
+  - **Template Support**: Added `DefinitionTemplateID` to auto-load configs from `DT_NPCDefinitions` (e.g., "Orc_Warrior").
+  - **Auto-Randomization**: If Name/Backstory/Trauma are not set, `RandomizeModularIdentity()` automatically picks diverse options from DataTables.
+- **Rich Content Generation**:
+  - `DT_Names.json`: 50 diverse fantasy names.
+  - `DT_SocialProfiles.json`: 50 unique backgrounds (Social Class + Values + Motivation).
+  - `DT_PastEvents.json`: 50 life events generating specific Phobias and Mental Scars.
+- **Faction System 2.0**:
+  - **Data-Driven Hostility**: `DT_Factions` defines relationships (War/Neutral/Alliance).
+  - **Two-Layer Reputation**: `FactionSubsystem` (Global) + `FactionReputationComponent` (Personal Overrides).
+  - **Triangular Conflict**: Humans vs Orcs vs Elves (all hostile to Monsters).
 
 ### ✨ Features - Smart Object Slot System
 - **Multi-Slot Support**: Smart Objects can now support multiple users simultaneously.

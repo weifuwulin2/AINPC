@@ -17,6 +17,23 @@
     *   **Test Case**: Spawn 1 NPC. Watch it Cycle: Hungry -> Eat -> Sleep -> Patrol.
     *   **Fix**: Resolve any "Stuck" states or "Jittering" between actions.
 
+## 📅 Day 1-28: Polish & Configuration Tasks
+**Goal**: Refine existing systems and improve level designer workflow.
+
+*   **SmartObject Visual Configuration**
+    *   **Task**: Make `SlotOffsets` array visualizable in Editor.
+    *   **Implementation**: Add `DrawDebugSphere` / `DrawDebugArrow` for each slot in `SmartObjectComponent::OnConstruction`.
+    *   **Benefit**: Level designers can see and adjust interaction points without PIE.
+
+*   **Faction-Aware Attack Validation**
+    *   **Task**: Review all combat actions (`Action_Attack`, `Action_ChargedAttack`) to ensure they respect new Faction system.
+    *   **Validation**: Verify that Orcs attack Elves, Humans attack Monsters, but Humans don't attack other Humans (unless personal reputation override).
+
+*   **Work Action Animation Configuration**
+    *   **Task**: Add animation montage references to `DT_UtilityActions` for work actions (Mining, Farming, Crafting, etc.).
+    *   **Implementation**: Add `WorkAnimationMontage` field to `FUtilityActionConfig`.
+    *   **Benefit**: Designers can configure work animations per-action without code changes.
+
 ## 📅 Days 5-9: The "Chaos" Phase (Gameplay)
 **Goal**: Create visible, unscripted conflict between NPCs.
 

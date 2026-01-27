@@ -126,32 +126,8 @@ public:
 	 * @param Profession - 职业 ID
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Emotion Display")
-	void UpdateNameplate(const FString& Name, const FString& Personality, const FString& Profession);
+	void UpdateNameplate(const FString& Name, const FString& Personality, const FString& Profession, const FString& Faction);
 	
-	/**
-	 * 根据情绪获取 emoji 文本 / Get Emoji Text by Emotion
-	 * 
-	 * @param Emotion - 情绪标签 / Emotion tag
-	 * @return Emoji 文本 / Emoji text
-	 */
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Emotion Display")
-	FString GetEmojiForEmotion(const FString& Emotion) const;
-	
-	/**
-	 * 根据情绪获取对话内容 / Get Message by Emotion
-	 * 
-	 * @param Emotion - 情绪标签 / Emotion tag
-	 * @return 对话内容 / Message text
-	 */
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Emotion Display")
-	FString GetMessageForEmotion(const FString& Emotion) const;
-	
-	/**
-	 * 根据情绪获取 emoji 纹理 / Get Emoji Texture by Emotion
-	 * 
-	 * @param Emotion - 情绪标签 / Emotion tag
-	 * @return Emoji 纹理 / Emoji texture
-	 */
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Emotion Display")
 	UTexture2D* GetEmojiTextureForEmotion(const FString& Emotion) const;
 

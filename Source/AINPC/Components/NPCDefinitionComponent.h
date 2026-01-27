@@ -8,6 +8,27 @@
 class AAIController;
 
 /**
+ * Unified NPC Definition Row for DataTables.
+ * Allows creating "Templates" like "Guard_Orc", "Civilian_Human".
+ */
+USTRUCT(BlueprintType)
+struct FNPCDefinitionRow : public FTableRowBase
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "NPC Profile")
+	FName PersonalityID;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "NPC Profile")
+	FName ProfessionID;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "NPC Profile")
+	FName FactionID;
+	
+	// Add other IDs here as needed (Name, Background, etc.)
+};
+
+/**
  * Unified component for managing static NPC configuration IDs.
  * Acts as the "Profile" or "Passport" for the NPC, holding IDs for
  * Personality, Profession, Background, etc.
@@ -22,7 +43,20 @@ public:
 
 	virtual void BeginPlay() override;
 
-	// --- Configuration IDs ---
+	// --- Template System (Easy Setup) ---
+	
+	/** 
+	 * Preset template ID (e.g., "Orc_Warrior", "Human_Civilian").
+	 * If set, auto-loads PersonalityID, ProfessionID, FactionID from DT_NPCDefinitions.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "NPC Profile | Template")
+	FName DefinitionTemplateID;
+
+	/** Data Table for NPC Templates. Should be set to DT_NPCDefinitions. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "NPC Profile | Template")
+	UDataTable* DefinitionTable;
+
+	// --- Configuration IDs (Auto-populated from Template or set manually) ---
 
 	/** Personality ID (e.g., "Zombie", "Merchant"). Maps to DT_Personalities. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "NPC Profile")
@@ -32,9 +66,26 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "NPC Profile")
 	FName ProfessionID;
 
-	// Future IDs can be added here (e.g., BackgroundID, VoiceID)
+	/** Faction ID. Maps to DT_Factions. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "NPC Profile")
+	FName FactionID;
+
+	/** Data Table for Factions. Should be set to DT_Factions. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "NPC Profile")
+	UDataTable* FactionTable;
 
 	// --- Logic ---
+	
+	/** Loads configuration from DefinitionTemplateID. Called automatically in BeginPlay. */
+	UFUNCTION(BlueprintCallable, Category = "NPC Profile")
+	void LoadFromTemplate();
+
+	/** 
+	 * Randomizes Name, Backstory, and Past Event from their respective DataTables.
+	 * Called automatically if these IDs are not set.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "NPC Profile")
+	void RandomizeModularIdentity();
 
 	/** Applies the definition to the linked Controller's components. */
 	UFUNCTION(BlueprintCallable, Category = "NPC Profile")
@@ -46,6 +97,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "NPC Profile")
 	
 	bool GetSocialProfileDef(FSocialProfileDef& OutDef) const;
+	UFUNCTION(BlueprintCallable, Category = "NPC Profile")
+	FString GetDisplayName() const;
+
 	// Getters
 	UFUNCTION(BlueprintCallable, Category = "NPC Profile | Modular")
 	bool GetNameDef(FNPCNameDef& OutDef) const;

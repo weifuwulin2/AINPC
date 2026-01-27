@@ -65,13 +65,8 @@ struct FPersonalityConfig : public FTableRowBase
 
 	// ========== 角色定义 (Role Definition) ==========
 	
-	// 阵营 / Faction
-	// 定义此 NPC 的阵营，用于判断敌我关系
-	// Defines this NPC's faction for determining friend or foe
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Role Definition",
-	          meta = (DisplayName = "Faction (阵营)", 
-	                  ToolTip = "NPC 的阵营，同阵营不会互相敌对 / NPC's faction, same faction won't be hostile to each other"))
-	EFactionType Faction = EFactionType::Neutral;
+	// Deprecated: Faction is now handled by NPCDefinitionComponent
+	// EFactionType Faction = EFactionType::Neutral;
 	
 	// 角色描述 / Role Description
 	// 定义此 NPC 的身份和基本行为倾向，用于 LLM 上下文
@@ -145,11 +140,59 @@ struct FPersonalityConfig : public FTableRowBase
 	static FPersonalityConfig ReclusiveScholar()
 	{
 		FPersonalityConfig Config;
-		Config.Openness = 0.9f;      // 高开放性 = 好奇心强
+		Config.Openness = 0.9f;      // High Openness = Strong Curiosity
 		Config.Conscientiousness = 0.7f;
-		Config.Extraversion = 0.2f;  // 低外向性 = 不喜欢社交
+		Config.Extraversion = 0.2f;  // Low Extraversion = Dislikes socializing
 		Config.Agreeableness = 0.5f;
 		Config.Neuroticism = 0.5f;
+		return Config;
+	}
+
+	// 狡诈的政客 / Scheming Politician
+	static FPersonalityConfig SchemingPolitician()
+	{
+		FPersonalityConfig Config;
+		Config.Openness = 0.8f;      // Creative in plotting
+		Config.Conscientiousness = 0.7f; // Disciplined in ambition
+		Config.Extraversion = 0.8f;  // Charming
+		Config.Agreeableness = 0.2f; // Low Trust/Empathy
+		Config.Neuroticism = 0.6f;   // Paranoid
+		return Config;
+	}
+
+	// 狂热的教徒 / Fanatic Cultist
+	static FPersonalityConfig FanaticCultist()
+	{
+		FPersonalityConfig Config;
+		Config.Openness = 0.2f;      // Closed to new ideas (Dogmatic)
+		Config.Conscientiousness = 0.9f; // Obsessively dedicated
+		Config.Extraversion = 0.5f;
+		Config.Agreeableness = 0.4f; // Only agreeable to 'us'
+		Config.Neuroticism = 0.8f;   // Highly volatile
+		return Config;
+	}
+
+	// 醉鬼 / Drunkard
+	static FPersonalityConfig Drunkard()
+	{
+		FPersonalityConfig Config;
+		Config.Openness = 0.7f;      // Inhibitions lowered
+		Config.Conscientiousness = 0.1f; // Cannot focus
+		Config.Extraversion = 0.6f;  // Loud
+		Config.Agreeableness = 0.5f; // Unpredictable
+		Config.Neuroticism = 0.7f;   // Emotional swings
+		return Config;
+	}
+
+	// 天真的孩子 / Innocent Child
+	static FPersonalityConfig InnocentChild()
+	{
+		FPersonalityConfig Config;
+		Config.Openness = 0.9f;      // Pure curiosity
+		Config.Conscientiousness = 0.3f; // Short attention span
+		Config.Extraversion = 0.7f;  // Playful
+		Config.Agreeableness = 0.9f; // Trusting
+		Config.Neuroticism = 0.6f;   // Easily scared/upset
 		return Config;
 	}
 

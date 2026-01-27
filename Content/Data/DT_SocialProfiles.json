@@ -1,0 +1,452 @@
+[
+    {
+        "Name": "SP_01",
+        "SocialStatus": "Middle",
+        "KeyValues": [
+            "Duty",
+            "Reliability"
+        ],
+        "Motivation": "To provide for my family through honest work."
+    },
+    {
+        "Name": "SP_02",
+        "SocialStatus": "Low",
+        "KeyValues": [
+            "Survival",
+            "Distrust"
+        ],
+        "Motivation": "To survive another day in this harsh world."
+    },
+    {
+        "Name": "SP_03",
+        "SocialStatus": "High",
+        "KeyValues": [
+            "Honor",
+            "Tradition"
+        ],
+        "Motivation": "To uphold the family name and legacy."
+    },
+    {
+        "Name": "SP_04",
+        "SocialStatus": "Middle",
+        "KeyValues": [
+            "Curiosity",
+            "Knowledge"
+        ],
+        "Motivation": "To uncover the secrets of the ancient ruins."
+    },
+    {
+        "Name": "SP_05",
+        "SocialStatus": "High",
+        "KeyValues": [
+            "Power",
+            "Ambition"
+        ],
+        "Motivation": "To expand my influence and control over the region."
+    },
+    {
+        "Name": "SP_06",
+        "SocialStatus": "Low",
+        "KeyValues": [
+            "Loyalty",
+            "Brotherhood"
+        ],
+        "Motivation": "To protect my friends and comrades at all costs."
+    },
+    {
+        "Name": "SP_07",
+        "SocialStatus": "Middle",
+        "KeyValues": [
+            "Faith",
+            "Devotion"
+        ],
+        "Motivation": "To serve the gods and spread their word."
+    },
+    {
+        "Name": "SP_08",
+        "SocialStatus": "Low",
+        "KeyValues": [
+            "Freedom",
+            "Independence"
+        ],
+        "Motivation": "To live life on my own terms without masters."
+    },
+    {
+        "Name": "SP_09",
+        "SocialStatus": "High",
+        "KeyValues": [
+            "Knowledge",
+            "Wisdom"
+        ],
+        "Motivation": "To advise the rulers and guide the kingdom."
+    },
+    {
+        "Name": "SP_10",
+        "SocialStatus": "Middle",
+        "KeyValues": [
+            "Justice",
+            "Fairness"
+        ],
+        "Motivation": "To ensure that the law is upheld for everyone."
+    },
+    {
+        "Name": "SP_11",
+        "SocialStatus": "Low",
+        "KeyValues": [
+            "Vengeance",
+            "Anger"
+        ],
+        "Motivation": "To make those who wronged me pay for their crimes."
+    },
+    {
+        "Name": "SP_12",
+        "SocialStatus": "High",
+        "KeyValues": [
+            "Beauty",
+            "Art"
+        ],
+        "Motivation": "To create works that will be remembered for centuries."
+    },
+    {
+        "Name": "SP_13",
+        "SocialStatus": "Middle",
+        "KeyValues": [
+            "Service",
+            "Humility"
+        ],
+        "Motivation": "To help those less fortunate than myself."
+    },
+    {
+        "Name": "SP_14",
+        "SocialStatus": "Low",
+        "KeyValues": [
+            "Cunning",
+            "Deception"
+        ],
+        "Motivation": "To outsmart the rich and powerful."
+    },
+    {
+        "Name": "SP_15",
+        "SocialStatus": "High",
+        "KeyValues": [
+            "Leadership",
+            "Responsibility"
+        ],
+        "Motivation": "To lead my people to a prosperous future."
+    },
+    {
+        "Name": "SP_16",
+        "SocialStatus": "Middle",
+        "KeyValues": [
+            "Adventure",
+            "Excitement"
+        ],
+        "Motivation": "To explore unknown lands and face new challenges."
+    },
+    {
+        "Name": "SP_17",
+        "SocialStatus": "Low",
+        "KeyValues": [
+            "Resilience",
+            "Hope"
+        ],
+        "Motivation": "To keep hope alive even in the darkest times."
+    },
+    {
+        "Name": "SP_18",
+        "SocialStatus": "High",
+        "KeyValues": [
+            "Wealth",
+            "Prestige"
+        ],
+        "Motivation": "To accumulate wealth and display my status."
+    },
+    {
+        "Name": "SP_19",
+        "SocialStatus": "Middle",
+        "KeyValues": [
+            "Craftsmanship",
+            "Quality"
+        ],
+        "Motivation": "To create the finest goods in the realm."
+    },
+    {
+        "Name": "SP_20",
+        "SocialStatus": "Low",
+        "KeyValues": [
+            "Luck",
+            "Chance"
+        ],
+        "Motivation": "To strike it big and change my fortune."
+    },
+    {
+        "Name": "SP_21",
+        "SocialStatus": "High",
+        "KeyValues": [
+            "Diplomacy",
+            "Peace"
+        ],
+        "Motivation": "To maintain peace between the warring factions."
+    },
+    {
+        "Name": "SP_22",
+        "SocialStatus": "Middle",
+        "KeyValues": [
+            "Tradition",
+            "Family"
+        ],
+        "Motivation": "To pass down our family traditions to the next generation."
+    },
+    {
+        "Name": "SP_23",
+        "SocialStatus": "Low",
+        "KeyValues": [
+            "Defiance",
+            "Rebellion"
+        ],
+        "Motivation": "To fight against the oppressive regime."
+    },
+    {
+        "Name": "SP_24",
+        "SocialStatus": "High",
+        "KeyValues": [
+            "Magic",
+            "Mystery"
+        ],
+        "Motivation": "To master the arcane arts and unlock hidden powers."
+    },
+    {
+        "Name": "SP_25",
+        "SocialStatus": "Middle",
+        "KeyValues": [
+            "Nature",
+            "Harmony"
+        ],
+        "Motivation": "To live in balance with the natural world."
+    },
+    {
+        "Name": "SP_26",
+        "SocialStatus": "Low",
+        "KeyValues": [
+            "Strength",
+            "Endurance"
+        ],
+        "Motivation": "To prove that I am stronger than any challenge."
+    },
+    {
+        "Name": "SP_27",
+        "SocialStatus": "High",
+        "KeyValues": [
+            "Legacy",
+            "History"
+        ],
+        "Motivation": "To be written into the history books as a great leader."
+    },
+    {
+        "Name": "SP_28",
+        "SocialStatus": "Middle",
+        "KeyValues": [
+            "Friendship",
+            "Community"
+        ],
+        "Motivation": "To build a strong and supportive community."
+    },
+    {
+        "Name": "SP_29",
+        "SocialStatus": "Low",
+        "KeyValues": [
+            "Survival",
+            "Adaptability"
+        ],
+        "Motivation": "To adapt to any situation and survive."
+    },
+    {
+        "Name": "SP_30",
+        "SocialStatus": "High",
+        "KeyValues": [
+            "Control",
+            "Order"
+        ],
+        "Motivation": "To bring order to chaos and control the masses."
+    },
+    {
+        "Name": "SP_31",
+        "SocialStatus": "Middle",
+        "KeyValues": [
+            "Education",
+            "Learning"
+        ],
+        "Motivation": "To learn as much as I can and teach others."
+    },
+    {
+        "Name": "SP_32",
+        "SocialStatus": "Low",
+        "KeyValues": [
+            "Instinct",
+            "Raw Power"
+        ],
+        "Motivation": "To follow my instincts and use my strength."
+    },
+    {
+        "Name": "SP_33",
+        "SocialStatus": "High",
+        "KeyValues": [
+            "Charisma",
+            "Influence"
+        ],
+        "Motivation": "To charm and influence those around me."
+    },
+    {
+        "Name": "SP_34",
+        "SocialStatus": "Middle",
+        "KeyValues": [
+            "Protection",
+            "Guardianship"
+        ],
+        "Motivation": "To protect the innocent and weak."
+    },
+    {
+        "Name": "SP_35",
+        "SocialStatus": "Low",
+        "KeyValues": [
+            "Desperation",
+            "Need"
+        ],
+        "Motivation": "To get whatever I need, by any means necessary."
+    },
+    {
+        "Name": "SP_36",
+        "SocialStatus": "High",
+        "KeyValues": [
+            "Piety",
+            "Virtue"
+        ],
+        "Motivation": "To live a life of virtue and piety."
+    },
+    {
+        "Name": "SP_37",
+        "SocialStatus": "Middle",
+        "KeyValues": [
+            "Innovation",
+            "Progress"
+        ],
+        "Motivation": "To discover new ways of doing things."
+    },
+    {
+        "Name": "SP_38",
+        "SocialStatus": "Low",
+        "KeyValues": [
+            "Camaraderie",
+            "Trust"
+        ],
+        "Motivation": "To trust in my companions completely."
+    },
+    {
+        "Name": "SP_39",
+        "SocialStatus": "High",
+        "KeyValues": [
+            "Strategy",
+            "Tactics"
+        ],
+        "Motivation": "To outmaneuver my enemies on the battlefield and in court."
+    },
+    {
+        "Name": "SP_40",
+        "SocialStatus": "Middle",
+        "KeyValues": [
+            "Health",
+            "Vitality"
+        ],
+        "Motivation": "To promote health and well-being."
+    },
+    {
+        "Name": "SP_41",
+        "SocialStatus": "Low",
+        "KeyValues": [
+            "Resourcefulness",
+            "Scavenging"
+        ],
+        "Motivation": "To find value in what others discard."
+    },
+    {
+        "Name": "SP_42",
+        "SocialStatus": "High",
+        "KeyValues": [
+            "Etiquette",
+            "Manners"
+        ],
+        "Motivation": "To observe the strictest rules of etiquette."
+    },
+    {
+        "Name": "SP_43",
+        "SocialStatus": "Middle",
+        "KeyValues": [
+            "Teamwork",
+            "Cooperation"
+        ],
+        "Motivation": "To work together to achieve common goals."
+    },
+    {
+        "Name": "SP_44",
+        "SocialStatus": "Low",
+        "KeyValues": [
+            "Bravery",
+            "Courage"
+        ],
+        "Motivation": "To face fear head-on without flinching."
+    },
+    {
+        "Name": "SP_45",
+        "SocialStatus": "High",
+        "KeyValues": [
+            "Generosity",
+            "Philanthropy"
+        ],
+        "Motivation": "To use my wealth to help others."
+    },
+    {
+        "Name": "SP_46",
+        "SocialStatus": "Middle",
+        "KeyValues": [
+            "Loyalty",
+            "Duty"
+        ],
+        "Motivation": "To serve my lord or employer faithfully."
+    },
+    {
+        "Name": "SP_47",
+        "SocialStatus": "Low",
+        "KeyValues": [
+            "Wildness",
+            "Nature"
+        ],
+        "Motivation": "To be one with the wild."
+    },
+    {
+        "Name": "SP_48",
+        "SocialStatus": "High",
+        "KeyValues": [
+            "Sophistication",
+            "Taste"
+        ],
+        "Motivation": "To appreciate the finer things in life."
+    },
+    {
+        "Name": "SP_49",
+        "SocialStatus": "Middle",
+        "KeyValues": [
+            "Patience",
+            "Perseverance"
+        ],
+        "Motivation": "To keep going no matter how long it takes."
+    },
+    {
+        "Name": "SP_50",
+        "SocialStatus": "Low",
+        "KeyValues": [
+            "Freedom",
+            "Wanderlust"
+        ],
+        "Motivation": "To wander the world and see new sights."
+    }
+]

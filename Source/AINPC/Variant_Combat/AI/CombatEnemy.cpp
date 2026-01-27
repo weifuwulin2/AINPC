@@ -14,6 +14,7 @@
 #include "Components/NPCDefinitionComponent.h"
 #include "Components/PersonalityComponent.h"
 #include "Components/GoalComponent.h"
+#include "Components/MonsterComponent.h"
 #include "Controller/UtilityAIController.h"
 #include "Components/SensoryComponent.h"
 #include "Kismet/GameplayStatics.h"
@@ -25,8 +26,8 @@ ACombatEnemy::ACombatEnemy()
 	// bind the attack montage ended delegate
 	OnAttackMontageEnded.BindUObject(this, &ACombatEnemy::AttackMontageEnded);
 
-	// set the AI Controller class by default
-	AIControllerClass = ACombatAIController::StaticClass();
+	// set the AI Controller class by default (Use UtilityAIController for full Utility AI support)
+	AIControllerClass = AUtilityAIController::StaticClass();
 
 	// use an AI Controller regardless of whether we're placed or spawned
 	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
@@ -359,7 +360,16 @@ void ACombatEnemy::BeginPlay()
 		UE_LOG(LogTemp, Warning, TEXT("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"));
 		UE_LOG(LogTemp, Warning, TEXT("[CombatEnemy] BeginPlay: Applying NPC Definition..."));
 		
-		if (AController* MyController = GetController())
+		// ✅ CRITICAL: Skip ApplyDefinition if MonsterComponent exists
+		// Monster settings are already applied in UtilityAIController::OnPossess
+		// Applying NPCDefinition here would OVERWRITE those settings!
+		if (UMonsterComponent* MonsterComp = FindComponentByClass<UMonsterComponent>())
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[CombatEnemy] MonsterComponent detected! Skipping NPCDefinition (already configured in OnPossess)"));
+			UE_LOG(LogTemp, Warning, TEXT("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"));
+			// Early return - don't call ApplyDefinition
+		}
+		else if (AController* MyController = GetController())
 		{
 			if (AAIController* AICon = Cast<AAIController>(MyController))
 			{

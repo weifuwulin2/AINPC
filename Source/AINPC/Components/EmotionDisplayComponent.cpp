@@ -67,19 +67,10 @@ void UEmotionDisplayComponent::BeginPlay()
 
 					if (DefComp)
 					{
-						// Try to get modular name
-						FString FinalName = AIC->GetPawn() ? AIC->GetPawn()->GetName() : AIC->GetName();
-						FNPCNameDef NameDef;
-						if (DefComp->GetNameDef(NameDef))
-						{
-							FinalName = NameDef.FirstName;
-							if (!NameDef.Surname.IsEmpty())
-							{
-								FinalName += " " + NameDef.Surname;
-							}
-						}
+						// Clean: Use DefComp to get display name (encapsulated logic)
+						FString FinalName = DefComp->GetDisplayName();
 						
-						UpdateNameplate(FinalName, DefComp->PersonalityID.ToString(), DefComp->ProfessionID.ToString());
+						UpdateNameplate(FinalName, DefComp->PersonalityID.ToString(), DefComp->ProfessionID.ToString(), DefComp->FactionID.ToString());
 					}
 					else
 					{
@@ -232,7 +223,7 @@ void UEmotionDisplayComponent::CreateWidgetComponents()
 	}
 }
 
-void UEmotionDisplayComponent::UpdateNameplate(const FString& Name, const FString& Personality, const FString& Profession)
+void UEmotionDisplayComponent::UpdateNameplate(const FString& Name, const FString& Personality, const FString& Profession, const FString& Faction)
 {
 	if (!NameplateWidgetComponent)
 	{
@@ -248,9 +239,9 @@ void UEmotionDisplayComponent::UpdateNameplate(const FString& Name, const FStrin
 	}
 
 	// 尝试设置文本 (Try to set text)
-	// Format: [Personality] Name <Profession>
+	// Format: [Faction] [Personality] Name <Profession>
 	
-	FString DisplayText = FString::Printf(TEXT("[%s] %s"), *Personality, *Name);
+	FString DisplayText = FString::Printf(TEXT("[%s] [%s] %s"), *Faction, *Personality, *Name);
 	if (!Profession.IsEmpty() && Profession != TEXT("None"))
 	{
 		DisplayText += FString::Printf(TEXT(" <%s>"), *Profession);
@@ -450,7 +441,13 @@ void UEmotionDisplayComponent::ShowSpeechBubble(const FString& Message)
 	// Show Widget
 	SpeechBubbleWidgetComponent->SetVisibility(true);
 	
-	AINPC_LOG(Log, "Showing speech bubble: %s", *Message);
+	AINPC_LOG(Warning, "🗣️ Showing speech bubble: \"%s\"", *Message);
+	
+	// Check if Widget is actually visible on screen
+	if (!SpeechBubbleWidgetComponent->IsVisible())
+	{
+		AINPC_LOG_ERROR("SpeechBubbleWidget component set to visible but IsVisible() returns false! Hidden in game?");
+	}
 	
 	// 清除之前的定时器
 	// Clear previous timer
@@ -488,116 +485,7 @@ void UEmotionDisplayComponent::HideSpeechBubble()
 	}
 }
 
-FString UEmotionDisplayComponent::GetEmojiForEmotion(const FString& Emotion) const
-{
-	// Emoji 映射表 / Emoji Mapping Table
-	// 根据情绪标签返回对应的 emoji
-	// Return corresponding emoji based on emotion tag
-	
-	if (Emotion == TEXT("Happy"))
-	{
-		return TEXT("😊");
-	}
-	else if (Emotion == TEXT("Angry"))
-	{
-		return TEXT("😠");
-	}
-	else if (Emotion == TEXT("Scared"))
-	{
-		return TEXT("😨");
-	}
-	else if (Emotion == TEXT("Sad"))
-	{
-		return TEXT("😢");
-	}
-	else if (Emotion == TEXT("Confused"))
-	{
-		return TEXT("😕");
-	}
-	else if (Emotion == TEXT("Excited"))
-	{
-		return TEXT("😃");
-	}
-	else if (Emotion == TEXT("Neutral"))
-	{
-		return TEXT("😐");
-	}
-	else if (Emotion == TEXT("Suspicious"))
-	{
-		return TEXT("🤨");
-	}
-	else if (Emotion == TEXT("Curious"))
-	{
-		return TEXT("🤔");
-	}
-	else if (Emotion == TEXT("Tired"))
-	{
-		return TEXT("😴");
-	}
-	else
-	{
-		// 默认 emoji / Default emoji
-		return TEXT("😐");
-	}
-}
-
-FString UEmotionDisplayComponent::GetMessageForEmotion(const FString& Emotion) const
-{
-	// 对话内容映射表 / Message Mapping Table
-	// 根据情绪标签返回对应的对话内容
-	// Return corresponding message based on emotion tag
-	
-	if (Emotion == TEXT("Happy"))
-	{
-		return TEXT("I'm feeling great!");
-		// return TEXT("我感觉很好！");
-	}
-	else if (Emotion == TEXT("Angry"))
-	{
-		return TEXT("I'm so angry!");
-		// return TEXT("我很生气！");
-	}
-	else if (Emotion == TEXT("Scared"))
-	{
-		return TEXT("I'm scared...");
-		// return TEXT("我害怕...");
-	}
-	else if (Emotion == TEXT("Sad"))
-	{
-		return TEXT("I feel sad...");
-		// return TEXT("我很难过...");
-	}
-	else if (Emotion == TEXT("Confused"))
-	{
-		return TEXT("I'm confused...");
-		// return TEXT("我很困惑...");
-	}
-	else if (Emotion == TEXT("Excited"))
-	{
-		return TEXT("I'm so excited!");
-		// return TEXT("我好兴奋！");
-	}
-	else if (Emotion == TEXT("Suspicious"))
-	{
-		return TEXT("Something's not right...");
-		// return TEXT("有点不对劲...");
-	}
-	else if (Emotion == TEXT("Curious"))
-	{
-		return TEXT("Interesting...");
-		// return TEXT("有意思...");
-	}
-	else if (Emotion == TEXT("Tired"))
-	{
-		return TEXT("I'm so tired...");
-		// return TEXT("我好累...");
-	}
-	else
-	{
-		// 默认不显示对话泡泡 / Default: no speech bubble
-		return TEXT("");
-	}
-}
+// Methods removed: GetEmojiForEmotion, GetMessageForEmotion (Replaced by DataAssets and LLM)
 
 UTexture2D* UEmotionDisplayComponent::GetEmojiTextureForEmotion(const FString& Emotion) const
 {

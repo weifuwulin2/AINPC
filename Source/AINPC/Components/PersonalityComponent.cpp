@@ -85,7 +85,6 @@ void UPersonalityComponent::RecalculateWeights()
 			UE_LOG(LogTemp, Log, TEXT("     OCEAN: O=%.2f, C=%.2f, E=%.2f, A=%.2f, N=%.2f"), 
 			       Personality.Openness, Personality.Conscientiousness, 
 			       Personality.Extraversion, Personality.Agreeableness, Personality.Neuroticism);
-			UE_LOG(LogTemp, Log, TEXT("     Faction: %s"), *UEnum::GetValueAsString(Personality.Faction));
 			UE_LOG(LogTemp, Log, TEXT("     RoleDescription: %s"), *Personality.RoleDescription);
 		}
 		else
@@ -196,6 +195,26 @@ void UPersonalityComponent::UsePersonalityTemplate(const FString& TemplateName)
 	{
 		Personality = FPersonalityConfig::ReclusiveScholar();
 		UE_LOG(LogTemp, Log, TEXT("[PersonalityComponent] Applied template: Reclusive Scholar"));
+	}
+	else if (TemplateName == TEXT("SchemingPolitician"))
+	{
+		Personality = FPersonalityConfig::SchemingPolitician();
+		UE_LOG(LogTemp, Log, TEXT("[PersonalityComponent] Applied template: Scheming Politician"));
+	}
+	else if (TemplateName == TEXT("FanaticCultist"))
+	{
+		Personality = FPersonalityConfig::FanaticCultist();
+		UE_LOG(LogTemp, Log, TEXT("[PersonalityComponent] Applied template: Fanatic Cultist"));
+	}
+	else if (TemplateName == TEXT("Drunkard"))
+	{
+		Personality = FPersonalityConfig::Drunkard();
+		UE_LOG(LogTemp, Log, TEXT("[PersonalityComponent] Applied template: Drunkard"));
+	}
+	else if (TemplateName == TEXT("InnocentChild"))
+	{
+		Personality = FPersonalityConfig::InnocentChild();
+		UE_LOG(LogTemp, Log, TEXT("[PersonalityComponent] Applied template: Innocent Child"));
 	}
 	else
 	{
