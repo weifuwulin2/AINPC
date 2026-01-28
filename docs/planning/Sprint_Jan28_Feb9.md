@@ -87,48 +87,33 @@
 
 ---
 
-## Week 2: Tech Showcase & Demo Prep (Feb 3 - Feb 9)
+## Week 2: Project Peacemaker (Feb 3 - Feb 9)
 
 ### 📅 Day 7 - Monday, February 3
-**Phase**: Chaos - Director Subsystem (Automated Chaos)
-- [ ] **Morning**: Create `DirectorSubsystem.h/.cpp`
-  - Implement timer-based event triggering (every ~2 minutes)
-  - Add NPC selection logic (find "Saboteur" personality)
-  - Add SmartObject selection logic (find random functional object)
-- [ ] **Afternoon**: Test chaos generation
-  - Spawn 3 NPCs with mixed personalities
-  - Verify Director triggers sabotage events
-  - Observe cascade effects (NPC finds broken bed → gets angry → sabotages food)
-- [ ] **EOD Deliverable**: ✅ Automated chaos system generating emergent conflicts
+**Phase**: Concept - The "Why" Engine
+- [ ] **Data**: Add `ResourceScarcity` tags to Faction Memory (e.g., "We are Angry because [No Food]").
+- [ ] **UI**: Implementing the "Visual Debugger" to show *why* an NPC is hostile (e.g., Bubble over head: "Hungry: 0.9 -> Hating Human").
+- [ ] **EOD Deliverable**: ✅ See a Zombie attack not because "It's a Zombie", but because "Hungry".
 
 ### 📅 Day 8 - Tuesday, February 4
-**Phase**: Tech - Visual Debugger Foundation
-- [ ] **Morning**: Create `WBP_OverheadDebug` UMG widget
-  - Text blocks for:
-    - Current Mental State (Hunger, Fatigue, Threat)
-    - Current Context (e.g., "Bed is Broken")
-    - Current Action Decision
-  - Color-coded priority indicators
-- [ ] **Afternoon**: Integrate with `UtilityAIComponent`
-  - Broadcast debug data on action selection
-  - Update widget every tick
-  - Position above NPC head
-- [ ] **EOD Deliverable**: ✅ Thought bubbles showing real-time AI reasoning
+**Phase**: Mechanic - The Bridge (Gift System)
+- [ ] **Action**: Create `Action_GiveItem`.
+- [ ] **Logic**: Player giving Food to Hungry Orc -> Reduces Hostility -> Triggers "Grateful" memory.
+- [ ] **Effect**: Orc stops attacking Player, but still attacks Elves.
+- [ ] **EOD Deliverable**: ✅ Bribe a hostile NPC with food to survive.
 
 ### 📅 Day 9 - Wednesday, February 5
-**Phase**: Tech - Neural Utility MVP (Scheme 1)
-- [ ] **Morning**: Create `VectorDatabase.h/.cpp`
-  - Load pre-baked vectors from JSON (Mental State → Action embeddings)
-  - Example embeddings:
-    - `{"Hungry": [0.9, 0.1, 0.2, ...], "Action_Eat": [0.85, 0.15, 0.1, ...]}`
-- [ ] **Afternoon**: Modify `UtilityActionBase::CalculateScore()`
-  - Add `DotProduct(CurrentState, ActionVector)` to score
-  - Weight: 70% traditional utility + 30% neural similarity
-  - Log scores for validation
-- [ ] **EOD Deliverable**: ✅ Console log showing "Hungry matches Eat (similarity: 0.92)"
+**Phase**: Mechanic - The Summit (Diplomacy)
+- [ ] **Goal**: `Goal_AttendSummit`.
+    - Context: Triggered by Player using `Action_CallMeeting`.
+    - Behavior: Leaders walk to a central table.
+- [ ] **Tension System**:
+    - If Player has high rep with BOTH -> Summit starts.
+    - If Saboteur interrupts -> War resumes.
+- [ ] **EOD Deliverable**: ✅ See Orc and Elf leaders sitting at the same table (unless interrupted).
 
 ### 📅 Day 10 - Thursday, February 6
-**Phase**: Demo Prep - Map Design
+**Phase**: Demo Prep - The "Broken" World
 - [ ] **Full Day**: Design `Map_Demo_Village`
   - Layout: 20m x 20m square village
   - Assets:

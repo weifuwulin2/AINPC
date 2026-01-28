@@ -1,0 +1,218 @@
+[
+	{
+		"Name": "Scene_OrcRescue",
+		"PlotOutline": "The cruel Human Lord is giving a speech about human supremacy. The Orc slaves are cowering in fear. The Guards are watching for trouble.",
+		"Cast": [
+			{
+				"NPCTemplateID": "Narrative_Human_Leader",
+				"RelativeTransform":
+				{
+					"Rotation":
+					{
+						"X": 0,
+						"Y": -0,
+						"Z": 0,
+						"W": 1
+					},
+					"Translation":
+					{
+						"X": 0,
+						"Y": 0,
+						"Z": 500
+					},
+					"Scale3D":
+					{
+						"X": 1,
+						"Y": 1,
+						"Z": 1
+					}
+				},
+				"RoleOverride": "Tyrant Lord"
+			},
+			{
+				"NPCTemplateID": "Narrative_Human_Guard",
+				"RelativeTransform":
+				{
+					"Rotation":
+					{
+						"X": 0,
+						"Y": -0,
+						"Z": 0,
+						"W": 1
+					},
+					"Translation":
+					{
+						"X": 400,
+						"Y": 100,
+						"Z": 0
+					},
+					"Scale3D":
+					{
+						"X": 1,
+						"Y": 1,
+						"Z": 1
+					}
+				},
+				"RoleOverride": "Loyal Guard"
+			},
+			{
+				"NPCTemplateID": "Narrative_Orc_Slave",
+				"RelativeTransform":
+				{
+					"Rotation":
+					{
+						"X": 0,
+						"Y": 0,
+						"Z": 0,
+						"W": 1
+					},
+					"Translation":
+					{
+						"X": 300,
+						"Y": -200,
+						"Z": 0
+					},
+					"Scale3D":
+					{
+						"X": 1,
+						"Y": 1,
+						"Z": 1
+					}
+				},
+				"RoleOverride": "Oppressed Slave 1"
+			},
+			{
+				"NPCTemplateID": "Narrative_Orc_Slave",
+				"RelativeTransform":
+				{
+					"Rotation":
+					{
+						"X": 0,
+						"Y": 0,
+						"Z": 0,
+						"W": 1
+					},
+					"Translation":
+					{
+						"X": 400,
+						"Y": -250,
+						"Z": 0
+					},
+					"Scale3D":
+					{
+						"X": 1,
+						"Y": 1,
+						"Z": 1
+					}
+				},
+				"RoleOverride": "Oppressed Slave 2"
+			},
+			{
+				"NPCTemplateID": "Narrative_Orc_Slave",
+				"RelativeTransform":
+				{
+					"Rotation":
+					{
+						"X": 0,
+						"Y": 0,
+						"Z": 0,
+						"W": 1
+					},
+					"Translation":
+					{
+						"X": 350,
+						"Y": -150,
+						"Z": 0
+					},
+					"Scale3D":
+					{
+						"X": 1,
+						"Y": 1,
+						"Z": 1
+					}
+				},
+				"RoleOverride": "Oppressed Slave 3"
+			}
+		],
+		"Props": [
+			{
+				"PropClass": "/Script/Engine.BlueprintGeneratedClass'/Game/Blueprint/BP_Mine.BP_Mine_C'",
+				"RelativeTransform":
+				{
+					"Rotation":
+					{
+						"X": 0,
+						"Y": -0,
+						"Z": 0,
+						"W": 1
+					},
+					"Translation":
+					{
+						"X": -1050,
+						"Y": -300,
+						"Z": 0
+					},
+					"Scale3D":
+					{
+						"X": 1,
+						"Y": 1,
+						"Z": 1
+					}
+				}
+			},
+			{
+				"PropClass": "/Script/Engine.BlueprintGeneratedClass'/Game/Blueprint/BP_Mine.BP_Mine_C'",
+				"RelativeTransform":
+				{
+					"Rotation":
+					{
+						"X": 0,
+						"Y": -0,
+						"Z": 0,
+						"W": 1
+					},
+					"Translation":
+					{
+						"X": 1050,
+						"Y": -150,
+						"Z": 0
+					},
+					"Scale3D":
+					{
+						"X": 1,
+						"Y": 1,
+						"Z": 1
+					}
+				}
+			},
+			{
+				"PropClass": "/Script/Engine.BlueprintGeneratedClass'/Game/Blueprint/BP_Mine.BP_Mine_C'",
+				"RelativeTransform":
+				{
+					"Rotation":
+					{
+						"X": 0,
+						"Y": -0,
+						"Z": 0,
+						"W": 1
+					},
+					"Translation":
+					{
+						"X": 800,
+						"Y": -450,
+						"Z": 0
+					},
+					"Scale3D":
+					{
+						"X": 1,
+						"Y": 1,
+						"Z": 1
+					}
+				}
+			}
+		],
+		"CompletionTags": [
+			"Status.Dead"
+		]
+	}
+]

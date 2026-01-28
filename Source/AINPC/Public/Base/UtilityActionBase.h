@@ -248,10 +248,11 @@ struct FUtilityActionConfig : public FTableRowBase
     UPROPERTY(EditDefaultsOnly, Category = "Action Config")
     FString ActionName;
 
-	// 职业过滤：如果非 None/Empty，则只有匹配该 Profession ID 的 NPC 才能拥有此动作
-	// Profession Filter: If not None/Empty, only NPCs with this Profession ID can possess this action
+	// 职业过滤：如果非空，则只有匹配这些 Profession ID 的 NPC 才能拥有此动作
+	// Profession Filter: If not empty, only NPCs with these Profession IDs can possess this action
+	// Example: ["Miner", "Slave", "Laborer"]
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Filtering")
-	FName RequiredProfessionID;
+	TArray<FName> RequiredProfessionIDs;
 
 	// 性格修正系数 (Data-Driven PAM)
 	// Key: OCEAN 特质 / OCEAN Trait

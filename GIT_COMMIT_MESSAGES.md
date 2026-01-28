@@ -496,3 +496,27 @@ This file contains a log of commit messages for the AINPC project.
 - **Auto-Randomization**: Implemented `RandomizeModularIdentity()` to automatically generate Names, Backstories, and Past Events from rich DataTables.
 - **Content Generation**: Created `DT_Names`, `DT_SocialProfiles`, and `DT_PastEvents` with 50+ unique entries each.
 - **Monster Logic**: Added `MonsterComponent` to automate zombie setup and disable LLM optimization for mindless mobs.
+
+## [2026-01-28] Narrative System Architecture & NPC Logic Refinement
+**Type**: feat/fix
+**Scope**: NarrativeSubsystems, Cognition, Sensory, GoalComponent, PlayerController, Config
+**Description**:
+- **Narrative Architecture Implementation**:
+  - Created `NarrativeDirectorSubsystem` for global story orchestration.
+  - Created `NarrativeSquadSubsystem` for local group/role management.
+  - Created `PlayerSquadSubsystem` for future companion management.
+  - Added `NarrativeSceneAnchor` (World Actor) and `NarrativeCompanion` (Character) classes.
+- **NPC Behavior & Social Fixes**:
+  - Removed redundant `ProcessStimulus` in `NarrativeSquadSubsystem` to prevent spawn-monologues.
+  - Refactored `GoalComponent` with higher `Loneliness` threshold (0.7) to prioritize plot/work.
+  - Implemented manual animation replay fallback in `Action_SmartObject` for robust looping.
+  - Added 1s AI Warmup delay in `UtilityAIComponent` to resolve spawn race conditions.
+- **Targeted Communications**:
+  - Refactored `AINPCPlayerController` to use 12m/120° frontal cone targeting for player chat.
+- **Cognitive & Identity Identity Fusion**:
+  - Updated `CognitionComponent` and `NarrativeSquadSubsystem` to **additionally combine** personality bio, scene role, and plot context.
+  - Fixed logic where static personality role descriptions were overwriting dynamic narrative context.
+- **System & Maintenance**:
+  - Migrated `DefaultGame.ini` to DeepSeek-Chat model for better reasoning.
+  - Created new design/scenario documentation for current sprint.
+

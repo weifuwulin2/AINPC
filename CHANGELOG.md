@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased] - 2026-01-28
+
+### ✨ Features - Narrative & Squad System Architecture
+- **New Narrative Core**: Implemented a multi-tier subsystem architecture to handle dynamic storytelling:
+  - `NarrativeDirectorSubsystem`: Orchestrates global story beats and event recording.
+  - `NarrativeSquadSubsystem`: Manages local NPC groups, their roles, and plot contexts.
+  - `PlayerSquadSubsystem`: Reserved for managing companion/mercenary groups.
+- **Narrative Scene Anchors**: Created `ANarrativeSceneAnchor` and `UNarrativeCompanion` classes to define spatial context for stories.
+- **Social Tag Expansion**: Updated `SocialGameplayTags` to include specific tags for narrative states (`Status.InScene`, etc.), allowing for easier behavior filtering.
+
+### 🔧 Fixes & Refinement - NPC Components
+- **Cognitive Fidelity**: Updated `CognitionComponent` and `NPCDefinitionComponent` to ensure consistent faction/identity parsing during narrative scenes.
+- **Reputation Persistence**: Modified `FactionReputationComponent` to respect narrative-driven relationship overrides.
+- **Targeted Communications**: Refactored `AINPCPlayerController` and `SensoryComponent` to implement the new targeted cone-based chat system.
+- **Action Robustness**: Updated `UtilityActionBase` and `Action_SmartObject` with improved exit conditions and animation looping fallbacks.
+
+### ⚙️ System & Config
+- **LLM Configuration Update**:
+  - Migrated `DefaultGame.ini` to use the `deepseek-chat` model with optimized API endpoints.
+- **New Project Documentation**:
+  - Created `docs/design/Example_Scenario_OrcRescue.md` and `docs/planning/Sprint_Jan28_Feb9.md`.
+
 ## [Unreleased] - 2026-01-27
 
 ### � Fixes - NPC Identity \& Faction System

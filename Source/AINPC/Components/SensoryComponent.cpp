@@ -298,11 +298,11 @@ void USensoryComponent::HandleTargetPerceived(AActor* Actor, FAIStimulus Stimulu
 
             // Refinement: If it's a dangerous visual confirmation, Upgrade the Tag!
             // This ensures Memory System verifies this as a High Importance event (+5 score)
-            if (Actor->ActorHasTag("Enemy"))
-            {
-                PerceptionTag = AINPCTags::Event_Danger;
-            }
-        }
+			if (Actor->ActorHasTag("Enemy"))
+			{
+				PerceptionTag = AINPCTags::Event_Danger;
+			}
+		}
 
 
         // ✅ 智能重要性计算：基于阵营和目标类型调整
@@ -931,95 +931,44 @@ void USensoryComponent::ResetVisualAccumulation(AActor* Target)
 
 EFactionType USensoryComponent::GetFaction(AActor* Actor)
 {
-    if (!Actor) return EFactionType::Neutral;
+	if (!Actor) return EFactionType::Neutral;
 
-    // ✅ FIX: If the Actor is a Controller (not a Pawn), get its controlled Pawn
-    // SensoryComponent is attached to Controller, so GetOwner() returns Controller
-    // 修复：如果 Actor 是 Controller（而非 Pawn），获取其控制的 Pawn
-    APawn* Pawn = Cast<APawn>(Actor);
-    if (!Pawn)
-    {
-        if (AController* Controller = Cast<AController>(Actor))
-        {
-            Pawn = Controller->GetPawn();
-        }
-    }
-    
-    // ✅ REFACTORED: Faction is now managed by FactionReputationComponent, not PersonalityComponent
-    // 重构：Faction 现在由 FactionReputationComponent 管理，而非 PersonalityComponent
-    // PersonalityConfig no longer has a Faction field
-    
-    // 1. Try FactionReputationComponent first
-    // 1. 优先尝试 FactionReputationComponent
-    if (Pawn)
-    {
-        if (UFactionReputationComponent* FacComp = Pawn->FindComponentByClass<UFactionReputationComponent>())
-        {
-            // Convert FName to EFactionType
-            FName FactionID = FacComp->CurrentFactionID;
-            if (FactionID == "Human" || FactionID == "Humans") return EFactionType::Human;
-            if (FactionID == "Monster" || FactionID == "Monsters") return EFactionType::Monster;
-            if (FactionID == "Orc" || FactionID == "Orcs") return EFactionType::Monster; // Orcs are hostile
-            if (FactionID == "Elf" || FactionID == "Elves") return EFactionType::Human; // Elves are peaceful
-        }
-        
-        // Try on controller
-        if (AController* Controller = Pawn->GetController())
-        {
-            if (UFactionReputationComponent* FacComp = Controller->FindComponentByClass<UFactionReputationComponent>())
-            {
-                FName FactionID = FacComp->CurrentFactionID;
-                if (FactionID == "Human" || FactionID == "Humans") return EFactionType::Human;
-                if (FactionID == "Monster" || FactionID == "Monsters") return EFactionType::Monster;
-                if (FactionID == "Orc" || FactionID == "Orcs") return EFactionType::Monster;
-                if (FactionID == "Elf" || FactionID == "Elves") return EFactionType::Human;
-            }
-        }
-        
-        // ✅ CRITICAL: Fallback to NPCDefinitionComponent (for CombatEnemy which has no FactionReputat ionComponent)
-        // 关键：回退到 NPCDefinitionComponent（适用于没有 FactionReputationComponent 的 CombatEnemy）
-        if (UNPCDefinitionComponent* DefComp = Pawn->FindComponentByClass<UNPCDefinitionComponent>())
-        {
-            FName FactionID = DefComp->FactionID;
-            if (FactionID == "Human" || FactionID == "Humans") return EFactionType::Human;
-            if (FactionID == "Monster" || FactionID == "Monsters") return EFactionType::Monster; 
-            if (FactionID == "Orc" || FactionID == "Orcs") return EFactionType::Monster;
-            if (FactionID == "Elf" || FactionID == "Elves") return EFactionType::Human;
-        }
-    }
+	// ✅ REFACTORED: Delegate to unified FactionReputationComponent logic
+	// This ensures centralized management of Faction IDs, including Narrative Overrides (InScene = Neutral)
+	
+	FName Faction = UFactionReputationComponent::GetFactionID(Actor);
+	
+	// Fallback/Traversal: If ID not found on Actor, check connected Controller/Pawn
+	if (Faction.IsNone() || Faction == "None")
+	{
+		if (APawn* CastPawn = Cast<APawn>(Actor)) 
+		{
+			if (AController* PawnController = CastPawn->GetController()) Faction = UFactionReputationComponent::GetFactionID(PawnController);
+		}
+		else if (AController* CastController = Cast<AController>(Actor))
+		{
+			if (APawn* ControllerPawn = CastController->GetPawn()) Faction = UFactionReputationComponent::GetFactionID(ControllerPawn);
+		}
+	}
 
-    // 2. Fallback: Tag Mapping (Configuration Layer for non-AI actors)
-    // ⚠️ CRITICAL: Check tags on the PAWN, not the Controller!
-    // Tags are added to the Pawn in CombatEnemy::BeginPlay
-    AActor* ActorToCheck = Pawn ? Pawn : Actor;
-    
-    // Monsters
-    if (ActorToCheck->ActorHasTag("Zombie")) return EFactionType::Monster;
-    if (ActorToCheck->ActorHasTag("Bandit")) return EFactionType::Monster;
-    if (ActorToCheck->ActorHasTag("Monster")) return EFactionType::Monster;
-
-    // Humans
-    if (ActorToCheck->ActorHasTag("Human") || 
-        ActorToCheck->ActorHasTag("Guard") || 
-        ActorToCheck->ActorHasTag("Merchant") || 
-        ActorToCheck->ActorHasTag("Villager")) 
-    {
-        return EFactionType::Human;
-    }
-    
-    // Player -> Human
-    if (ActorToCheck->ActorHasTag("Player")) return EFactionType::Human;
-    if (Pawn && Pawn->IsPlayerControlled()) return EFactionType::Human;
-
-    return EFactionType::Neutral;
+	// Map ID to Legacy Enum
+	if (Faction == "Human" || Faction == "Humans" || Faction == "Player" || Faction == "Guard" || Faction == "Villager" || Faction == "Merchant") return EFactionType::Human;
+	if (Faction == "Monster" || Faction == "Monsters" || Faction == "Orc" || Faction == "Orcs" || Faction == "Zombie" || Faction == "Bandit") return EFactionType::Monster;
+	if (Faction == "Elf" || Faction == "Elves") return EFactionType::Human;
+	
+	return EFactionType::Neutral;
 }
+
+
 
 bool USensoryComponent::AreActorsHostile(AActor* ActorA, AActor* ActorB) const
 {
 	if (!ActorA || !ActorB) return false;
 	if (ActorA == ActorB) return false;
 
-    // ✅ Use FactionReputationComponent for numerical check (0-100)
+	// ✅ Use FactionReputationComponent for numerical check (0-100)
+
+	// ✅ Use FactionReputationComponent for numerical check (0-100)
     // First try Component on A (Primary Source of Truth)
     if (UFactionReputationComponent* FacCompA = ActorA->FindComponentByClass<UFactionReputationComponent>())
     {

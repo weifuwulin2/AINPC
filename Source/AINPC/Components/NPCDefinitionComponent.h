@@ -22,10 +22,13 @@ struct FNPCDefinitionRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "NPC Profile")
 	FName ProfessionID;
 
+	// Faction Identity
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "NPC Profile")
 	FName FactionID;
-	
-	// Add other IDs here as needed (Name, Background, etc.)
+
+	// The Actor Class to spawn for this template (e.g. BP_Orc_Warrior)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "NPC Profile")
+	TSubclassOf<APawn> PawnClass;
 };
 
 /**

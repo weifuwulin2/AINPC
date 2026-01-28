@@ -234,4 +234,26 @@ void UNPCDefinitionComponent::ApplyProfession(AAIController* Controller)
     {
         AINPC_LOG(Log, "No UtilityAIComponent found. Profession (Actions) ignored.");
     }
+	// 3. Tag System Update (Narrative Support)
+	AActor* Owner = GetOwner();
+	if (Owner)
+	{
+		// Add Profession ID as a tag (e.g. "Geneva_Convention_Medic")
+		Owner->Tags.AddUnique(ProfessionID);
+
+		// Auto-Tag VIPs based on Profession
+		// Narrative Director listens for "VIP" deaths
+		static const TSet<FName> VIPProfessions = {
+			FName("King"), FName("Queen"), 
+			FName("Leader"), FName("Boss"), 
+			FName("Captain"), FName("General"),
+			FName("HighPriest"), FName("QuestGiver")
+		};
+
+		if (VIPProfessions.Contains(ProfessionID))
+		{
+			Owner->Tags.AddUnique(FName("VIP"));
+			AINPC_LOG(Log, "Auto-tagged %s as VIP due to profession %s", *Owner->GetName(), *ProfessionID.ToString());
+		}
+	}
 }

@@ -254,6 +254,14 @@ We maintain a detailed documentation library. Please visit **[📚 Knowledge Bas
 
 ## 🎉 Latest Updates
 
+### v0.6.2 - Narrative Logic & UX Refinement (2026-01-28)
+
+#### 🎭 Narrative & UX
+- **Additive Narrative Roles**: Fixed prompt construction to **combine** base personality bio, specific scene roles, and plot context. NPCs now remember who they are while following the current story.
+- **Targeted Player Chat**: Refactored chat logic to target the single closest NPC in front of the player (120° cone), improving interaction precision.
+- **Animation Loop Fallback**: Added a manual replay system for montages, ensuring infinite looping for actions like "ComboAttack" even without "Default" section loops.
+- **Initialization Warmup**: Added a 1.0s startup delay to Utility AI logic to prevent race conditions during squad spawning (e.g., "Leader" NPCs stealing slots before squad formation).
+
 ### v0.6.1 - Action Transition System (2026-01-26)
 
 #### 🔄 Core Refactor

@@ -120,28 +120,63 @@ void AAINPCPlayerController::HandleChatMessage(const FString& Message)
     APawn* MyPawn = GetPawn();
     if (!MyPawn) return;
 
-    float SpeakRangeSq = 1000.0f * 1000.0f; // 10 meters
+    float SpeakRangeSq = 1200.0f * 1200.0f; // 12 meters
+    
+    APawn* BestTarget = nullptr;
+    float MinDistSq = FLT_MAX;
+    
+    FVector PlayerLoc = MyPawn->GetActorLocation();
+    // Use Camera rotation (ControlRotation) to determine where player is LOOKING
+    FVector PlayerLookDir = GetControlRotation().Vector(); 
 
     for (TActorIterator<APawn> It(GetWorld()); It; ++It)
     {
         APawn* NPC = *It;
         if (NPC == MyPawn) continue;
+        if (!IsValid(NPC) || NPC->IsPendingKillPending()) continue;
+        if (NPC->ActorHasTag("Dead")) continue;
 
-        float DistSq = FVector::DistSquared(MyPawn->GetActorLocation(), NPC->GetActorLocation());
+        // Filter: Must have Controller and SensoryComponent
+        AController* NPCCon = NPC->GetController();
+        if (!NPCCon) continue;
+        if (!NPCCon->FindComponentByClass<USensoryComponent>()) continue;
+
+        FVector NPCLoc = NPC->GetActorLocation();
+        float DistSq = FVector::DistSquared(PlayerLoc, NPCLoc);
+        
         if (DistSq < SpeakRangeSq)
         {
-            // Send to SensoryComponent if available
-            // Note: FindComponentByClass handles Controllers too if we check carefully, 
-            // but usually SensoryComp is on the Controller for AI.
+            // Direction Check: Must be roughly in front
+            FVector ToNPC = (NPCLoc - PlayerLoc).GetSafeNormal();
+            float Dot = FVector::DotProduct(PlayerLookDir, ToNPC);
             
-            AController* NPCController = NPC->GetController();
-            if (NPCController)
+            // Dot > 0.5 means within 60 degrees of center (120 degree cone)
+            if (Dot > 0.5f)
             {
-                if (USensoryComponent* Sensory = NPCController->FindComponentByClass<USensoryComponent>())
+                // Pick closest one in the cone
+                if (DistSq < MinDistSq)
                 {
-                    Sensory->ReceiveSpeech(MyPawn, Message);
+                    MinDistSq = DistSq;
+                    BestTarget = NPC;
                 }
             }
         }
+    }
+    
+    if (BestTarget)
+    {
+         if (AController* NPCController = BestTarget->GetController())
+         {
+             if (USensoryComponent* Sensory = NPCController->FindComponentByClass<USensoryComponent>())
+             {
+                 Sensory->ReceiveSpeech(MyPawn, Message);
+                 UE_LOG(LogTemp, Log, TEXT("[Chat] 🗣️ Sent message to: %s (Dist: %.1fm)"), 
+                     *BestTarget->GetName(), FMath::Sqrt(MinDistSq)/100.0f);
+             }
+         }
+    }
+    else
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[Chat] ❌ No valid NPC found in front of player (Range 12m)."));
     }
 }

@@ -42,6 +42,13 @@ void UFactionReputationComponent::BeginPlay()
 float UFactionReputationComponent::GetAttitudeTowards(AActor* Target) const
 {
 	if (!Target) return 50.0f;
+	
+	// NARRATIVE SAFETY: If in a scene, suppress hostility (unless scripted otherwise)
+	if (GetOwner()->ActorHasTag("Status.InScene") || Target->ActorHasTag("Status.InScene"))
+	{
+		return 50.0f; 
+	}
+
 	if (Target == GetOwner()) return 100.0f;
 
 	// 1. Personal Override
@@ -88,7 +95,21 @@ FName UFactionReputationComponent::GetFactionID(AActor* Actor)
 {
 	if (!Actor) return "None";
 
-	// 1. Try finding this component
+	// 1. Narrative Override (Centralized Logic)
+	// Check for InScene Tag on Actor or Pawn/Controller
+	if (Actor->ActorHasTag("Status.InScene")) return "Neutral";
+	
+	if (APawn* P = Cast<APawn>(Actor)) 
+	{ 
+		if (P->GetController() && P->GetController()->ActorHasTag("Status.InScene")) return "Neutral"; 
+	}
+	
+	if (AController* C = Cast<AController>(Actor)) 
+	{ 
+		if (C->GetPawn() && C->GetPawn()->ActorHasTag("Status.InScene")) return "Neutral"; 
+	}
+
+	// 2. Try finding this component
 	if (UFactionReputationComponent* FacComp = Actor->FindComponentByClass<UFactionReputationComponent>())
 	{
 		return FacComp->CurrentFactionID;

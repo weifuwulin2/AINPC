@@ -278,7 +278,26 @@ void UAction_SmartObject::Execute_Implementation(AAIController* Controller)
 			}
 			
 			// 2. Timer handles recovery now (no need for per-frame calls)
-			// Recovery is handled by the 1-second timer set up in Enter
+			
+			// ✅ Manual Loop Fallback: If animation finished but action continues, replay it
+			if (bIsInteracting && bLoopAnimation && InteractionMontage)
+			{
+				if (ACharacter* Character = Cast<ACharacter>(Controller->GetPawn()))
+				{
+					if (UAnimInstance* AnimInstance = Character->GetMesh()->GetAnimInstance())
+					{
+						if (!AnimInstance->Montage_IsPlaying(InteractionMontage))
+						{
+							// Only replay if duration permit (or infinite)
+							float ElapsedTime = Controller->GetWorld()->GetTimeSeconds() - ActionStartTime;
+							if (ActionDuration <= 0.0f || ElapsedTime < ActionDuration)
+							{
+								AnimInstance->Montage_Play(InteractionMontage, 1.0f);
+							}
+						}
+					}
+				}
+			}
 
 			// 3. 检查是否超过持续时长 / Check if duration expired
 			if (ActionDuration > 0.0f)

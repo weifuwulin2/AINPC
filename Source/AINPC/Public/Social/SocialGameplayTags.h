@@ -56,6 +56,7 @@ namespace AINPCTags
 	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Work_Pray);           // Praying ("Interaction.Work.Pray")
 	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Work_Study);          // Studying ("Interaction.Work.Study")
 	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Work_Trade);          // Trading ("Interaction.Work.Trade")
+	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Work_Command);        // Commanding ("Interaction.Work.Command")
 
 	// Intention Tags (LLM Output Mapping)
 	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Intention_Attack);      // "Attack"
@@ -65,6 +66,7 @@ namespace AINPCTags
 	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Intention_Investigate); // "Investigate"
 	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Intention_Beg);         // "Beg"
 	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Intention_Work);        // "Work"
+	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Intention_Work_Command); // "Command"
 
 	// Trauma & Phobias (Soul Layer)
 	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Trauma_Fire);
@@ -84,4 +86,5 @@ namespace AINPCTags
 	// Status Tags
 	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Status_Dead);
 	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Status_Unconscious);
+	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Status_InScene);
 }

@@ -12,6 +12,7 @@
 #include "Components/NPCDefinitionComponent.h"
 #include "Social/FactionSubsystem.h"
 #include "UtilityAI/SentimentMapping.h"
+#include "Subsystems/NarrativeDirectorSubsystem.h"
 #include "UtilityAI/MentalStateInterpolation.h"
 
 UCognitionComponent::UCognitionComponent()
@@ -213,7 +214,16 @@ void UCognitionComponent::ProcessStimulus(FString SituationDescription)
 				// Use configuration from PersonalityComponent
 				if (!PersonalityComp->Personality.RoleDescription.IsEmpty())
 				{
-					ActualRoleDescription = PersonalityComp->Personality.RoleDescription;
+					// ✅ FIX: Don't overwrite if we have Narrative Context injected
+					// 如果有剧情上下文（Narrative Context），不要覆盖，保留动态生成的角色描述
+					if (RoleDescription.Contains(TEXT("Scene Context")))
+					{
+						 ActualRoleDescription = RoleDescription;
+					}
+					else
+					{
+						 ActualRoleDescription = PersonalityComp->Personality.RoleDescription;
+					}
 				}
 				if (!PersonalityComp->Personality.BehavioralGuidelines.IsEmpty())
 				{
@@ -472,6 +482,23 @@ void UCognitionComponent::ProcessStimulus(FString SituationDescription)
 	FString FinalMemories = bFullContext ? ContextMemory : TEXT(""); // No memories in combat unless critical? (Maybe keep basic)
 
 	// ---------------------------------------------------------
+	// ✅ NEW: Retrieve Narrative World State (History)
+	// ---------------------------------------------------------
+	FString NarrativeHistorySection = "";
+	if (UWorld* World = GetWorld())
+	{
+		if (UNarrativeDirectorSubsystem* Director = World->GetSubsystem<UNarrativeDirectorSubsystem>())
+		{
+			// Get recent world events (limit to 3 to save tokens)
+			FString WorldState = Director->GetWorldStateDescription(3);
+			if (!WorldState.IsEmpty())
+			{
+				NarrativeHistorySection = FString::Printf(TEXT("\n[GLOBAL NEWS / RECENT HISTORY]\n%s\n"), *WorldState);
+			}
+		}
+	}
+
+	// ---------------------------------------------------------
 	// ✅ NEW: Retrieve Faction Relationships (Worldview)
 	// ---------------------------------------------------------
 	FString WorldviewSection = "";
@@ -506,6 +533,7 @@ void UCognitionComponent::ProcessStimulus(FString SituationDescription)
 	FString Prompt = FString::Printf(TEXT(
 		"%s"
 		"%s\n"
+		"%s\n"
 		"%s\n" 
 		"Situation: %s %s\n"
 		"Memories: %s\n\n"
@@ -519,7 +547,7 @@ void UCognitionComponent::ProcessStimulus(FString SituationDescription)
 		"\n"
 		"  Speech: string;      // approx 10 words, match personality\n"
 		"}\n"
-	), *FinalRoleSection, *FinalBackstorySection, *WorldviewSection, *FinalSituation, *CurrentDecisionContext, *FinalMemories);
+	), *FinalRoleSection, *FinalBackstorySection, *WorldviewSection, *NarrativeHistorySection, *FinalSituation, *CurrentDecisionContext, *FinalMemories);
 	
 	// ✅ RATE LIMITING
 	// 防止短时间内发送过多请求，特别是在感知系统不稳定时

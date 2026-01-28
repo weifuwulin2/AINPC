@@ -26,6 +26,26 @@ void UUtilityAIComponent::BeginPlay()
     }
 
     LoadActionsFromTable();
+
+    // ✅ Startup Delay: Wait 1.0s before starting AI Logic to prevent initialization race conditions
+    // (e.g. Leader spawning before SmartObjects are ready, or before Slaves spawn)
+    SetComponentTickEnabled(false);
+    
+    FTimerHandle WarmupTimerHandle;
+    TWeakObjectPtr<UUtilityAIComponent> WeakThis(this);
+    
+    if (UWorld* World = GetWorld())
+    {
+        World->GetTimerManager().SetTimer(WarmupTimerHandle, [WeakThis]()
+        {
+            if (WeakThis.IsValid())
+            {
+                WeakThis->SetComponentTickEnabled(true);
+                // Log via the static logger macro if possible, or simple UE_LOG
+                UE_LOG(LogTemp, Log, TEXT("[%s] 🧠 AI Warmup Complete (1.0s). Logic Started."), *WeakThis->GetName());
+            }
+        }, 1.0f, false);
+    }
 }
 
 // ✅ Explicit Setter for Initialization Flow
@@ -73,15 +93,22 @@ void UUtilityAIComponent::LoadActionsFromTable()
         if (Row && Row->ActionClass)
         {
             // --- 职业过滤逻辑 (Profession Filtering) ---
-            // 1. 如果配置了 RequiredProfessionID，且不为 None
-            if (!Row->RequiredProfessionID.IsNone())
+            // Check if NPC's profession is in the allowed list
+            if (Row->RequiredProfessionIDs.Num() > 0)
             {
-                // 2. 如果当前 NPC 的 ID 与配置的不匹配，则跳过
-                if (Row->RequiredProfessionID != CurrentProfessionID)
+                if (!Row->RequiredProfessionIDs.Contains(CurrentProfessionID))
                 {
-                    UTILITY_LOG(Warning, "🚫 Skipped Action %s (Requires: %s, Current: %s)", 
-                           *Row->ActionName, *Row->RequiredProfessionID.ToString(), *CurrentProfessionID.ToString());
-                    continue; 
+                    // Build allowed list string for logging
+                    FString AllowedList;
+                    for (const FName& ProfID : Row->RequiredProfessionIDs)
+                    {
+                        if (!AllowedList.IsEmpty()) AllowedList += ", ";
+                        AllowedList += ProfID.ToString();
+                    }
+                    
+                    UTILITY_LOG(Warning, "🚫 Skipped Action %s (Requires: [%s], Current: %s)", 
+                           *Row->ActionName, *AllowedList, *CurrentProfessionID.ToString());
+                    continue;
                 }
             }
             

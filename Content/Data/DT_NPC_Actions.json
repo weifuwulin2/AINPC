@@ -19,29 +19,24 @@
 		"BaseReward": 3,
 		"CooldownTime": 0,
 		"InertiaBonus": 0,
-		"SmartObjectTag":
-		{
+		"SmartObjectTag": {
 			"TagName": "None"
 		},
 		"InteractionMontage": "None",
 		"bLoopAnimation": true,
 		"ActionDuration": 0,
-		"ActivityTag":
-		{
+		"ActivityTag": {
 			"TagName": "Interaction.Combat"
 		},
-		"IntentionTag":
-		{
+		"IntentionTag": {
 			"TagName": "Intention.Attack"
 		},
-		"DirectiveTag":
-		{
+		"DirectiveTag": {
 			"TagName": "Directive.Survival"
 		},
 		"ActionName": "Attack",
-		"RequiredProfessionID": "None",
-		"PersonalityInfluence":
-		{
+		"RequiredProfessionIDs": [],
+		"PersonalityInfluence": {
 			"Neuroticism": -1
 		},
 		"Priority": "Threat",
@@ -62,29 +57,24 @@
 		"BaseReward": 3,
 		"CooldownTime": 0,
 		"InertiaBonus": 0,
-		"SmartObjectTag":
-		{
+		"SmartObjectTag": {
 			"TagName": "None"
 		},
 		"InteractionMontage": "None",
 		"bLoopAnimation": true,
 		"ActionDuration": 0,
-		"ActivityTag":
-		{
+		"ActivityTag": {
 			"TagName": "Interaction.Flee"
 		},
-		"IntentionTag":
-		{
+		"IntentionTag": {
 			"TagName": "Intention.Flee"
 		},
-		"DirectiveTag":
-		{
+		"DirectiveTag": {
 			"TagName": "Directive.Survival"
 		},
 		"ActionName": "Flee",
-		"RequiredProfessionID": "None",
-		"PersonalityInfluence":
-		{
+		"RequiredProfessionIDs": [],
+		"PersonalityInfluence": {
 			"Neuroticism": 1
 		},
 		"Priority": "Threat",
@@ -105,30 +95,24 @@
 		"BaseReward": 1,
 		"CooldownTime": 2,
 		"InertiaBonus": 0.05,
-		"SmartObjectTag":
-		{
+		"SmartObjectTag": {
 			"TagName": "None"
 		},
 		"InteractionMontage": "None",
 		"bLoopAnimation": true,
 		"ActionDuration": 0,
-		"ActivityTag":
-		{
+		"ActivityTag": {
 			"TagName": "Interaction.Rest"
 		},
-		"IntentionTag":
-		{
+		"IntentionTag": {
 			"TagName": "Intention.Idle"
 		},
-		"DirectiveTag":
-		{
+		"DirectiveTag": {
 			"TagName": "None"
 		},
 		"ActionName": "Idle",
-		"RequiredProfessionID": "None",
-		"PersonalityInfluence":
-		{
-		},
+		"RequiredProfessionIDs": [],
+		"PersonalityInfluence": {},
 		"Priority": "Idle",
 		"CommitmentTime": 0,
 		"ExitConditions": []
@@ -159,30 +143,24 @@
 		"BaseReward": 1,
 		"CooldownTime": 0,
 		"InertiaBonus": 0,
-		"SmartObjectTag":
-		{
+		"SmartObjectTag": {
 			"TagName": "None"
 		},
 		"InteractionMontage": "None",
 		"bLoopAnimation": true,
 		"ActionDuration": 0,
-		"ActivityTag":
-		{
+		"ActivityTag": {
 			"TagName": "Interaction.Social"
 		},
-		"IntentionTag":
-		{
+		"IntentionTag": {
 			"TagName": "Intention.Talk"
 		},
-		"DirectiveTag":
-		{
+		"DirectiveTag": {
 			"TagName": "Directive.Social"
 		},
 		"ActionName": "Talk",
-		"RequiredProfessionID": "None",
-		"PersonalityInfluence":
-		{
-		},
+		"RequiredProfessionIDs": [],
+		"PersonalityInfluence": {},
 		"Priority": "Social",
 		"CommitmentTime": 5,
 		"ExitConditions": []
@@ -207,30 +185,24 @@
 		"BaseReward": 4,
 		"CooldownTime": 0,
 		"InertiaBonus": 0.5,
-		"SmartObjectTag":
-		{
+		"SmartObjectTag": {
 			"TagName": "Interaction.Eat"
 		},
 		"InteractionMontage": "/Script/Engine.AnimMontage'/Game/AINPC/Animations/MAL/AnimationsLibrary/SocialAnimsBundle2/PartyAnimations/Animations/AS_EatingOnParty_Montage.AS_EatingOnParty_Montage'",
 		"bLoopAnimation": true,
 		"ActionDuration": 10,
-		"ActivityTag":
-		{
+		"ActivityTag": {
 			"TagName": "Interaction.Eat"
 		},
-		"IntentionTag":
-		{
+		"IntentionTag": {
 			"TagName": "None"
 		},
-		"DirectiveTag":
-		{
+		"DirectiveTag": {
 			"TagName": "Directive.Survival"
 		},
 		"ActionName": "Eat",
-		"RequiredProfessionID": "None",
-		"PersonalityInfluence":
-		{
-		},
+		"RequiredProfessionIDs": [],
+		"PersonalityInfluence": {},
 		"Priority": "Needs",
 		"CommitmentTime": 5,
 		"ExitConditions": [
@@ -262,30 +234,24 @@
 		"BaseReward": 4,
 		"CooldownTime": 0,
 		"InertiaBonus": 0,
-		"SmartObjectTag":
-		{
+		"SmartObjectTag": {
 			"TagName": "Interaction.Rest"
 		},
 		"InteractionMontage": "/Script/Engine.AnimMontage'/Game/AINPC/Animations/Montages/Sleep.Sleep'",
 		"bLoopAnimation": true,
 		"ActionDuration": 20,
-		"ActivityTag":
-		{
+		"ActivityTag": {
 			"TagName": "Interaction.Rest"
 		},
-		"IntentionTag":
-		{
+		"IntentionTag": {
 			"TagName": "None"
 		},
-		"DirectiveTag":
-		{
+		"DirectiveTag": {
 			"TagName": "Directive.Survival"
 		},
 		"ActionName": "Sleep",
-		"RequiredProfessionID": "None",
-		"PersonalityInfluence":
-		{
-		},
+		"RequiredProfessionIDs": [],
+		"PersonalityInfluence": {},
 		"Priority": "Needs",
 		"CommitmentTime": 10,
 		"ExitConditions": [
@@ -311,30 +277,28 @@
 		"BaseReward": 2,
 		"CooldownTime": 0,
 		"InertiaBonus": 1,
-		"SmartObjectTag":
-		{
+		"SmartObjectTag": {
 			"TagName": "Interaction.Work.Mine"
 		},
 		"InteractionMontage": "None",
 		"bLoopAnimation": true,
 		"ActionDuration": 30,
-		"ActivityTag":
-		{
+		"ActivityTag": {
 			"TagName": "Interaction.Work.Mine"
 		},
-		"IntentionTag":
-		{
+		"IntentionTag": {
 			"TagName": "Intention.Work"
 		},
-		"DirectiveTag":
-		{
+		"DirectiveTag": {
 			"TagName": "Directive.Work"
 		},
 		"ActionName": "Mining Action",
-		"RequiredProfessionID": "Miner",
-		"PersonalityInfluence":
-		{
-		},
+		"RequiredProfessionIDs": [
+			"Miner",
+			"Slave",
+			"Leader"
+		],
+		"PersonalityInfluence": {},
 		"Priority": "Work",
 		"CommitmentTime": 10,
 		"ExitConditions": []
@@ -353,30 +317,26 @@
 		"BaseReward": 2,
 		"CooldownTime": 0,
 		"InertiaBonus": 1,
-		"SmartObjectTag":
-		{
+		"SmartObjectTag": {
 			"TagName": "Interaction.Work.Farm"
 		},
 		"InteractionMontage": "None",
 		"bLoopAnimation": true,
 		"ActionDuration": 30,
-		"ActivityTag":
-		{
+		"ActivityTag": {
 			"TagName": "Interaction.Work.Farm"
 		},
-		"IntentionTag":
-		{
+		"IntentionTag": {
 			"TagName": "Intention.Work"
 		},
-		"DirectiveTag":
-		{
+		"DirectiveTag": {
 			"TagName": "Directive.Work"
 		},
 		"ActionName": "Farming Action",
-		"RequiredProfessionID": "Farmer",
-		"PersonalityInfluence":
-		{
-		},
+		"RequiredProfessionIDs": [
+			"Farmer"
+		],
+		"PersonalityInfluence": {},
 		"Priority": "Work",
 		"CommitmentTime": 10,
 		"ExitConditions": []
@@ -395,30 +355,27 @@
 		"BaseReward": 2,
 		"CooldownTime": 0,
 		"InertiaBonus": 1,
-		"SmartObjectTag":
-		{
+		"SmartObjectTag": {
 			"TagName": "Interaction.Work.Guard"
 		},
 		"InteractionMontage": "None",
 		"bLoopAnimation": true,
 		"ActionDuration": 60,
-		"ActivityTag":
-		{
+		"ActivityTag": {
 			"TagName": "Interaction.Work.Guard"
 		},
-		"IntentionTag":
-		{
+		"IntentionTag": {
 			"TagName": "Intention.Work"
 		},
-		"DirectiveTag":
-		{
+		"DirectiveTag": {
 			"TagName": "Directive.Work"
 		},
 		"ActionName": "Guard Patrol",
-		"RequiredProfessionID": "Guard_Day",
-		"PersonalityInfluence":
-		{
-		},
+		"RequiredProfessionIDs": [
+			"Guard_Day",
+			"Guard"
+		],
+		"PersonalityInfluence": {},
 		"Priority": "Work",
 		"CommitmentTime": 15,
 		"ExitConditions": []
@@ -437,30 +394,27 @@
 		"BaseReward": 2,
 		"CooldownTime": 0,
 		"InertiaBonus": 1,
-		"SmartObjectTag":
-		{
+		"SmartObjectTag": {
 			"TagName": "Interaction.Work.Guard"
 		},
 		"InteractionMontage": "None",
 		"bLoopAnimation": true,
 		"ActionDuration": 60,
-		"ActivityTag":
-		{
+		"ActivityTag": {
 			"TagName": "Interaction.Work.Guard"
 		},
-		"IntentionTag":
-		{
+		"IntentionTag": {
 			"TagName": "Intention.Work"
 		},
-		"DirectiveTag":
-		{
+		"DirectiveTag": {
 			"TagName": "Directive.Work"
 		},
 		"ActionName": "Night Guard Patrol",
-		"RequiredProfessionID": "Guard_Night",
-		"PersonalityInfluence":
-		{
-		},
+		"RequiredProfessionIDs": [
+			"Guard_Night",
+			"Guard"
+		],
+		"PersonalityInfluence": {},
 		"Priority": "Work",
 		"CommitmentTime": 15,
 		"ExitConditions": []
@@ -485,30 +439,26 @@
 		"BaseReward": 2,
 		"CooldownTime": 0,
 		"InertiaBonus": 2,
-		"SmartObjectTag":
-		{
+		"SmartObjectTag": {
 			"TagName": "Interaction.Work.Trade"
 		},
 		"InteractionMontage": "None",
 		"bLoopAnimation": true,
 		"ActionDuration": 60,
-		"ActivityTag":
-		{
+		"ActivityTag": {
 			"TagName": "Interaction.Work.Trade"
 		},
-		"IntentionTag":
-		{
+		"IntentionTag": {
 			"TagName": "Intention.Work"
 		},
-		"DirectiveTag":
-		{
+		"DirectiveTag": {
 			"TagName": "Directive.Work"
 		},
 		"ActionName": "Merchant Stand",
-		"RequiredProfessionID": "Merchant",
-		"PersonalityInfluence":
-		{
-		},
+		"RequiredProfessionIDs": [
+			"Merchant"
+		],
+		"PersonalityInfluence": {},
 		"Priority": "Work",
 		"CommitmentTime": 20,
 		"ExitConditions": []
@@ -527,30 +477,26 @@
 		"BaseReward": 2,
 		"CooldownTime": 0,
 		"InertiaBonus": 1,
-		"SmartObjectTag":
-		{
+		"SmartObjectTag": {
 			"TagName": "Interaction.Work.Scavenge"
 		},
 		"InteractionMontage": "None",
 		"bLoopAnimation": true,
 		"ActionDuration": 20,
-		"ActivityTag":
-		{
+		"ActivityTag": {
 			"TagName": "Interaction.Work.Scavenge"
 		},
-		"IntentionTag":
-		{
+		"IntentionTag": {
 			"TagName": "Intention.Beg"
 		},
-		"DirectiveTag":
-		{
+		"DirectiveTag": {
 			"TagName": "Directive.Work"
 		},
 		"ActionName": "Scavenging",
-		"RequiredProfessionID": "Scavenger",
-		"PersonalityInfluence":
-		{
-		},
+		"RequiredProfessionIDs": [
+			"Scavenger"
+		],
+		"PersonalityInfluence": {},
 		"Priority": "Work",
 		"CommitmentTime": 5,
 		"ExitConditions": []
@@ -569,30 +515,26 @@
 		"BaseReward": 2,
 		"CooldownTime": 0,
 		"InertiaBonus": 2,
-		"SmartObjectTag":
-		{
+		"SmartObjectTag": {
 			"TagName": "Interaction.Work.Pray"
 		},
 		"InteractionMontage": "None",
 		"bLoopAnimation": true,
 		"ActionDuration": 120,
-		"ActivityTag":
-		{
+		"ActivityTag": {
 			"TagName": "Interaction.Work.Pray"
 		},
-		"IntentionTag":
-		{
+		"IntentionTag": {
 			"TagName": "Intention.Idle"
 		},
-		"DirectiveTag":
-		{
+		"DirectiveTag": {
 			"TagName": "Directive.Work"
 		},
 		"ActionName": "Praying Ritual",
-		"RequiredProfessionID": "Zealot",
-		"PersonalityInfluence":
-		{
-		},
+		"RequiredProfessionIDs": [
+			"Zealot"
+		],
+		"PersonalityInfluence": {},
 		"Priority": "Work",
 		"CommitmentTime": 30,
 		"ExitConditions": []
@@ -611,32 +553,67 @@
 		"BaseReward": 2,
 		"CooldownTime": 0,
 		"InertiaBonus": 2,
-		"SmartObjectTag":
-		{
+		"SmartObjectTag": {
 			"TagName": "Interaction.Work.Study"
 		},
 		"InteractionMontage": "None",
 		"bLoopAnimation": true,
 		"ActionDuration": 60,
-		"ActivityTag":
-		{
+		"ActivityTag": {
 			"TagName": "Interaction.Work.Study"
 		},
-		"IntentionTag":
-		{
+		"IntentionTag": {
 			"TagName": "Intention.Investigate"
 		},
-		"DirectiveTag":
-		{
+		"DirectiveTag": {
 			"TagName": "Directive.Work"
 		},
 		"ActionName": "Scholarly Study",
-		"RequiredProfessionID": "Scholar",
-		"PersonalityInfluence":
-		{
-		},
+		"RequiredProfessionIDs": [
+			"Scholar"
+		],
+		"PersonalityInfluence": {},
 		"Priority": "Work",
 		"CommitmentTime": 20,
+		"ExitConditions": []
+	},
+	{
+		"Name": "Work_Command",
+		"ActionClass": "/Script/CoreUObject.Class'/Script/AINPC.Action_SmartObject'",
+		"Considerations": [
+			{
+				"ConsiderationType": "Motivation",
+				"InputType": "Boredom",
+				"CurveType": "Linear",
+				"ResponseCurve": "None"
+			}
+		],
+		"BaseReward": 2,
+		"CooldownTime": 0,
+		"InertiaBonus": 1,
+		"SmartObjectTag": {
+			"TagName": "Interaction.Work.Command"
+		},
+		"InteractionMontage": "None",
+		"bLoopAnimation": true,
+		"ActionDuration": 30,
+		"ActivityTag": {
+			"TagName": "Interaction.Work.Command"
+		},
+		"IntentionTag": {
+			"TagName": "Intention.Command"
+		},
+		"DirectiveTag": {
+			"TagName": "Directive.Work"
+		},
+		"ActionName": "Command Action",
+		"RequiredProfessionIDs": [
+			"Leader",
+			"Guard"
+		],
+		"PersonalityInfluence": {},
+		"Priority": "Work",
+		"CommitmentTime": 10,
 		"ExitConditions": []
 	}
 ]

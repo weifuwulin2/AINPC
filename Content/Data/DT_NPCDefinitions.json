@@ -1,26 +1,51 @@
 [
-    {
-        "Name": "Human_Civilian",
-        "PersonalityID": "Neutral_Civilian",
-        "ProfessionID": "None",
-        "FactionID": "Humans"
-    },
-    {
-        "Name": "Elf_Ranger",
-        "PersonalityID": "Cautious_Guard",
-        "ProfessionID": "Guard",
-        "FactionID": "Elves"
-    },
-    {
-        "Name": "Orc_Warrior",
-        "PersonalityID": "Brave_Warrior",
-        "ProfessionID": "Warrior",
-        "FactionID": "Orcs"
-    },
-    {
-        "Name": "Zombie_Basic",
-        "PersonalityID": "Feral_Instinct",
-        "ProfessionID": "None",
-        "FactionID": "Monsters"
-    }
+	{
+		"Name": "Human_Civilian",
+		"PersonalityID": "Neutral_Civilian",
+		"ProfessionID": "None",
+		"FactionID": "Humans",
+		"PawnClass": "None"
+	},
+	{
+		"Name": "Elf_Ranger",
+		"PersonalityID": "Cautious_Guard",
+		"ProfessionID": "Guard",
+		"FactionID": "Elves",
+		"PawnClass": "None"
+	},
+	{
+		"Name": "Orc_Warrior",
+		"PersonalityID": "Brave",
+		"ProfessionID": "Guard",
+		"FactionID": "Orcs",
+		"PawnClass": "None"
+	},
+	{
+		"Name": "Zombie_Basic",
+		"PersonalityID": "Feral_Instinct",
+		"ProfessionID": "None",
+		"FactionID": "Monsters",
+		"PawnClass": "None"
+	},
+	{
+		"Name": "Narrative_Human_Leader",
+		"PersonalityID": "Ambitious",
+		"ProfessionID": "Leader",
+		"FactionID": "Humans",
+		"PawnClass": "/Script/Engine.BlueprintGeneratedClass'/Game/AINPC/NPCBP/BP_NPC_Human_Base.BP_NPC_Human_Base_C'"
+	},
+	{
+		"Name": "Narrative_Human_Guard",
+		"PersonalityID": "Brave",
+		"ProfessionID": "Guard",
+		"FactionID": "Humans",
+		"PawnClass": "/Script/Engine.BlueprintGeneratedClass'/Game/AINPC/NPCBP/BP_NPC_Human_Base.BP_NPC_Human_Base_C'"
+	},
+	{
+		"Name": "Narrative_Orc_Slave",
+		"PersonalityID": "Paranoid",
+		"ProfessionID": "Slave",
+		"FactionID": "Orcs",
+		"PawnClass": "/Script/Engine.BlueprintGeneratedClass'/Game/AINPC/NPCBP/BP_NPC_Orc_Base.BP_NPC_Orc_Base_C'"
+	}
 ]

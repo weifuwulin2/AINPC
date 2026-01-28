@@ -4,6 +4,7 @@
 #include "Components/CognitionComponent.h"
 #include "Subsystems/TimeManager.h"
 #include "Kismet/GameplayStatics.h"
+#include "EngineUtils.h"
 #include "GameFramework/Character.h"
 #include "Controller/UtilityAIController.h"
 #include "UtilityAI/UNPCMentalState.h"
@@ -214,7 +215,9 @@ void UGoalComponent::UpdateArbitration()
 	// 2. Social Layer
 	bool bSocialTriggered = false;
 	
-	if (MentalState && MentalState->Loneliness > 0.5f)
+	// ✅ Raised threshold from 0.5 to 0.7 to prevent premature social triggering
+	// 提高阈值从 0.5 到 0.7，避免过早触发社交需求
+	if (MentalState && MentalState->Loneliness > 0.7f)
 	{
 		bSocialTriggered = true;
 		AINPC_LOG(Log, "💬 SOCIAL TRIGGERED: Loneliness=%.2f",

@@ -50,6 +50,7 @@ namespace AINPCTags
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Work_Pray, "Interaction.Work.Pray", "Work: Praying");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Work_Study, "Interaction.Work.Study", "Work: Studying");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Work_Trade, "Interaction.Work.Trade", "Work: Trading (Merchant)");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Work_Command, "Interaction.Work.Command", "Work: Command");
 
 	// Intention Tags
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Intention_Attack, "Intention.Attack", "LLM Intention: Attack");
@@ -78,4 +79,5 @@ namespace AINPCTags
 	// Status Tags
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Status_Dead, "Status.Dead", "Status: Dead");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Status_Unconscious, "Status.Unconscious", "Status: Unconscious");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Status_InScene, "Status.InScene", "Status: Participating in a Narrative Scene");
 }
