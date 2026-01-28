@@ -520,3 +520,19 @@ This file contains a log of commit messages for the AINPC project.
   - Migrated `DefaultGame.ini` to DeepSeek-Chat model for better reasoning.
   - Created new design/scenario documentation for current sprint.
 
+
+## [2026-01-29] Narrative Scene Stability & Gameplay Tags Refactor
+**Type**: refactor/feat
+**Scope**: GoalComponent, NarrativeSquadSubsystem, UtilityAI
+**Description**:
+- **Narrative Suppression**: Implemented logic in `GoalComponent` to suppress Social needs (Loneliness) when `AINPCTags::Status_InScene` is active.
+  - Ensures NPCs prioritize their assigned Plot/Work directives over casual chatting during scenes.
+- **Gameplay Tags Migration**: Refactored "Status.InScene" from a raw string tag to a Native Gameplay Tag (`Status_InScene`).
+  - Added `ActiveContextTags` container and API (`Add/Remove/HasContextTag`) to `GoalComponent`.
+  - Updated `NarrativeSquadSubsystem` to use this new API for scene state management.
+- **Role Adherence Tuning**:
+  - Tripled `DirectiveMultiplier` (x1.5 -> x3.0) for actions matching directives when in a scene.
+  - Increased `IntentionBonus` (x2.5) to give LLM stronger override power over utility scores.
+- **Ambient Dialogue Fix**: 
+  - `NarrativeSquadSubsystem` now queries `UtilityAIComponent->CurrentAction` for accurate activity context (e.g., "Mine" instead of "Work").
+  - Fixed `Emotion` logging format (String vs Enum).

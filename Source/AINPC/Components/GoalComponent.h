@@ -21,7 +21,6 @@ public:
 	UGoalComponent();
 
 	virtual void BeginPlay() override;
-	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
 	// --- Configuration ---
 
@@ -63,6 +62,20 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Goal")
 	EContextLOD GetCurrentLOD() const { return CurrentLOD; }
 
+	// --- Context Management (Gameplay Tags) ---
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Goal | Context")
+	FGameplayTagContainer ActiveContextTags;
+
+	UFUNCTION(BlueprintCallable, Category = "Goal | Context")
+	void AddContextTag(FGameplayTag Tag);
+
+	UFUNCTION(BlueprintCallable, Category = "Goal | Context")
+	void RemoveContextTag(FGameplayTag Tag);
+
+	UFUNCTION(BlueprintPure, Category = "Goal | Context")
+	bool HasContextTag(FGameplayTag Tag) const;
+
 protected:
 	void UpdateArbitration();
 
@@ -87,9 +100,9 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Goal")
 	FGameplayTag CachedScheduleActivity;
 
-	// Timer for Schedule checks
-	float TimeSinceLastScheduleCheck = 0.0f;
-	float ScheduleCheckRandomOffset = 0.0f;
+	// ✅ Performance: Timer handles instead of tick
+	FTimerHandle ArbitrationTimerHandle;
+	FTimerHandle ScheduleCheckTimerHandle;
 
 	// --- Dependencies ---
 	UPROPERTY()

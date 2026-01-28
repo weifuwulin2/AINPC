@@ -13,7 +13,11 @@
 #include "Social/FactionSubsystem.h"
 #include "UtilityAI/SentimentMapping.h"
 #include "Subsystems/NarrativeDirectorSubsystem.h"
+#include "Subsystems/NarrativeSquadSubsystem.h"
 #include "UtilityAI/MentalStateInterpolation.h"
+
+// ✅ Performance Tracking
+DECLARE_CYCLE_STAT(TEXT("Cognition - Lazy Fetch"), STAT_CognitionLazyFetch, STATGROUP_Game);
 
 UCognitionComponent::UCognitionComponent()
 {
@@ -216,7 +220,7 @@ void UCognitionComponent::ProcessStimulus(FString SituationDescription)
 				{
 					// ✅ FIX: Don't overwrite if we have Narrative Context injected
 					// 如果有剧情上下文（Narrative Context），不要覆盖，保留动态生成的角色描述
-					if (RoleDescription.Contains(TEXT("Scene Context")))
+					if (RoleDescription.Contains(TEXT("[Scene Role:")) || RoleDescription.Contains(TEXT("[Scene Context:")))
 					{
 						 ActualRoleDescription = RoleDescription;
 					}
@@ -385,11 +389,20 @@ void UCognitionComponent::ProcessStimulus(FString SituationDescription)
 		}
 	}
 	
-	// ⚠️ 关键修复：如果 Personality 还没初始化（ID为None），不要发送请求，避免 LLM 产生幻觉
-	// Critical Fix: If Personality is not initialized (ID is None), do not send request to avoid LLM hallucinations
-	if (PersonalityIDStr == "None" || PersonalityIDStr == "Default" || PersonalityIDStr.IsEmpty())
+	// ⚠️ 关键修复：数据就绪检查 - 等待所有关键数据初始化完成
+	// Critical Fix: Data Readiness Check - Wait for all critical data to initialize
+	// This solves the initialization order issue where Controller initializes before Character
+	bool bPersonalityReady = !(PersonalityIDStr == "None" || PersonalityIDStr == "Default" || PersonalityIDStr.IsEmpty());
+	bool bFactionReady = !(FactionStr == "Neutral" || FactionStr.IsEmpty()); // Neutral is default fallback
+	
+	// For Combat NPCs, Faction is optional (they may be truly neutral)
+	// But for regular NPCs, we should wait for proper faction assignment
+	bool bDataReady = bPersonalityReady && (bFactionReady || GetOwner()->ActorHasTag("AllowNeutral"));
+	
+	if (!bDataReady)
 	{
-		AINPC_LOG_WARNING("PersonalityID not set yet. Scheduling retry in 0.5s...");
+		AINPC_LOG_WARNING("[Cognition] 🔄 Data not ready - PersonalityID: %s, Faction: %s. Scheduling retry in 0.5s...", 
+			*PersonalityIDStr, *FactionStr);
 		
 		PendingStimulus = SituationDescription;
 		
@@ -415,6 +428,10 @@ void UCognitionComponent::ProcessStimulus(FString SituationDescription)
 		
 		return;
 	}
+	else
+	{
+		AINPC_LOG(Log, "[Cognition] ✅ Data ready - PersonalityID: %s, Faction: %s", *PersonalityIDStr, *FactionStr);
+	}
 	
 	// 构建角色部分 / Build role section
 	// ⚠️ 关键：明确告诉 LLM 这是什么类型的 NPC
@@ -432,6 +449,44 @@ void UCognitionComponent::ProcessStimulus(FString SituationDescription)
 	if (!ActualBehavioralGuidelines.IsEmpty())
 	{
 		RoleSection += FString::Printf(TEXT("Rules: %s\n"), *ActualBehavioralGuidelines);
+	}
+	
+	
+	// ---------------------------------------------------------
+	// ✅ LAZY FETCH PATTERN: Query plot context in real-time
+	// 延迟获取模式：实时查询剧情上下文
+	// This solves initialization order issues - we fetch fresh data every time
+	// ---------------------------------------------------------
+	SCOPE_CYCLE_COUNTER(STAT_CognitionLazyFetch); // Performance tracking
+	
+	if (UWorld* World = GetWorld())
+	{
+		if (UNarrativeSquadSubsystem* SquadSys = World->GetSubsystem<UNarrativeSquadSubsystem>())
+		{
+			FString NarrativePlotContext = "";
+			
+			// Try Controller first (CognitionComponent is on Controller)
+			NarrativePlotContext = SquadSys->GetMemberContext(GetOwner());
+			
+			// If not found, try Pawn
+			if (NarrativePlotContext.IsEmpty())
+			{
+				if (AAIController* AICon = Cast<AAIController>(GetOwner()))
+				{
+					if (APawn* ControlledPawn = AICon->GetPawn())
+					{
+						NarrativePlotContext = SquadSys->GetMemberContext(ControlledPawn);
+					}
+				}
+			}
+			
+			// Append to RoleSection if found
+			if (!NarrativePlotContext.IsEmpty())
+			{
+				RoleSection += FString::Printf(TEXT("\n[NARRATIVE PLOT]\n%s\n"), *NarrativePlotContext);
+				AINPC_LOG(Warning, "[Cognition] ✅ Injected Narrative Plot Context via Lazy Fetch");
+			}
+		}
 	}
 	
 	// ⚠️ 根据 FactionID 从 DataTable 读取 Faction Description
@@ -564,7 +619,10 @@ void UCognitionComponent::ProcessStimulus(FString SituationDescription)
 	}
 	LastLLMRequestTime = CurrentTime;
 	
-	AINPC_LOG(Log, "Sending to LLM...");
+	// ✅ Log the full prompt being sent to LLM
+	AINPC_LOG(Warning, TEXT("━━━━━━━━━━ [Cognition] 📤 LLM REQUEST ━━━━━━━━━━"));
+	AINPC_LOG(Warning, TEXT("%s"), *Prompt);
+	AINPC_LOG(Warning, TEXT("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"));
 	
 	// 发送请求，并绑定内部回调 OnLLMReply
 	LLMService->SendRequest(
@@ -577,15 +635,14 @@ void UCognitionComponent::OnLLMReply(bool bSuccess, const FMentalState& NewState
 {
 	if (bSuccess)
 	{
-		// Force Speech debug
-		if (!NewState.Speech.IsEmpty())
-		{
-			AINPC_LOG(Warning, "[Cognition] 🗣️ LLM Generated Speech: \"%s\"", *NewState.Speech);
-		}
-		else
-		{
-			AINPC_LOG(Warning, "[Cognition] 😶 LLM returned EMPTY Speech.");
-		}
+		// ✅ Log complete LLM response
+		AINPC_LOG(Warning, TEXT("━━━━━━━━━━ [Cognition] 📥 LLM RESPONSE ━━━━━━━━━━"));
+		AINPC_LOG(Warning, TEXT("  🗣️ Speech: \"%s\""), NewState.Speech.IsEmpty() ? TEXT("(none)") : *NewState.Speech);
+		AINPC_LOG(Warning, TEXT("  🎭 Emotion: %s"), NewState.Emotion.IsEmpty() ? TEXT("Neutral") : *NewState.Emotion);
+		AINPC_LOG(Warning, TEXT("  🎯 Intention: %s"), NewState.Intention.IsEmpty() ? TEXT("(none)") : *NewState.Intention);
+		AINPC_LOG(Warning, TEXT("  📊 Threat: %.2f | Indignity: %.2f | Loneliness: %.2f | Boredom: %.2f"), 
+			NewState.Perceived_Threat, NewState.Indignity, NewState.Loneliness, NewState.Boredom);
+		AINPC_LOG(Warning, TEXT("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"));
 
 		if (Interpolator)
 		{
@@ -597,10 +654,6 @@ void UCognitionComponent::OnLLMReply(bool bSuccess, const FMentalState& NewState
 			MENTAL_STATE_FIELDS(SET_TARGET_VALUE)
 			
 			#undef SET_TARGET_VALUE
-			
-			AINPC_LOG(Log, "[Cognition] Target values set from LLM");
-			AINPC_LOG(Log, "  Indignity target: %.2f, Boredom target: %.2f", 
-			       NewState.Indignity, NewState.Boredom);
 			
 			// 注意：实际的 MentalState 更新在 TickComponent 中通过插值完成
 			// Note: Actual MentalState update happens in TickComponent via interpolation

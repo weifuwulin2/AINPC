@@ -138,6 +138,34 @@ void UUtilityAIComponent::TickComponent(float DeltaTime, ELevelTick TickType, FA
 
     if (!OwnerController || !OwnerController->MentalState) return;
 
+    // ✅ DISTANCE LOD SYSTEM - Dynamic Performance Optimization
+    // 根据到玩家距离动态调整更新频率
+    AAIController* AIController = Cast<AAIController>(GetOwner());
+    if (AIController && AIController->GetPawn())
+    {
+        APlayerController* PC = GetWorld()->GetFirstPlayerController();
+        if (PC && PC->GetPawn())
+        {
+            float Distance = FVector::Dist(AIController->GetPawn()->GetActorLocation(), 
+                                          PC->GetPawn()->GetActorLocation());
+            
+            // 距离分级：
+            // > 5000单位：休眠（完全跳过更新）
+            if (Distance > 5000.0f)
+            {
+                return; // Save ~0.09ms per NPC
+            }
+            
+            // 2000-5000单位：降级（每2帧更新一次）
+            if (Distance > 2000.0f)
+            {
+                if (GFrameCounter % 2 != 0) return; // 50% update rate
+            }
+            
+            // < 2000单位：全速更新（正常逻辑）
+        }
+    }
+
     // 1. 执行决策逻辑 (Evaluate)
     EvaluateAndDecide();
 

@@ -1,6 +1,8 @@
 #include "World/NarrativeSceneAnchor.h"
 #include "Subsystems/NarrativeSquadSubsystem.h"
 #include "Components/SphereComponent.h"
+#include "GameFramework/Pawn.h"
+#include "GameFramework/PlayerController.h"
 
 ANarrativeSceneAnchor::ANarrativeSceneAnchor()
 {
@@ -11,7 +13,7 @@ ANarrativeSceneAnchor::ANarrativeSceneAnchor()
 
 	TriggerComponent = CreateDefaultSubobject<USphereComponent>(TEXT("TriggerSphere"));
 	TriggerComponent->SetupAttachment(RootComponent);
-	TriggerComponent->SetSphereRadius(300.f);
+	TriggerComponent->SetSphereRadius(ActivationRadius);  // Use configurable radius (default 2000)
 	TriggerComponent->SetCollisionProfileName(TEXT("Trigger"));
 }
 
@@ -80,14 +82,27 @@ void ANarrativeSceneAnchor::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, 
 	// Check if already active? (SquadID valid + Squad Active?)
 	// ActivateScene checks IsActive internally, so it's safe to call repeatedly.
 	
-	if (OtherActor && OtherActor->ActorHasTag("Player"))
+	if (OtherActor)
 	{
-		if (CurrentSquadID != -1)
+		// ✅ More robust player detection: Check for PlayerController or Player tag
+		bool bIsPlayer = OtherActor->ActorHasTag("Player");
+		
+		// Also check if this is a Pawn controlled by a PlayerController
+		if (!bIsPlayer)
+		{
+			if (APawn* Pawn = Cast<APawn>(OtherActor))
+			{
+				bIsPlayer = Cast<APlayerController>(Pawn->GetController()) != nullptr;
+			}
+		}
+		
+		if (bIsPlayer && CurrentSquadID != -1)
 		{
 			if (UWorld* World = GetWorld())
 			{
 				if (UNarrativeSquadSubsystem* SquadSystem = World->GetSubsystem<UNarrativeSquadSubsystem>())
 				{
+					UE_LOG(LogTemp, Warning, TEXT("[NarrativeAnchor] Player entered trigger! Activating Squad %d"), CurrentSquadID);
 					SquadSystem->ActivateScene(CurrentSquadID);
 				}
 			}

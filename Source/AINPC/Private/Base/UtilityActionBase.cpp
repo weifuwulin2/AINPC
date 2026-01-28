@@ -14,6 +14,7 @@
 #include "Components/UtilityAIComponent.h"
 #include "UtilityAI/MentalStateNames.h" // ✅ Use Constants
 #include "UtilityAI/EmotionMatrixConfig.h"
+#include "Components/FactionReputationComponent.h"
 
 // Initialize Game-wide Constants
 const float UUtilityActionBase::IntentionMatchBonus = 0.3f;
@@ -506,7 +507,25 @@ float UUtilityActionBase::CalculateScore(UNPCMentalState* MentalState, AAIContro
                {
                    // 匹配指令：给予加成 (x1.5)
                    DirectiveMultiplier = DirectiveMatchMultiplier;
-                   if (bLogDebug) UE_LOG(LogTemp, Log, TEXT("      [Directive] 🎯 Matches Directive '%s' -> Multiplier x%.1f"), *CurrentDirective.ToString(), DirectiveMatchMultiplier);
+                   
+                   // ✅ NARRATIVE PROFESSION OVERRIDE
+                   // In a scene, the Profession (and thus the Directive) is the role they are playing.
+                   // Boost adherence significantly to ensure they do their job (Slave->Work, Guard->Patrol).
+                   // 在剧情模式下，职业就是角色扮演。大幅提高指令加成，确保他们各司其职。
+                   if (Controller)
+                   {
+                       if (APawn* P = Controller->GetPawn())
+                       {
+                           if (P->ActorHasTag("Status.InScene"))
+                           {
+                               DirectiveMultiplier *= 2.0f; // 1.5 * 2.0 = 3.0x Multiplier
+                               if (bLogDebug) UE_LOG(LogTemp, Warning, TEXT("      [Scene] 🎬 IN SCENE: Directive Multiplier Boosted x2 (%.1f -> %.1f)"), 
+                                   DirectiveMatchMultiplier, DirectiveMultiplier);
+                           }
+                       }
+                   }
+
+                   if (bLogDebug) UE_LOG(LogTemp, Log, TEXT("      [Directive] 🎯 Matches Directive '%s' -> Multiplier x%.1f"), *CurrentDirective.ToString(), DirectiveMultiplier);
                }
                else if (DirectiveTag.IsValid())
                {
@@ -668,11 +687,13 @@ float UUtilityActionBase::GetConsiderationValue(EUtilityInputType InputType, UNP
         {
             if (!BotPawn || !Controller->GetWorld()) return 0.0f;
             
-            // 获取自己的阵营
-            EFactionType MyFaction = USensoryComponent::GetFaction(BotPawn);
+            // 获取 FactionReputationComponent 用于敌意判断
+            // Uses IsHostile() which respects Status.InScene tag
+            UFactionReputationComponent* FactionComp = Controller->FindComponentByClass<UFactionReputationComponent>();
+            
             float CheckRadiusSq = FMath::Square(1500.0f); // 15m 范围内
 
-            // 扫描周围所有 Pawn (使用 TActorIterator 代替 GetPawnIterator)
+            // 扫描周围所有 Pawn
             if (UWorld* World = Controller->GetWorld())
             {
                 for (TActorIterator<APawn> It(World); It; ++It)
@@ -694,17 +715,21 @@ float UUtilityActionBase::GetConsiderationValue(EUtilityInputType InputType, UNP
                         if (CharTest->GetMesh() && CharTest->GetMesh()->IsSimulatingPhysics()) continue;
                     }
 
-                    // 阵营检查 logic check
-                    EFactionType TargetFaction = USensoryComponent::GetFaction(TestPawn);
-                    
+                    // ✅ 使用 FactionReputationComponent::IsHostile() 
+                    // 这会自动处理 Status.InScene 标签 (场景中不视为敌人)
                     bool bIsHostile = false;
-
-                    // Reuse the logic: Different Faction = Enemy (ignoring Neutral)
-                    if (MyFaction != EFactionType::Neutral && TargetFaction != EFactionType::Neutral)
+                    if (FactionComp)
                     {
-                        if (MyFaction != TargetFaction)
+                        bIsHostile = FactionComp->IsHostile(TestPawn);
+                    }
+                    else
+                    {
+                        // Fallback: Simple faction check
+                        EFactionType MyFaction = USensoryComponent::GetFaction(BotPawn);
+                        EFactionType TargetFaction = USensoryComponent::GetFaction(TestPawn);
+                        if (MyFaction != EFactionType::Neutral && TargetFaction != EFactionType::Neutral)
                         {
-                            bIsHostile = true;
+                            bIsHostile = (MyFaction != TargetFaction);
                         }
                     }
                     

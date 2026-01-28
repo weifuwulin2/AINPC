@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased] - 2026-01-29
+
+### ✨ Features - Narrative & Utility AI Integration
+- **Narrative Suppression**: Implemented mechanism in `GoalComponent` to block Social needs (e.g., Loneliness) when NPC is in a Narrative Scene (`AINPCTags::Status_InScene`), ensuring focus on roles.
+- **Enhanced Role Adherence**: Tripled `DirectiveMultiplier` (x1.5 -> x3.0) for actions matching directives when in a narrative scene.
+- **LLM Agency Boost**: Increased `IntentionBonus` to 2.5f, empowering LLM-driven intentions to override basic utility scores.
+
+### 🔧 Refactors - Code Quality
+- **Gameplay Tags Migration**: Replaced all string-based "Status.InScene" tag usage with Native Gameplay Tag `AINPCTags::Status_InScene` and `GoalComponent` context management functions.
+- **Goal Component API**: Added `ActiveContextTags` container and `Add/Remove/HasContextTag` API to `GoalComponent`.
+
+### 🔧 Fixes
+- **Ambient Dialogue Context**: Fixed `NarrativeSquadSubsystem` to use the currently executing action from `UtilityAIComponent` instead of the potentially stale scheduled activity.
+- **Narrative Scene Data**: Updated `DT_NarrativeScenes` PlotOutline for "Scene_OrcRescue" to accurately reflect the mining camp scenario.
+- **Include Fix**: Added missing `NarrativeSceneAnchor.h` include to `NarrativeSquadSubsystem.cpp`.
+
 ## [Unreleased] - 2026-01-28
 
 ### ✨ Features - Narrative & Squad System Architecture

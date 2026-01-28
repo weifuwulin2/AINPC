@@ -12,8 +12,9 @@
 
 UGoalComponent::UGoalComponent()
 {
-	PrimaryComponentTick.bCanEverTick = true;
-	PrimaryComponentTick.TickInterval = 0.2f; // Run Arbitration at 5Hz, not every frame
+	// ✅ Performance Optimization: No need to tick every frame
+	// Schedule checks can run every second via timer
+	PrimaryComponentTick.bCanEverTick = false;
 }
 
 void UGoalComponent::BeginPlay()
@@ -87,6 +88,31 @@ void UGoalComponent::BeginPlay()
 			}
 		}
 	}
+	
+	// ✅ Performance Optimization: Use timers instead of tick
+	// 使用定时器替代每帧Tick，节省CPU
+	// Random offset to prevent all NPCs updating simultaneously (thundering herd)
+	float RandomOffset = FMath::RandRange(0.0f, 1.0f);
+	
+	// Arbitration timer (every 1 second)
+	GetWorld()->GetTimerManager().SetTimer(
+		ArbitrationTimerHandle,
+		this,
+		&UGoalComponent::UpdateArbitration,
+		1.0f,  // Every second
+		true,  // Loop
+		RandomOffset  // Initial delay
+	);
+	
+	// Schedule check timer (every ScheduleCheckInterval)
+	GetWorld()->GetTimerManager().SetTimer(
+		ScheduleCheckTimerHandle,
+		this,
+		&UGoalComponent::CheckSchedule,
+		5.0f + RandomOffset,  // Every 5 seconds + offset
+		true,
+		RandomOffset
+	);
 }
 
 void UGoalComponent::InitializeProfession(FName NewProfessionID)
@@ -108,31 +134,9 @@ void UGoalComponent::InitializeProfession(FName NewProfessionID)
 		}
 	}
 
-
-	// Randomize offset to prevent thundering herd
-	ScheduleCheckRandomOffset = FMath::RandRange(0.0f, 2.0f);
-	TimeSinceLastScheduleCheck = ScheduleCheckInterval + ScheduleCheckRandomOffset; // Force immediate check
+	// ✅ Note: No longer need these variables - using timers instead
 }
 
-void UGoalComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
-{
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
-	UpdateArbitration();
-
-	// Time Slicing for Schedule
-	// Only run schedule optimization if we are NOT in Critical mode (LOD 0), 
-	// because in Critical mode we don't care about schedule, and when we exit Critical we want quick update.
-	// Actually, simpler logic: Always tick timer, but only check if valid.
-	
-	TimeSinceLastScheduleCheck += DeltaTime;
-	if (TimeSinceLastScheduleCheck >= (ScheduleCheckInterval + ScheduleCheckRandomOffset))
-	{
-		CheckSchedule();
-		TimeSinceLastScheduleCheck = 0.0f;
-		ScheduleCheckRandomOffset = FMath::RandRange(-0.5f, 0.5f); // Jitter
-	}
-}
 
 void UGoalComponent::UpdateArbitration()
 {
@@ -215,20 +219,50 @@ void UGoalComponent::UpdateArbitration()
 	// 2. Social Layer
 	bool bSocialTriggered = false;
 	
-	// ✅ Raised threshold from 0.5 to 0.7 to prevent premature social triggering
-	// 提高阈值从 0.5 到 0.7，避免过早触发社交需求
-	if (MentalState && MentalState->Loneliness > 0.7f)
-	{
-		bSocialTriggered = true;
-		AINPC_LOG(Log, "💬 SOCIAL TRIGGERED: Loneliness=%.2f",
-		       MentalState->Loneliness);
-	}
+	// ✅ NARRATIVE SUPPRESSION: If in a scene, suppress social needs (unless overridden)
+	// 在剧情模式下，抑制社交需求，保持 NPC 专注于表演（Work/Idle）
+	// ✅ NARRATIVE SUPPRESSION: If in a scene, suppress social needs (unless overridden)
+	// 在剧情模式下，抑制社交需求，保持 NPC 专注于表演（Work/Idle）
+	bool bInNarrativeScene = HasContextTag(AINPCTags::Status_InScene);
 	
-	if (bSocialTriggered)
+	// Legacy fallback: Check Actor tags if not found in component
+	if (!bInNarrativeScene)
 	{
-		SetDirective(AINPCTags::Directive_Social);
-		SetLOD(EContextLOD::Standard);
-		return;
+		if (AActor* Owner = GetOwner())
+		{
+			// Check both Owner and Pawn/Controller if applicable
+			if (Owner->ActorHasTag("Status.InScene")) bInNarrativeScene = true;
+			else if (APawn* P = Cast<APawn>(Owner)) { if (P->GetController() && P->GetController()->ActorHasTag("Status.InScene")) bInNarrativeScene = true; }
+			else if (AController* C = Cast<AController>(Owner)) { if (C->GetPawn() && C->GetPawn()->ActorHasTag("Status.InScene")) bInNarrativeScene = true; }
+		}
+	}
+
+	if (!bInNarrativeScene)
+	{
+		// ✅ Raised threshold from 0.5 to 0.7 to prevent premature social triggering
+		// 提高阈值从 0.5 到 0.7，避免过早触发社交需求
+		if (MentalState && MentalState->Loneliness > 0.7f)
+		{
+			bSocialTriggered = true;
+			AINPC_LOG(Log, "💬 SOCIAL TRIGGERED: Loneliness=%.2f",
+				   MentalState->Loneliness);
+		}
+		
+		if (bSocialTriggered)
+		{
+			SetDirective(AINPCTags::Directive_Social);
+			SetLOD(EContextLOD::Standard);
+			return;
+		}
+	}
+	else
+	{
+		// Optional: Log suppression if loneliness is high
+		if (MentalState && MentalState->Loneliness > 0.7f)
+		{
+			// Subtle log, don't spam
+			// AINPC_LOG(Verbose, "Social suppressed by Narrative Scene (Loneliness: %.2f)", MentalState->Loneliness);
+		}
 	}
 
 	// 3. Schedule Layer (Lowest Priority) - Only for Human/Neutral NPCs
@@ -293,4 +327,33 @@ void UGoalComponent::SetLOD(EContextLOD NewLOD)
 			CognitionComp->SetLOD(CurrentLOD);
 		}
 	}
+}
+
+void UGoalComponent::AddContextTag(FGameplayTag Tag)
+{
+	if (Tag.IsValid() && !ActiveContextTags.HasTagExact(Tag))
+	{
+		ActiveContextTags.AddTag(Tag);
+		AINPC_LOG(Log, "🏷️ Context Tag Added: %s", *Tag.ToString());
+		UpdateArbitration(); // Re-evaluate immediately
+	}
+}
+
+void UGoalComponent::RemoveContextTag(FGameplayTag Tag)
+{
+	if (Tag.IsValid() && ActiveContextTags.HasTagExact(Tag))
+	{
+		ActiveContextTags.RemoveTag(Tag);
+		AINPC_LOG(Log, "🏷️ Context Tag Removed: %s", *Tag.ToString());
+		UpdateArbitration(); // Re-evaluate immediately
+	}
+}
+
+bool UGoalComponent::HasContextTag(FGameplayTag Tag) const
+{
+	if (Tag.IsValid())
+	{
+		return ActiveContextTags.HasTag(Tag);
+	}
+	return false;
 }

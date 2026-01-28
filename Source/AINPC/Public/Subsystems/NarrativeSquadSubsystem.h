@@ -82,6 +82,31 @@ struct FNarrativeSceneSquad
 	UPROPERTY()
 	class ANarrativeSceneAnchor* AssignedAnchor = nullptr;
 
+	// --- Ambient Dialogue Configuration ---
+	
+	/** Enable ambient dialogue for this scene */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Ambient Dialogue")
+	bool bEnableAmbientDialogue = true;
+
+	/** Minimum interval between ambient dialogue triggers (seconds) */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Ambient Dialogue")
+	float AmbientDialogueIntervalMin = 5.0f;  // Changed from 30.0f for testing
+
+	/** Maximum interval between ambient dialogue triggers (seconds) */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Ambient Dialogue")
+	float AmbientDialogueIntervalMax = 10.0f;  // Changed from 60.0f for testing
+
+	/** Number of NPCs that speak per trigger (1-2 recommended) */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Ambient Dialogue")
+	int32 AmbientSpeakersPerTrigger = 2;
+
+	/** Player must be within this distance for ambient dialogue to trigger */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Ambient Dialogue")
+	float PlayerActivationRadius = 2000.0f;
+
+	/** Runtime timer handle for ambient dialogue */
+	FTimerHandle AmbientDialogueTimer;
+
 	FNarrativeSceneSquad() : SquadID(-1) {}
 };
 
@@ -158,6 +183,19 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Narrative Squad")
 	void UnregisterAnchor(class ANarrativeSceneAnchor* Anchor);
 
+	// --- Ambient Dialogue API ---
+
+	/** 
+	 * Manually configure ambient dialogue settings for a scene.
+	 * Call before activating the scene.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Narrative Squad")
+	void ConfigureAmbientDialogue(int32 SquadID, bool bEnabled, float MinInterval, float MaxInterval, int32 SpeakersPerTrigger, float ActivationRadius);
+
+	/** Manually trigger ambient dialogue for testing */
+	UFUNCTION(BlueprintCallable, Category = "Narrative Squad")
+	void TriggerAmbientDialogueNow(int32 SquadID);
+
 protected:
 	UPROPERTY()
 	TArray<class ANarrativeSceneAnchor*> RegisteredAnchors;
@@ -166,6 +204,20 @@ protected:
 	
 	UFUNCTION()
 	void OnNarrativeEventRecorded(const FNarrativeEvent& Event);
+
+	// --- Ambient Dialogue Internal ---
+
+	/** Start the ambient dialogue timer for a scene */
+	void StartAmbientDialogue(int32 SquadID);
+
+	/** Trigger ambient dialogue (timer callback) */
+	void TriggerAmbientDialogue(int32 SquadID);
+
+	/** Request a specific NPC to generate ambient dialogue */
+	void RequestAmbientDialogue(AActor* Speaker, const FNarrativeSceneSquad* Squad);
+
+	/** Check if player is near the scene anchor */
+	bool IsPlayerNearScene(const FNarrativeSceneSquad* Squad) const;
 
 protected:
 

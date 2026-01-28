@@ -40,6 +40,10 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Narrative Trigger")
 	bool bAutoTriggerOnOverlap = true;
+
+	/** Activation radius for scene trigger (in Unreal units). Default 2000 = 20 meters. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Narrative Trigger")
+	float ActivationRadius = 2000.0f;
 	
 protected:
 	virtual void BeginPlay() override;
