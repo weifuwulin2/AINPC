@@ -293,10 +293,12 @@ class AINPC_API UUtilityActionBase : public UObject
     GENERATED_BODY()
 
 public:
-    // Game-wide Constants for Scoring
+    // Game-wide Constants for Scoring (Replaced by UAINPCSettings)
+    /*
     static const float IntentionMatchBonus;        // Default: 0.3f
     static const float DirectiveMatchMultiplier;   // Default: 1.5f
     static const float DirectiveMismatchMultiplier; // Default: 0.5f
+    */
 
     UUtilityActionBase();
 

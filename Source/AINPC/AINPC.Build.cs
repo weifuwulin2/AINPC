@@ -25,7 +25,9 @@ public class AINPC : ModuleRules
 			"Json", 
 			"JsonUtilities",
 			"NavigationSystem",
-			"GameplayTags"
+			"GameplayTags",
+			"DeveloperSettings",
+			"SlateCore"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });

@@ -9,6 +9,8 @@
 #include "Controller/UtilityAIController.h"
 #include "UtilityAI/UNPCMentalState.h"
 #include "AINPC.h"
+#include "Config/AINPCSettings.h"
+
 
 UGoalComponent::UGoalComponent()
 {
@@ -239,9 +241,9 @@ void UGoalComponent::UpdateArbitration()
 
 	if (!bInNarrativeScene)
 	{
-		// ✅ Raised threshold from 0.5 to 0.7 to prevent premature social triggering
-		// 提高阈值从 0.5 到 0.7，避免过早触发社交需求
-		if (MentalState && MentalState->Loneliness > 0.7f)
+		float SocialThreshold = UAINPCSettings::Get()->SocialLonelinessThreshold;
+		if (MentalState && MentalState->Loneliness > SocialThreshold)
+
 		{
 			bSocialTriggered = true;
 			AINPC_LOG(Log, "💬 SOCIAL TRIGGERED: Loneliness=%.2f",

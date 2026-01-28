@@ -16,10 +16,8 @@
 #include "UtilityAI/EmotionMatrixConfig.h"
 #include "Components/FactionReputationComponent.h"
 
-// Initialize Game-wide Constants
-const float UUtilityActionBase::IntentionMatchBonus = 0.3f;
-const float UUtilityActionBase::DirectiveMatchMultiplier = 1.5f;
-const float UUtilityActionBase::DirectiveMismatchMultiplier = 0.5f;
+#include "Config/AINPCSettings.h"
+
 
 UUtilityActionBase::UUtilityActionBase()
 {
@@ -289,7 +287,9 @@ float UUtilityActionBase::CalculateScore(UNPCMentalState* MentalState, AAIContro
             // (Using ToString() is safer than RequestGameplayTag for non-existent tags)
             if (IntentionTag.ToString().Equals(TagNameToCheck, ESearchCase::IgnoreCase))
             {
-                IntentionBonus = 1.0f; // Additive Bonus
+                // IntentionBonus = 1.0f; // OLD Hardcoded
+                IntentionBonus = UAINPCSettings::Get()->IntentionMatchBonus; // Additive Bonus from Settings
+
             
                 // ✅ 调试：显示意图匹配
                 if (bLogDebug)
@@ -387,7 +387,9 @@ float UUtilityActionBase::CalculateScore(UNPCMentalState* MentalState, AAIContro
             }
             
             // 钳制到合理范围 / Clamp to reasonable range
-            Modifier = FMath::Clamp(Modifier, 0.2f, 2.0f);
+            const UAINPCSettings* Settings = UAINPCSettings::Get();
+            Modifier = FMath::Clamp(Modifier, Settings->PAMModifierMin, Settings->PAMModifierMax);
+
             
             // 应用修正
             // Apply Modifier
@@ -506,7 +508,8 @@ float UUtilityActionBase::CalculateScore(UNPCMentalState* MentalState, AAIContro
                if (DirectiveTag.MatchesTag(CurrentDirective))
                {
                    // 匹配指令：给予加成 (x1.5)
-                   DirectiveMultiplier = DirectiveMatchMultiplier;
+                   DirectiveMultiplier = UAINPCSettings::Get()->DirectiveMatchMultiplier;
+
                    
                    // ✅ NARRATIVE PROFESSION OVERRIDE
                    // In a scene, the Profession (and thus the Directive) is the role they are playing.
@@ -518,9 +521,12 @@ float UUtilityActionBase::CalculateScore(UNPCMentalState* MentalState, AAIContro
                        {
                            if (P->ActorHasTag("Status.InScene"))
                            {
-                               DirectiveMultiplier *= 2.0f; // 1.5 * 2.0 = 3.0x Multiplier
-                               if (bLogDebug) UE_LOG(LogTemp, Warning, TEXT("      [Scene] 🎬 IN SCENE: Directive Multiplier Boosted x2 (%.1f -> %.1f)"), 
-                                   DirectiveMatchMultiplier, DirectiveMultiplier);
+                               float NarrativeBoost = UAINPCSettings::Get()->NarrativeDirectiveBoost;
+                               DirectiveMultiplier *= NarrativeBoost;
+
+                               if (bLogDebug) UE_LOG(LogTemp, Warning, TEXT("      [Scene] 🎬 IN SCENE: Directive Multiplier Boosted x%.1f (%.1f -> %.1f)"), 
+                                   NarrativeBoost, DirectiveMultiplier/NarrativeBoost, DirectiveMultiplier);
+
                            }
                        }
                    }
@@ -531,8 +537,9 @@ float UUtilityActionBase::CalculateScore(UNPCMentalState* MentalState, AAIContro
                {
                    // 不匹配指令，且该动作本身属于某种指令类型：给予惩罚 (x0.5)
                    // 例如：指令是 Social，但这动作是 Work，则降权
-                   DirectiveMultiplier = DirectiveMismatchMultiplier;
-                   if (bLogDebug) UE_LOG(LogTemp, Log, TEXT("      [Directive] ⛔ Mismatch Directive '%s' (Action is '%s') -> Multiplier x%.1f"), *CurrentDirective.ToString(), *DirectiveTag.ToString(), DirectiveMismatchMultiplier);
+                   DirectiveMultiplier = UAINPCSettings::Get()->DirectiveMismatchMultiplier;
+                   if (bLogDebug) UE_LOG(LogTemp, Log, TEXT("      [Directive] ⛔ Mismatch Directive '%s' (Action is '%s') -> Multiplier x%.1f"), *CurrentDirective.ToString(), *DirectiveTag.ToString(), DirectiveMultiplier);
+
                }
             }
         }

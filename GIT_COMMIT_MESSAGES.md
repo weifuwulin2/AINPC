@@ -536,3 +536,17 @@ This file contains a log of commit messages for the AINPC project.
 - **Ambient Dialogue Fix**: 
   - `NarrativeSquadSubsystem` now queries `UtilityAIComponent->CurrentAction` for accurate activity context (e.g., "Mine" instead of "Work").
   - Fixed `Emotion` logging format (String vs Enum).
+
+## [2026-01-29] P0 Refactors: Settings & Helpers
+**Type**: refactor
+**Scope**: Core Architecture
+**Description**:
+- **Externalized Settings**: Created `UAINPCSettings` (Config/UAINPCSettings.h) to expose hardcoded AI magic numbers to Project Settings.
+  - Utility AI Weights (`IntentionMatchBonus`, `DirectiveMatchMultiplier`, etc.)
+  - Needs Thresholds (`SocialLoneliness`, `CriticalHunger`)
+  - Personality Modifiers (PAM Min/Max)
+- **Shared Helpers**: Implemented `AINPCHelpers` namespace to centralize actor component lookups.
+  - Replaced duplicated static functions in `NarrativeSquadSubsystem` with `AINPCHelpers::GetCognitionComponent`, etc.
+  - Added template-based `FindComponentInHierarchy` to robustly search Component -> Pawn -> Controller chain.
+- **Build Configuration**: Added `DeveloperSettings` and `SlateCore` modules to `AINPC.Build.cs` to support the new settings class.
+

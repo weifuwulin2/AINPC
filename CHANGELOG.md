@@ -18,6 +18,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Gameplay Tags Migration**: Replaced all string-based "Status.InScene" tag usage with Native Gameplay Tag `AINPCTags::Status_InScene` and `GoalComponent` context management functions.
 - **Goal Component API**: Added `ActiveContextTags` container and `Add/Remove/HasContextTag` API to `GoalComponent`.
 
+### ⚡ Refactors - P0 Stability (Optimization)
+- **Externalized Settings**: Created `UAINPCSettings` (Project Settings -> Plugins -> AINPC).
+  - Extracted 8+ magic numbers (utility weights, needs thresholds) into configurable assets.
+  - Allows tuning logic without recompilation.
+- **Shared Helpers**: Created `AINPCHelpers` namespace to replace duplicated static actor lookups.
+  - Unified logic for finding components across Pawn/Controller hierarchy.
+  - Refactored `NarrativeSquadSubsystem` to use these helpers.
+
 ### 🔧 Fixes
 - **Ambient Dialogue Context**: Fixed `NarrativeSquadSubsystem` to use the currently executing action from `UtilityAIComponent` instead of the potentially stale scheduled activity.
 - **Narrative Scene Data**: Updated `DT_NarrativeScenes` PlotOutline for "Scene_OrcRescue" to accurately reflect the mining camp scenario.

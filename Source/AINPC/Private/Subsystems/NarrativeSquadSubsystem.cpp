@@ -15,73 +15,8 @@
 #include "World/NarrativeSceneAnchor.h"
 #include "Social/SocialGameplayTags.h"
 
-// Helper: Find GoalComponent - it might be on Controller or Pawn
-static UGoalComponent* GetGoalComponentFromActor(AActor* Actor)
-{
-	if (!Actor) return nullptr;
-	
-	// Try actor directly (Pawn)
-	if (UGoalComponent* GC = Actor->FindComponentByClass<UGoalComponent>()) return GC;
-    
-	// Try controller
-	if (APawn* Pawn = Cast<APawn>(Actor))
-	{
-		if (AController* C = Pawn->GetController())
-		{
-			if (UGoalComponent* GC = C->FindComponentByClass<UGoalComponent>()) return GC;
-		}
-	}
-	else if (AController* C = Cast<AController>(Actor))
-	{
-		if (C->GetPawn())
-		{
-			if (UGoalComponent* GC = C->GetPawn()->FindComponentByClass<UGoalComponent>()) return GC;
-		}
-	}
-	return nullptr;
-}
+#include "Utilities/AINPCHelpers.h"
 
-
-// Helper: Find CognitionComponent - it lives on Controller, not Pawn
-static UCognitionComponent* GetCognitionFromActor(AActor* Actor)
-{
-	if (!Actor) return nullptr;
-	
-	// 1. Try direct (if it's a Controller or Component Owner)
-	if (UCognitionComponent* Direct = Actor->FindComponentByClass<UCognitionComponent>())
-	{
-		return Direct;
-	}
-	
-	// 2. If it's a Pawn, check its Controller
-	if (APawn* Pawn = Cast<APawn>(Actor))
-	{
-		if (AController* Con = Pawn->GetController())
-		{
-			return Con->FindComponentByClass<UCognitionComponent>();
-		}
-	}
-	
-	return nullptr;
-}
-
-// Helper: Get PersonalityComponent
-static UPersonalityComponent* GetPersonalityFromActor(AActor* Actor)
-{
-	if (!Actor) return nullptr;
-
-	// Try Controller
-	AController* Controller = nullptr;
-	if (APawn* P = Cast<APawn>(Actor)) Controller = P->GetController();
-	else Controller = Cast<AController>(Actor);
-
-	if (AUtilityAIController* UAICon = Cast<AUtilityAIController>(Controller))
-	{
-		return UAICon->PersonalityComp;
-	}
-	
-	return Actor->FindComponentByClass<UPersonalityComponent>();
-}
 
 void UNarrativeSquadSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
@@ -131,7 +66,8 @@ void UNarrativeSquadSubsystem::AssignMemberRole(int32 SquadID, AActor* NPC, FStr
 	ActorSquadMap.Add(NPC, SquadID);
 	
 	// Mark as In-Scene (Suppresses Hostility)
-	if (UGoalComponent* GoalComp = GetGoalComponentFromActor(NPC))
+	if (UGoalComponent* GoalComp = AINPCHelpers::GetGoalComponent(NPC))
+
 	{
 		GoalComp->AddContextTag(AINPCTags::Status_InScene);
 	}
@@ -145,11 +81,13 @@ void UNarrativeSquadSubsystem::AssignMemberRole(int32 SquadID, AActor* NPC, FStr
 	}
 
 	// Inject into Brain immediately (CognitionComponent is on Controller!)
-	if (UCognitionComponent* Cognition = GetCognitionFromActor(NPC))
+	if (UCognitionComponent* Cognition = AINPCHelpers::GetCognitionComponent(NPC))
+
 	{
 		// ✅ Get Base Personality Role (to avoid overwriting it)
 		FString BaseRole = "";
-		if (UPersonalityComponent* PersComp = GetPersonalityFromActor(NPC))
+		if (UPersonalityComponent* PersComp = AINPCHelpers::GetPersonalityComponent(NPC))
+
 		{
 			BaseRole = PersComp->Personality.RoleDescription;
 		}
@@ -207,7 +145,8 @@ void UNarrativeSquadSubsystem::AssignRolesToArea(int32 SquadID, FVector Origin, 
 	{
 		AActor* Actor = Hit.GetActor();
 		// Use helper to check Controller for CognitionComponent
-		if (Actor && GetCognitionFromActor(Actor))
+		if (Actor && AINPCHelpers::GetCognitionComponent(Actor))
+
 		{
 			AssignMemberRole(SquadID, Actor, RoleDescription);
 		}
@@ -480,14 +419,17 @@ void UNarrativeSquadSubsystem::EndScene(int32 SquadID)
 		if (Member)
 		{
 			// Remove Scene Tag
-			if (UGoalComponent* GoalComp = GetGoalComponentFromActor(Member))
+			if (UGoalComponent* GoalComp = AINPCHelpers::GetGoalComponent(Member))
+
 			{
 				GoalComp->RemoveContextTag(AINPCTags::Status_InScene);
 			}
 			Member->Tags.Remove("Status.InScene"); // Legacy / Fallback
 
+
 			// Reset Cognition
-			if (UCognitionComponent* Cognition = GetCognitionFromActor(Member))
+			if (UCognitionComponent* Cognition = AINPCHelpers::GetCognitionComponent(Member))
+
 			{
 				Cognition->RoleDescription = TEXT(""); 
 				Cognition->ProcessStimulus(TEXT("The scene has ended. I return to my daily routine."));
@@ -595,7 +537,8 @@ void UNarrativeSquadSubsystem::TriggerAmbientDialogue(int32 SquadID)
 	{
 		if (IsValid(Pair.Key))
 		{
-			UCognitionComponent* CogComp = GetCognitionFromActor(Pair.Key);
+			UCognitionComponent* CogComp = AINPCHelpers::GetCognitionComponent(Pair.Key);
+
 			if (CogComp)
 			{
 				ValidSpeakers.Add(Pair.Key);
@@ -637,7 +580,8 @@ void UNarrativeSquadSubsystem::RequestAmbientDialogue(AActor* Speaker, const FNa
 {
 	if (!IsValid(Speaker) || !Squad) return;
 
-	UCognitionComponent* CogComp = GetCognitionFromActor(Speaker);
+	UCognitionComponent* CogComp = AINPCHelpers::GetCognitionComponent(Speaker);
+
 	if (!CogComp) return;
 
 	// Get NPC's current activity from UtilityAIComponent (actual executing action, not scheduled)
@@ -688,7 +632,8 @@ void UNarrativeSquadSubsystem::RequestAmbientDialogue(AActor* Speaker, const FNa
 
 	// Get NPC's emotional state (optional enhancement)
 	FString EmotionContext = TEXT("");
-	if (UPersonalityComponent* PersComp = GetPersonalityFromActor(Speaker))
+	if (UPersonalityComponent* PersComp = AINPCHelpers::GetPersonalityComponent(Speaker))
+
 	{
 		// Note: You may need to implement GetCurrentEmotionalState() in PersonalityComponent
 		// For now, we'll leave it as a placeholder
