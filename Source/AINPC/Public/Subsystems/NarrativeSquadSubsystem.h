@@ -1,9 +1,8 @@
-
 #pragma once
-
 #include "CoreMinimal.h"
 #include "Subsystems/WorldSubsystem.h"
 #include "Subsystems/NarrativeDirectorSubsystem.h" // For FNarrativeEvent
+#include "GameplayTagContainer.h" // For FGameplayTag
 #include "NarrativeSquadSubsystem.generated.h"
 
 USTRUCT(BlueprintType)
@@ -36,6 +35,36 @@ struct FScenePropDef
 	FTransform RelativeTransform;
 };
 
+/**
+ * Defines a single node in a Narrative Scene's Timeline.
+ * Allows plot and directives to evolve over time.
+ */
+USTRUCT(BlueprintType)
+struct FNarrativeTimelineEntry
+{
+	GENERATED_BODY()
+
+	/** Time offset from scene start (seconds). Acts as minimum wait time if TriggerCondition is set. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Timeline")
+	float TimeOffset = 0.0f;
+
+	/** Optional event condition. If set, node triggers only after TimeOffset AND receiving this event. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Timeline", meta=(Categories="Event"))
+	FGameplayTag TriggerCondition;
+
+	/** New plot outline to inject into NPC context (LLM). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Timeline", meta=(MultiLine=true))
+	FString PlotUpdate;
+
+	/** Optional directive override for the squad (e.g., Directive.Combat). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Timeline", meta=(Categories="Directive"))
+	FGameplayTag DirectiveOverride;
+
+	/** Optional bark ID for squad leader to speak. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Timeline")
+	FName BarkID;
+};
+
 /** Defines a static scene layout (The Cast & The Script) */
 USTRUCT(BlueprintType)
 struct FNarrativeSceneDef : public FTableRowBase
@@ -53,6 +82,10 @@ struct FNarrativeSceneDef : public FTableRowBase
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TArray<FName> CompletionTags;
+
+	/** Timeline of plot evolution nodes. Enables dynamic scene progression. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Timeline")
+	TArray<FNarrativeTimelineEntry> Timeline;
 };
 
 USTRUCT(BlueprintType)
@@ -106,6 +139,27 @@ struct FNarrativeSceneSquad
 
 	/** Runtime timer handle for ambient dialogue */
 	FTimerHandle AmbientDialogueTimer;
+
+	// --- Timeline System ---
+
+	/** Copy of the scene's timeline definition (from DT_NarrativeScenes) */
+	UPROPERTY()
+	TArray<FNarrativeTimelineEntry> SceneTimeline;
+
+	/** Current timeline node index */
+	UPROPERTY()
+	int32 CurrentTimelineIndex = 0;
+
+	/** Accumulated time since scene activation (seconds) */
+	UPROPERTY()
+	float AccumulatedSceneTime = 0.0f;
+
+	/** Set of timeline nodes waiting for event triggers (index -> tag) */
+	UPROPERTY()
+	TMap<int32, FGameplayTag> PendingEventTriggers;
+
+	/** Timer handle for timeline updates */
+	FTimerHandle TimelineTickTimer;
 
 	FNarrativeSceneSquad() : SquadID(-1) {}
 };
@@ -196,6 +250,17 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Narrative Squad")
 	void TriggerAmbientDialogueNow(int32 SquadID);
 
+	/** 
+	 * Applies a GameplayTag to all squad members with a specific Role (e.g., "Slave", "Guard").
+	 * Useful for triggering state changes like combat or behavior overrides.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Narrative Squad")
+	void ApplyTagToRole(int32 SquadID, FString RoleID, FGameplayTag Tag);
+
+	/** Returns all members of the squad the ContextActor belongs to. */
+	UFUNCTION(BlueprintCallable, Category = "Narrative Squad")
+	bool GetSquadMembers(const AActor* ContextActor, TArray<AActor*>& OutMembers) const;
+
 protected:
 	UPROPERTY()
 	TArray<class ANarrativeSceneAnchor*> RegisteredAnchors;
@@ -218,6 +283,14 @@ protected:
 
 	/** Check if player is near the scene anchor */
 	bool IsPlayerNearScene(const FNarrativeSceneSquad* Squad) const;
+
+	// --- Timeline System Internal ---
+
+	/** Update timeline progression for a scene (called every second) */
+	void TickTimeline(int32 SquadID);
+
+	/** Execute a timeline node (update plot/directive) */
+	void TriggerTimelineNode(int32 SquadID, int32 NodeIndex);
 
 protected:
 

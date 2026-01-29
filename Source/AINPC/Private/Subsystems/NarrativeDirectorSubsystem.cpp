@@ -27,6 +27,7 @@ void UNarrativeDirectorSubsystem::RecordEvent(FString Description, TArray<FName>
 	UE_LOG(LogTemp, Log, TEXT("[NarrativeDirector] Recorded: %s"), *Description);
 
 	// Broadcast to listeners (NarrativeSquadSubsystem)
+	UE_LOG(LogTemp, Warning, TEXT("📢 [NarrativeDirector] Broadcasting event with %d tags to %d listeners"), Tags.Num(), OnEventRecorded.IsBound() ? 1 : 0);
 	OnEventRecorded.Broadcast(NewEvent);
 }
 

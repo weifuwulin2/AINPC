@@ -96,11 +96,13 @@ struct AINPC_API FMemoryItem
 	GENERATED_BODY()
 
 	// Unique ID for retrieval/reference
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Memory")
+	// Note: Initialized in constructor since FGuid::NewGuid() is not a compile-time constant
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Memory", meta = (IgnoreForMemberInitializationTest))
 	FGuid MemoryId;
 
 	// When this happened (Game Time or Real Time)
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Memory")
+	// Note: Initialized in constructor since FDateTime::Now() is not a compile-time constant
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Memory", meta = (IgnoreForMemberInitializationTest))
 	FDateTime Timestamp;
 
 	// The natural language description
@@ -128,9 +130,10 @@ struct AINPC_API FMemoryItem
 	// Embedding vector for semantic search (reserved for future use)
 	// TArray<float> Embedding; 
 
+	// Constructor: Initialize runtime-dependent fields
 	FMemoryItem()
+		: MemoryId(FGuid::NewGuid())
+		, Timestamp(FDateTime::Now())
 	{
-		MemoryId = FGuid::NewGuid();
-		Timestamp = FDateTime::Now();
 	}
 };

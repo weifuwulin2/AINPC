@@ -14,7 +14,6 @@
 #include "Components/UtilityAIComponent.h"
 #include "World/NarrativeSceneAnchor.h"
 #include "Social/SocialGameplayTags.h"
-
 #include "Utilities/AINPCHelpers.h"
 
 
@@ -26,6 +25,11 @@ void UNarrativeSquadSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	if (UNarrativeDirectorSubsystem* Director = GetWorld()->GetSubsystem<UNarrativeDirectorSubsystem>())
 	{
 		Director->OnEventRecorded.AddDynamic(this, &UNarrativeSquadSubsystem::OnNarrativeEventRecorded);
+		NARRATIVE_LOG(Warning, TEXT("✅ [NarrativeSquadSubsystem] Successfully bound to NarrativeDirectorSubsystem::OnEventRecorded"));
+	}
+	else
+	{
+		NARRATIVE_LOG(Error, TEXT("❌ [NarrativeSquadSubsystem] Failed to find NarrativeDirectorSubsystem!"));
 	}
 }
 
@@ -155,6 +159,8 @@ void UNarrativeSquadSubsystem::AssignRolesToArea(int32 SquadID, FVector Origin, 
 
 void UNarrativeSquadSubsystem::OnNarrativeEventRecorded(const FNarrativeEvent& Event)
 {
+	NARRATIVE_LOG(Warning, TEXT("🎬 [NarrativeSquadSubsystem] OnNarrativeEventRecorded called! Event: '%s', Tags: %d"), *Event.Description, Event.Tags.Num());
+	
 	// Check all squads
 	TArray<int32> SquadsToEnd;
 
@@ -163,6 +169,40 @@ void UNarrativeSquadSubsystem::OnNarrativeEventRecorded(const FNarrativeEvent& E
 		FNarrativeSceneSquad& Squad = Elem.Value;
 		if (!Squad.bIsActive) continue;
 
+		// ✅ Check Timeline Event Triggers (Hybrid Triggers)
+		TArray<int32> TriggeredNodes;
+		for (const TPair<int32, FGameplayTag>& Pending : Squad.PendingEventTriggers)
+		{
+			// Check if any event tag matches the trigger condition
+			// Convert FGameplayTag to FName for comparison with FNarrativeEvent.Tags
+			FName TriggerTagName = Pending.Value.GetTagName();
+			
+			for (const FName& EventTag : Event.Tags)
+			{
+				if (EventTag == TriggerTagName)
+				{
+					NARRATIVE_LOG(Warning, TEXT("📜 Event Trigger Matched! Node %d triggered by %s for Squad %d"), 
+						Pending.Key, *EventTag.ToString(), Squad.SquadID);
+					TriggeredNodes.Add(Pending.Key);
+					break;
+				}
+			}
+		}
+
+		// Execute timeline nodes triggered by this event
+		for (int32 NodeIndex : TriggeredNodes)
+		{
+			TriggerTimelineNode(Squad.SquadID, NodeIndex);
+			Squad.PendingEventTriggers.Remove(NodeIndex);
+			
+			// If this was the current node, advance index
+			if (NodeIndex == Squad.CurrentTimelineIndex)
+			{
+				Squad.CurrentTimelineIndex++;
+			}
+		}
+
+		// Original Completion Tag logic (unchanged)
 		for (const FName& Tag : Event.Tags)
 		{
 			if (Squad.CompletionTags.Contains(Tag))
@@ -202,6 +242,9 @@ int32 UNarrativeSquadSubsystem::SpawnSceneFromTemplate(UDataTable* SceneTable, F
 	if (FNarrativeSceneSquad* Squad = ActiveSquads.Find(SquadID))
 	{
 		Squad->bIsActive = bAutoActivate;
+		
+		// ✅ Copy Timeline from SceneDef to runtime Squad
+		Squad->SceneTimeline = SceneDef->Timeline;
 	}
 
 	// 3. Spawn Props FIRST (so SmartObjects are registered before NPCs start searching)
@@ -342,36 +385,57 @@ int32 UNarrativeSquadSubsystem::SpawnSceneAtAnchor(ANarrativeSceneAnchor* Anchor
 
 void UNarrativeSquadSubsystem::ActivateScene(int32 SquadID)
 {
-	AINPC_LOG(Warning, TEXT("🔧 ActivateScene called for SquadID: %d"), SquadID);
+	NARRATIVE_LOG(Warning, TEXT("🔧 ActivateScene called for SquadID: %d"), SquadID);
 	
 	if (FNarrativeSceneSquad* Squad = ActiveSquads.Find(SquadID))
 	{
-		AINPC_LOG(Warning, TEXT("✅ Found Squad %d in ActiveSquads"), SquadID);
-		AINPC_LOG(Warning, TEXT("   - bIsActive: %s"), Squad->bIsActive ? TEXT("true") : TEXT("false"));
-		AINPC_LOG(Warning, TEXT("   - bEnableAmbientDialogue: %s"), Squad->bEnableAmbientDialogue ? TEXT("true") : TEXT("false"));
+		NARRATIVE_LOG(Warning, TEXT("✅ Found Squad %d in ActiveSquads"), SquadID);
+		NARRATIVE_LOG(Warning, TEXT("   - bIsActive: %s"), Squad->bIsActive ? TEXT("true") : TEXT("false"));
+		NARRATIVE_LOG(Warning, TEXT("   - bEnableAmbientDialogue: %s"), Squad->bEnableAmbientDialogue ? TEXT("true") : TEXT("false"));
 		
 		if (!Squad->bIsActive)
 		{
-			AINPC_LOG(Warning, TEXT("🎬 Activating Squad %d..."), SquadID);
+			NARRATIVE_LOG(Warning, TEXT("🎬 Activating Squad %d..."), SquadID);
 			Squad->bIsActive = true;
+			
+			// ✅ Initialize Timeline System
+			Squad->CurrentTimelineIndex = 0;
+			Squad->AccumulatedSceneTime = 0.0f;
+			Squad->PendingEventTriggers.Empty();
+			
+			// Start Timeline Tick (1 second interval for checking nodes)
+			if (Squad->SceneTimeline.Num() > 0)
+			{
+				UWorld* World = GetWorld();
+				if (World)
+				{
+					World->GetTimerManager().SetTimer(
+						Squad->TimelineTickTimer,
+						[this, SquadID]() { TickTimeline(SquadID); },
+						1.0f, // Tick every 1 second
+						true  // Loop
+					);
+					NARRATIVE_LOG(Warning, TEXT("📜 Timeline System Started for Squad %d (%d nodes)"), SquadID, Squad->SceneTimeline.Num());
+				}
+			}
 			
 			// Note: NPCs will speak via Ambient Dialogue system, not all at once
 			
 			// Start Ambient Dialogue Timer
 			if (Squad->bEnableAmbientDialogue)
 			{
-				AINPC_LOG(Warning, TEXT("🎤 About to call StartAmbientDialogue for Squad %d"), SquadID);
+				NARRATIVE_LOG(Warning, TEXT("🎤 About to call StartAmbientDialogue for Squad %d"), SquadID);
 				StartAmbientDialogue(SquadID);
-				AINPC_LOG(Warning, TEXT("ActivateScene: Squad %d Activated with Ambient Dialogue enabled."), SquadID);
+				NARRATIVE_LOG(Warning, TEXT("ActivateScene: Squad %d Activated with Ambient Dialogue enabled."), SquadID);
 			}
 			else
 			{
-				AINPC_LOG(Warning, TEXT("ActivateScene: Squad %d Activated (Ambient Dialogue disabled)."), SquadID);
+				NARRATIVE_LOG(Warning, TEXT("ActivateScene: Squad %d Activated (Ambient Dialogue disabled)."), SquadID);
 			}
 		}
 		else
 		{
-			AINPC_LOG(Warning, TEXT("⚠️ Squad %d is already active, skipping activation"), SquadID);
+			NARRATIVE_LOG(Warning, TEXT("⚠️ Squad %d is already active, skipping activation"), SquadID);
 		}
 	}
 	else
@@ -472,7 +536,7 @@ void UNarrativeSquadSubsystem::ConfigureAmbientDialogue(int32 SquadID, bool bEna
 
 void UNarrativeSquadSubsystem::StartAmbientDialogue(int32 SquadID)
 {
-	AINPC_LOG(Warning, TEXT("[AmbientDialogue] 🔧 StartAmbientDialogue called for Squad %d"), SquadID);
+	NARRATIVE_LOG(Warning, TEXT("[AmbientDialogue] 🔧 StartAmbientDialogue called for Squad %d"), SquadID);
 	
 	FNarrativeSceneSquad* Squad = ActiveSquads.Find(SquadID);
 	if (!Squad)
@@ -483,13 +547,13 @@ void UNarrativeSquadSubsystem::StartAmbientDialogue(int32 SquadID)
 	
 	if (!Squad->bIsActive)
 	{
-		AINPC_LOG(Warning, TEXT("[AmbientDialogue] ⚠️ Squad %d is not active (bIsActive=false)"), SquadID);
+		NARRATIVE_LOG(Warning, TEXT("[AmbientDialogue] ⚠️ Squad %d is not active (bIsActive=false)"), SquadID);
 		return;
 	}
 	
 	if (!Squad->bEnableAmbientDialogue)
 	{
-		AINPC_LOG(Warning, TEXT("[AmbientDialogue] ⚠️ Squad %d has Ambient Dialogue disabled (bEnableAmbientDialogue=false)"), SquadID);
+		NARRATIVE_LOG(Warning, TEXT("[AmbientDialogue] ⚠️ Squad %d has Ambient Dialogue disabled (bEnableAmbientDialogue=false)"), SquadID);
 		return;
 	}
 
@@ -511,7 +575,7 @@ void UNarrativeSquadSubsystem::StartAmbientDialogue(int32 SquadID)
 		false // One-shot, we'll restart after triggering
 	);
 
-	AINPC_LOG(Warning, TEXT("[AmbientDialogue] ✅ Timer set! Squad %d will trigger in %.1f seconds"), SquadID, RandomInterval);
+	NARRATIVE_LOG(Warning, TEXT("[AmbientDialogue] ✅ Timer set! Squad %d will trigger in %.1f seconds"), SquadID, RandomInterval);
 }
 
 void UNarrativeSquadSubsystem::TriggerAmbientDialogue(int32 SquadID)
@@ -525,7 +589,7 @@ void UNarrativeSquadSubsystem::TriggerAmbientDialogue(int32 SquadID)
 	// ✅ Check if player is nearby
 	if (!IsPlayerNearScene(Squad))
 	{
-		AINPC_LOG(Warning, TEXT("[AmbientDialogue] ⏭️ Squad %d: Player not nearby, skipping trigger"), SquadID);
+		NARRATIVE_LOG(Warning, TEXT("[AmbientDialogue] ⏭️ Squad %d: Player not nearby, skipping trigger"), SquadID);
 		// Restart timer for next check
 		StartAmbientDialogue(SquadID);
 		return;
@@ -548,7 +612,7 @@ void UNarrativeSquadSubsystem::TriggerAmbientDialogue(int32 SquadID)
 
 	if (ValidSpeakers.Num() == 0)
 	{
-		AINPC_LOG(Warning, TEXT("[AmbientDialogue] ❌ Squad %d: No valid speakers found"), SquadID);
+		NARRATIVE_LOG(Warning, TEXT("[AmbientDialogue] ❌ Squad %d: No valid speakers found"), SquadID);
 		StartAmbientDialogue(SquadID);
 		return;
 	}
@@ -559,7 +623,7 @@ void UNarrativeSquadSubsystem::TriggerAmbientDialogue(int32 SquadID)
 		ValidSpeakers.Num()
 	);
 
-	AINPC_LOG(Warning, TEXT("[AmbientDialogue] 🎬 Squad %d: Triggering %d/%d speakers (Player nearby)"), 
+	NARRATIVE_LOG(Warning, TEXT("[AmbientDialogue] 🎬 Squad %d: Triggering %d/%d speakers (Player nearby)"), 
 		SquadID, NumSpeakers, ValidSpeakers.Num());
 
 	for (int32 i = 0; i < NumSpeakers; i++)
@@ -657,9 +721,9 @@ void UNarrativeSquadSubsystem::RequestAmbientDialogue(AActor* Speaker, const FNa
 	// Trigger CognitionComponent to generate response
 	CogComp->ProcessStimulus(AmbientPrompt);
 
-	AINPC_LOG(Warning, TEXT("[AmbientDialogue] 💬 %s triggered ambient speech (Activity: %s)"), 
+	NARRATIVE_LOG(Warning, TEXT("[AmbientDialogue] 💬 %s triggered ambient speech (Activity: %s)"), 
 		*Speaker->GetName(), *CurrentActivity);
-	AINPC_LOG(Warning, TEXT("[AmbientDialogue] 🔔 Speech should appear above NPC's head in 1-2 seconds if EmotionDisplayComponent is configured."));
+	NARRATIVE_LOG(Warning, TEXT("[AmbientDialogue] 🔔 Speech should appear above NPC's head in 1-2 seconds if EmotionDisplayComponent is configured."));
 }
 
 bool UNarrativeSquadSubsystem::IsPlayerNearScene(const FNarrativeSceneSquad* Squad) const
@@ -709,4 +773,209 @@ void UNarrativeSquadSubsystem::TriggerAmbientDialogueNow(int32 SquadID)
 {
 	// Manual trigger for testing - bypasses timer
 	TriggerAmbientDialogue(SquadID);
+}
+
+// ============================================================================
+// TIMELINE SYSTEM
+// ============================================================================
+
+void UNarrativeSquadSubsystem::TickTimeline(int32 SquadID)
+{
+	FNarrativeSceneSquad* Squad = ActiveSquads.Find(SquadID);
+	if (!Squad || !Squad->bIsActive) return;
+
+	// Update accumulated time
+	Squad->AccumulatedSceneTime += 1.0f;
+
+	// Process timeline nodes
+	while (Squad->CurrentTimelineIndex < Squad->SceneTimeline.Num())
+	{
+		const FNarrativeTimelineEntry& Node = Squad->SceneTimeline[Squad->CurrentTimelineIndex];
+
+		// Check if time condition is met
+		if (Squad->AccumulatedSceneTime < Node.TimeOffset)
+		{
+			break; // Time not reached yet
+		}
+
+		// Check if this node has an event trigger
+		if (Node.TriggerCondition.IsValid())
+		{
+			// Add to pending triggers (wait for event)
+			if (!Squad->PendingEventTriggers.Contains(Squad->CurrentTimelineIndex))
+			{
+				Squad->PendingEventTriggers.Add(Squad->CurrentTimelineIndex, Node.TriggerCondition);
+				NARRATIVE_LOG(Warning, TEXT("📜 Timeline Node %d (T+%.1fs): Waiting for event %s"), 
+					Squad->CurrentTimelineIndex, Node.TimeOffset, *Node.TriggerCondition.ToString());
+			}
+			break; // Stop processing, wait for event
+		}
+		else
+		{
+			// Time-only trigger, execute immediately
+			TriggerTimelineNode(SquadID, Squad->CurrentTimelineIndex);
+			Squad->CurrentTimelineIndex++;
+		}
+	}
+
+	// Stop timeline if all nodes processed
+	if (Squad->CurrentTimelineIndex >= Squad->SceneTimeline.Num() && Squad->PendingEventTriggers.Num() == 0)
+	{
+		if (UWorld* World = GetWorld())
+		{
+			World->GetTimerManager().ClearTimer(Squad->TimelineTickTimer);
+			NARRATIVE_LOG(Warning, TEXT("📜 Timeline Completed for Squad %d"), SquadID);
+		}
+	}
+}
+
+void UNarrativeSquadSubsystem::TriggerTimelineNode(int32 SquadID, int32 NodeIndex)
+{
+	FNarrativeSceneSquad* Squad = ActiveSquads.Find(SquadID);
+	if (!Squad || NodeIndex >= Squad->SceneTimeline.Num()) return;
+
+	const FNarrativeTimelineEntry& Node = Squad->SceneTimeline[NodeIndex];
+
+	NARRATIVE_LOG(Warning, TEXT("📜 ⚡ Timeline Node %d Triggered (T+%.1fs): %s"), 
+		NodeIndex, Squad->AccumulatedSceneTime, *Node.PlotUpdate);
+
+	// Update PlotOutline (context for LLM)
+	if (!Node.PlotUpdate.IsEmpty())
+	{
+		Squad->PlotOutline = Node.PlotUpdate;
+		
+		// Refresh context for all squad members (same logic as AssignMemberRole)
+		for (const TPair<AActor*, FString>& MemberPair : Squad->MemberRoles)
+		{
+			if (auto CogComp = AINPCHelpers::GetCognitionComponent(MemberPair.Key))
+			{
+				// Build combined role description (like AssignMemberRole does)
+				FString BaseRole;
+				if (auto PersComp = AINPCHelpers::GetPersonalityComponent(MemberPair.Key))
+				{
+					BaseRole = PersComp->Personality.RoleDescription;
+				}
+
+				FString CombinedRole;
+				if (!BaseRole.IsEmpty() && !BaseRole.Equals(TEXT("You are a neutral NPC")))
+				{
+					CombinedRole = FString::Printf(TEXT("%s\n\n[Scene Role: %s]\n[Scene Context: %s]"), 
+						*BaseRole, *MemberPair.Value, *Squad->PlotOutline);
+				}
+				else
+				{
+					CombinedRole = FString::Printf(TEXT("Role: %s. Scene Context: %s"), 
+						*MemberPair.Value, *Squad->PlotOutline);
+				}
+
+				// ✅ Directly set RoleDescription field (no UpdateRoleDescription method exists)
+				CogComp->RoleDescription = CombinedRole;
+				NARRATIVE_LOG(Warning, TEXT("   → Updated Role for %s"), *MemberPair.Key->GetName());
+			}
+		}
+	}
+
+	// Update Directive (behavior override)
+	if (Node.DirectiveOverride.IsValid())
+	{
+		for (const TPair<AActor*, FString>& MemberPair : Squad->MemberRoles)
+		{
+			AActor* NPC = MemberPair.Key;
+			
+			// 1. Apply to GoalComponent (for Utility AI)
+			if (auto GoalComp = AINPCHelpers::GetGoalComponent(NPC))
+			{
+				GoalComp->AddContextTag(Node.DirectiveOverride);
+			}
+			
+			// 2. Apply to Actor Tags (for FactionReputationComponent::EvaluateCombatPolicy)
+			FName TagName = Node.DirectiveOverride.GetTagName();
+			NPC->Tags.AddUnique(TagName);
+			
+			NARRATIVE_LOG(Warning, TEXT("   → Added Directive Tag for %s: %s (both GameplayTag and Actor Tag)"), 
+				*NPC->GetName(), *Node.DirectiveOverride.ToString());
+		}
+	}
+
+	// TODO: Trigger Bark if BarkID is set
+	// For now, we'll skip bark implementation
+}
+
+bool UNarrativeSquadSubsystem::GetSquadMembers(const AActor* ContextActor, TArray<AActor*>& OutMembers) const
+{
+	OutMembers.Empty();
+	if (!ContextActor) return false;
+
+	// 1. Find which squad this actor belongs to
+	const int32* SquadIDPtr = ActorSquadMap.Find(ContextActor);
+	if (!SquadIDPtr) return false;
+
+	int32 SquadID = *SquadIDPtr;
+
+	// 2. Get the squad
+	const FNarrativeSceneSquad* Squad = ActiveSquads.Find(SquadID);
+	if (!Squad || !Squad->bIsActive) return false;
+
+	// 3. Extract all members from MemberRoles map key
+	Squad->MemberRoles.GetKeys(OutMembers);
+
+	// Remove self
+	OutMembers.Remove(const_cast<AActor*>(ContextActor));
+
+	return OutMembers.Num() > 0;
+}
+
+
+void UNarrativeSquadSubsystem::ApplyTagToRole(int32 SquadID, FString RoleID, FGameplayTag Tag)
+{
+	if (!Tag.IsValid())
+	{
+		NARRATIVE_LOG(Warning, TEXT("ApplyTagToRole called with invalid tag for Role %s"), *RoleID);
+		return;
+	}
+
+	if (FNarrativeSceneSquad* Squad = ActiveSquads.Find(SquadID))
+	{
+		int32 Count = 0;
+		for (auto& Pair : Squad->MemberRoles)
+		{
+			AActor* NPC = Pair.Key;
+			FString NPCRole = Pair.Value; 
+
+			// Check if Role matches (Case insensitive)
+			if (NPCRole.Equals(RoleID, ESearchCase::IgnoreCase))
+			{
+				if (NPC)
+				{
+					// 1. Apply as FName Tag (for FactionReputationComponent::EvaluateCombatPolicy)
+					FName TagName = Tag.GetTagName();
+					NPC->Tags.AddUnique(TagName);
+					
+					// 2. Apply as GameplayTag (for UtilityAI GoalComponent or others)
+					if (auto GoalComp = AINPCHelpers::GetGoalComponent(NPC))
+					{
+						GoalComp->AddContextTag(Tag);
+					}
+
+					UE_LOG(LogAINPCSocial, Log, TEXT("[Narrative] Applied Tag '%s' to %s (Role: %s)"), 
+						*TagName.ToString(), *NPC->GetName(), *RoleID);
+					Count++;
+				}
+			}
+		}
+		
+		if (Count > 0)
+		{
+			NARRATIVE_LOG(Log, TEXT("Applied tag %s to %d actors with role %s in Squad %d"), 
+				*Tag.ToString(), Count, *RoleID, SquadID);
+		}
+		else
+		{
+			NARRATIVE_LOG(Warning, TEXT("ApplyTagToRole: No actors found with role %s in Squad %d"), *RoleID, SquadID);
+		}
+	}
+	else
+	{
+		NARRATIVE_LOG(Warning, TEXT("ApplyTagToRole: Squad %d not found!"), SquadID);
+	}
 }

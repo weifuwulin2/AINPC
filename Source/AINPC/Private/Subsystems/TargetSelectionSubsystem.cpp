@@ -1,0 +1,543 @@
+// Copyright Epic Games, Inc. All Rights Reserved.
+
+#include "Subsystems/TargetSelectionSubsystem.h"
+
+#include <Subsystems/NarrativeSquadSubsystem.h>
+
+#include "AINPC.h"
+#include "AIController.h"
+#include "Perception/AIPerceptionComponent.h"
+#include "Components/CognitionComponent.h"
+#include "Components/FactionReputationComponent.h"
+#include "Components/SensoryComponent.h"
+#include "Components/MemoryComponent.h" // ✅ Added
+#include "Utilities/AINPCHelpers.h"
+
+// ========================================
+// Main Entry Point
+// ========================================
+
+AActor* UTargetSelectionSubsystem::SelectTarget(
+	AAIController* Controller,
+	ETargetSelectionContext Context,
+	const FTargetSelectionConfig& Config
+)
+{
+	if (!Controller) return nullptr;
+
+	// ✅ Step 1: Check Cache First
+	AActor* CachedTarget = GetCachedTarget(Controller, Context);
+	if (CachedTarget)
+	{
+		// Verify cached target is still valid (not dead, still in range)
+		if (!CachedTarget->ActorHasTag("Dead"))
+		{
+			APawn* MyPawn = Controller->GetPawn();
+			if (MyPawn)
+			{
+				float Distance = FVector::Dist(MyPawn->GetActorLocation(), CachedTarget->GetActorLocation());
+				if (Distance <= Config.MaxDistance)
+				{
+					TARGET_LOG(Verbose, "Using cached target: %s for context: %d", 
+						*CachedTarget->GetName(), (int32)Context);
+					return CachedTarget;
+				}
+			}
+		}
+		
+		// Cache invalid, clear it
+		InvalidateCache(Controller);
+	}
+
+	// ✅ Step 2: Get Candidates
+	TArray<AActor*> Candidates = GetTargetCandidates(Controller, Context, Config);
+	
+	if (Candidates.Num() == 0)
+	{
+		TARGET_LOG(Warning, "No valid target candidates found for context: %d", (int32)Context);
+		return nullptr;
+	}
+
+	AActor* SelectedTarget = nullptr;
+
+	// ✅ Step 3: Performance-Aware Selection Strategy
+	bool bShouldUseLLM = Config.bUseLLMEnhancement;
+
+	// 🔥 Combat Context: Force Rule-Based (Real-time requirement)
+	if (Context == ETargetSelectionContext::Combat)
+	{
+		bShouldUseLLM = false;
+		TARGET_LOG(Verbose, "Combat context detected, forcing rule-based selection for performance");
+	}
+
+	// 📊 Too Many Candidates: Use Rule-Based (LLM token limit)
+	if (Candidates.Num() > 10 && bShouldUseLLM)
+	{
+		TARGET_LOG(Warning, "Too many candidates (%d), falling back to rule-based", Candidates.Num());
+		bShouldUseLLM = false;
+	}
+
+	// ✅ Step 4: Select Target
+	bool bWasFallback = false;
+	if (bShouldUseLLM)
+	{
+		// 🧠 LLM-Enhanced Selection (Slow but narrative-aware)
+		SelectedTarget = SelectTargetByLLM(Controller, Candidates, Context);
+		
+		// Fallback if LLM fails (returns null)
+		if (!SelectedTarget)
+		{
+			TARGET_LOG(Warning, "LLM selection failed/pending, falling back to rule-based");
+			SelectedTarget = SelectTargetByScoring(Controller, Candidates, Context, Config);
+			bWasFallback = true; // Mark as fallback so we don't cache this "temporary" decision long-term
+		}
+	}
+	else
+	{
+		// ⚡ Rule-Based Selection (Fast)
+		SelectedTarget = SelectTargetByScoring(Controller, Candidates, Context, Config);
+	}
+
+	// ✅ Step 5: Cache Result
+	// Don't cache if we fell back from LLM (waiting for async response), or if Config disables it
+	if (SelectedTarget && !bWasFallback)
+	{
+		CacheTarget(Controller, Context, SelectedTarget);
+	}
+	else if (bWasFallback)
+	{
+		TARGET_LOG(Verbose, "Skipping cache for fallback selection (waiting for LLM)");
+	}
+
+	return SelectedTarget;
+}
+
+// ========================================
+// Get Target Candidates
+// ========================================
+
+TArray<AActor*> UTargetSelectionSubsystem::GetTargetCandidates(
+	AAIController* Controller,
+	ETargetSelectionContext Context,
+	const FTargetSelectionConfig& Config
+)
+{
+	TArray<AActor*> Candidates;
+
+	APawn* MyPawn = Controller->GetPawn();
+	if (!MyPawn) return Candidates;
+
+	// Get AIPerceptionComponent to find perceived actors
+	UAIPerceptionComponent* PerceptionComp = Controller->FindComponentByClass<UAIPerceptionComponent>();
+	if (!PerceptionComp)
+	{
+		TARGET_LOG(Warning, "No AIPerceptionComponent found on %s", *Controller->GetName());
+		return Candidates;
+	}
+
+	// Get FactionComponent for reputation checks
+	UFactionReputationComponent* FactionComp = MyPawn->FindComponentByClass<UFactionReputationComponent>();
+
+	// Get all perceived actors
+	TArray<AActor*> PerceivedActors;
+	PerceptionComp->GetCurrentlyPerceivedActors(nullptr, PerceivedActors);
+
+	// ✅ Narrative Shared Awareness (Omniscience for Plot)
+	// If in a squad, we automatically "know" about other members (even if not seen)
+	if (UNarrativeSquadSubsystem* NarrativeSys = Controller->GetWorld()->GetSubsystem<UNarrativeSquadSubsystem>())
+	{
+		TArray<AActor*> SquadMembers;
+		if (NarrativeSys->GetSquadMembers(MyPawn, SquadMembers))
+		{
+			int32 InjectedCount = 0;
+			for (AActor* Member : SquadMembers)
+			{
+				if (Member && !PerceivedActors.Contains(Member))
+				{
+					PerceivedActors.Add(Member);
+					InjectedCount++;
+				}
+			}
+			if (InjectedCount > 0)
+			{
+				TARGET_LOG(Verbose, "   🌐 Injected %d Squad Members as candidates (Narrative Awareness)", InjectedCount);
+			}
+		}
+	}
+	
+	TARGET_LOG(Warning, "🔍 [GetTargetCandidates] Total Candidates (Perception + Narrative): %d", PerceivedActors.Num());
+
+	// Filter valid targets
+	for (AActor* Actor : PerceivedActors)
+	{
+		bool bIsValid = IsValidTarget(Actor, MyPawn, Context, Config, FactionComp);
+		TARGET_LOG(Verbose, "   - %s: %s", *Actor->GetName(), bIsValid ? TEXT("✅ VALID") : TEXT("❌ FILTERED"));
+		
+		if (bIsValid)
+		{
+			Candidates.Add(Actor);
+		}
+	}
+
+	TARGET_LOG(Warning, "🎯 [GetTargetCandidates] Final Candidates: %d (from %d perceived)", 
+		Candidates.Num(), PerceivedActors.Num());
+
+	return Candidates;
+}
+
+// ========================================
+// Rule-Based Scoring
+// ========================================
+
+AActor* UTargetSelectionSubsystem::SelectTargetByScoring(
+	AAIController* Controller,
+	const TArray<AActor*>& Candidates,
+	ETargetSelectionContext Context,
+	const FTargetSelectionConfig& Config
+)
+{
+	APawn* MyPawn = Controller->GetPawn();
+	if (!MyPawn || Candidates.Num() == 0) return nullptr;
+
+	TARGET_LOG(Warning, "🎯 [SelectTargetByScoring] Scoring %d candidates for %s (Context: %d)", 
+		Candidates.Num(), *MyPawn->GetName(), (int32)Context);
+
+	// Get components for scoring
+	UCognitionComponent* Cognition = MyPawn->FindComponentByClass<UCognitionComponent>();
+	UFactionReputationComponent* FactionComp = MyPawn->FindComponentByClass<UFactionReputationComponent>();
+	
+	TARGET_LOG(Warning, "   Components: Cognition=%s, FactionComp=%s", 
+		Cognition ? TEXT("YES") : TEXT("NO"), 
+		FactionComp ? TEXT("YES") : TEXT("NO"));
+
+	AActor* BestTarget = nullptr;
+	float BestScore = -100000.0f;  // Very low initial score
+
+	// Score each candidate
+	for (AActor* Candidate : Candidates)
+	{
+		float Score = CalculateTargetScore(Candidate, MyPawn, Context, Cognition, FactionComp);
+		
+		TARGET_LOG(Warning, "   → %s: Score = %.1f", *Candidate->GetName(), Score);
+
+		if (Score > BestScore)
+		{
+			BestScore = Score;
+			BestTarget = Candidate;
+		}
+	}
+
+	if (BestTarget)
+	{
+		TARGET_LOG(Warning, "   ✅ Selected: %s (Score: %.1f)", *BestTarget->GetName(), BestScore);
+	}
+	else
+	{
+		TARGET_LOG(Warning, "   ❌ No target selected (BestScore: %.1f)", BestScore);
+	}
+
+	return BestTarget;
+}
+
+float UTargetSelectionSubsystem::CalculateTargetScore(
+	AActor* Target,
+	APawn* MyPawn,
+	ETargetSelectionContext Context,
+	UCognitionComponent* Cognition,
+	UFactionReputationComponent* FactionComp
+)
+{
+	float Score = 0.0f;
+
+	FString TargetName = AINPCHelpers::GetSmartActorName(Target);
+
+	// ✅ Memory-Driven Priority (Highest weight)
+	if (Cognition)
+	{
+		// Check for "killed ally" memory
+		// Access MemoryComponent directly as Cognition doesn't expose retrieval
+		UMemoryComponent* MemoryComp = MyPawn->FindComponentByClass<UMemoryComponent>();
+		if (MemoryComp)
+		{
+			TArray<FMemoryItem> RelevantMemories = MemoryComp->RetrieveRelevantMemories(TargetName, 5);
+			for (const FMemoryItem& Memory : RelevantMemories)
+			{
+				if (Memory.Description.Contains("killed") && Memory.ImportanceScore > 7.0f)
+				{
+					Score += 1000.0f;  // Extreme priority - REVENGE
+					TARGET_LOG(Verbose, "Revenge bonus for %s (killed ally): +1000", *TargetName);
+					break;
+				}
+				else if (Memory.Description.Contains("attacked") && Memory.ImportanceScore > 5.0f)
+				{
+					Score += 500.0f;  // High priority - retaliation
+					TARGET_LOG(Verbose, "Retaliation bonus for %s: +500", *TargetName);
+				}
+			}
+		}
+	}
+
+	// ✅ Faction Reputation
+	if (FactionComp)
+	{
+		// GetAttitudeTowards returns 0-100, where lower = hostile, higher = friendly
+		float Attitude = FactionComp->GetAttitudeTowards(Target);
+
+		if (Context == ETargetSelectionContext::Combat)
+		{
+			if (Attitude < 25.0f)  // Hostile (below hostility threshold)
+			{
+				Score += (25.0f - Attitude) * 4.0f;  // 0-25 → +0 to +100 score
+			}
+			else if (Attitude > 75.0f)  // Friendly
+			{
+				Score -= 10000.0f;  // Heavily penalize attacking allies
+			}
+		}
+		else if (Context == ETargetSelectionContext::Social)
+		{
+			// For social, prefer friendly/neutral
+			if (Attitude > 50.0f)
+			{
+				Score += (Attitude - 50.0f) * 4.0f;  // 50-100 → +0 to +200
+			}
+		}
+	}
+
+	// ✅ Distance Factor (closer targets preferred)
+	float Distance = FVector::Dist(MyPawn->GetActorLocation(), Target->GetActorLocation());
+	float DistanceScore = FMath::Max(0.0f, (2000.0f - Distance) / 10.0f);  // +0 to +200
+	Score += DistanceScore;
+
+	// ✅ Aggression (is target attacking me?)
+	AActor* TargetsFocus = GetActorFocus(Target);
+	if (TargetsFocus == MyPawn)
+	{
+		Score += 300.0f;  // Prioritize counter-attack
+		TARGET_LOG(Verbose, "Target %s is attacking me: +300", *TargetName);
+	}
+
+	return Score;
+}
+
+// ========================================
+// LLM-Enhanced Selection
+// ========================================
+
+AActor* UTargetSelectionSubsystem::SelectTargetByLLM(
+	AAIController* Controller,
+	const TArray<AActor*>& Candidates,
+	ETargetSelectionContext Context
+)
+{
+	APawn* MyPawn = Controller->GetPawn();
+	if (!MyPawn) return nullptr;
+
+	UCognitionComponent* Cognition = MyPawn->FindComponentByClass<UCognitionComponent>();
+	if (!Cognition)
+	{
+		TARGET_LOG(Warning, "No CognitionComponent for LLM selection, falling back to scoring");
+		return nullptr;
+	}
+
+	// Convert actors to smart names
+	TArray<FString> CandidateNames;
+	TMap<FString, AActor*> NameToActorMap;
+
+	for (AActor* Actor : Candidates)
+	{
+		FString SmartName = AINPCHelpers::GetSmartActorName(Actor);
+		CandidateNames.Add(SmartName);
+		NameToActorMap.Add(SmartName, Actor);
+	}
+
+	// Get context string
+	FString ContextString;
+	switch (Context)
+	{
+		case ETargetSelectionContext::Combat:
+			ContextString = "combat";
+			break;
+		case ETargetSelectionContext::Social:
+			ContextString = "social interaction";
+			break;
+		case ETargetSelectionContext::Follow:
+			ContextString = "following someone";
+			break;
+		case ETargetSelectionContext::Trade:
+			ContextString = "trading";
+			break;
+		default:
+			ContextString = "unknown action";
+	}
+
+	// Ask LLM (will be implemented in CognitionComponent)
+	FString SelectedName = Cognition->SuggestTarget(CandidateNames, ContextString);
+
+	// Find actor by name
+	AActor** FoundActor = NameToActorMap.Find(SelectedName);
+	if (FoundActor && *FoundActor)
+	{
+		TARGET_LOG(Log, "LLM selected target: %s for context: %s", 
+			*SelectedName, *ContextString);
+		return *FoundActor;
+	}
+
+	TARGET_LOG(Warning, "LLM selection failed to find actor for: %s", *SelectedName);
+	return nullptr;
+}
+
+// ========================================
+// Validation & Helpers
+// ========================================
+
+bool UTargetSelectionSubsystem::IsValidTarget(
+	AActor* Target,
+	APawn* MyPawn,
+	ETargetSelectionContext Context,
+	const FTargetSelectionConfig& Config,
+	UFactionReputationComponent* FactionComp
+)
+{
+	if (!Target || Target == MyPawn) return false;
+
+	TARGET_LOG(Warning, "🔍 [IsValidTarget] Checking %s for %s (Context: %d)", 
+		*Target->GetName(), *MyPawn->GetName(), (int32)Context);
+
+	// Check if dead
+	if (Target->ActorHasTag("Dead"))
+	{
+		TARGET_LOG(Verbose, "   ❌ REJECTED: Dead");
+		return false;
+	}
+
+	// Check distance
+	float Distance = FVector::Dist(MyPawn->GetActorLocation(), Target->GetActorLocation());
+	if (Distance > Config.MaxDistance)
+	{
+		TARGET_LOG(Verbose, "   ❌ REJECTED: Distance %.0f > MaxDistance %.0f", Distance, Config.MaxDistance);
+		return false;
+	}
+
+	// Context-specific validation
+	if (Context == ETargetSelectionContext::Combat)
+	{
+		// For combat, avoid friendly targets
+		if (FactionComp)
+		{
+			float Attitude = FactionComp->GetAttitudeTowards(Target);
+			TARGET_LOG(Warning, "   → Attitude check: %.1f (Threshold: %.1f)", Attitude, Config.FriendlyReputationThreshold);
+			
+			if (Attitude > Config.FriendlyReputationThreshold)
+			{
+				TARGET_LOG(Warning, "   ❌ REJECTED: Too friendly (Attitude %.1f > %.1f)", 
+					Attitude, Config.FriendlyReputationThreshold);
+				return false;  // Too friendly to attack
+			}
+		}
+		else
+		{
+			TARGET_LOG(Warning, "   ⚠️ No FactionComp - skipping attitude check");
+		}
+	}
+
+	TARGET_LOG(Warning, "   ✅ ACCEPTED as valid target");
+	return true;
+}
+
+FName UTargetSelectionSubsystem::GetActorFaction(AActor* Actor)
+{
+	if (!Actor) return NAME_None;
+
+	// GetFactionID is static and requires an Actor parameter
+	return UFactionReputationComponent::GetFactionID(Actor);
+}
+
+AActor* UTargetSelectionSubsystem::GetActorFocus(AActor* Actor)
+{
+	if (!Actor) return nullptr;
+
+	APawn* Pawn = Cast<APawn>(Actor);
+	if (!Pawn) return nullptr;
+
+	AAIController* AI = Cast<AAIController>(Pawn->GetController());
+	return AI ? AI->GetFocusActor() : nullptr;
+}
+
+// ========================================
+// Caching System
+// ========================================
+
+AActor* UTargetSelectionSubsystem::GetCachedTarget(AAIController* Controller, ETargetSelectionContext Context)
+{
+	FTargetCacheKey Key;
+	Key.Controller = Controller;
+	Key.Context = Context;
+	Key.Timestamp = GetWorld()->GetTimeSeconds();
+
+	if (IsCacheValid(Key))
+	{
+		TWeakObjectPtr<AActor>* CachedPtr = TargetCache.Find(Key);
+		if (CachedPtr && CachedPtr->IsValid())
+		{
+			return CachedPtr->Get();
+		}
+	}
+
+	return nullptr;
+}
+
+void UTargetSelectionSubsystem::CacheTarget(AAIController* Controller, ETargetSelectionContext Context, AActor* Target)
+{
+	if (!Target) return;
+
+	FTargetCacheKey Key;
+	Key.Controller = Controller;
+	Key.Context = Context;
+	Key.Timestamp = GetWorld()->GetTimeSeconds();
+
+	TargetCache.Add(Key, Target);
+	
+	TARGET_LOG(Verbose, "Cached target: %s for context: %d (valid for %.1fs)", 
+		*Target->GetName(), (int32)Context, CacheDuration);
+}
+
+bool UTargetSelectionSubsystem::IsCacheValid(const FTargetCacheKey& Key) const
+{
+	const TWeakObjectPtr<AActor>* CachedPtr = TargetCache.Find(Key);
+	if (!CachedPtr || !CachedPtr->IsValid())
+	{
+		return false;
+	}
+
+	float CurrentTime = GetWorld()->GetTimeSeconds();
+	float Age = CurrentTime - Key.Timestamp;
+
+	return Age < CacheDuration;
+}
+
+void UTargetSelectionSubsystem::InvalidateCache(AAIController* Controller)
+{
+	// Remove all cached entries for this controller
+	TArray<FTargetCacheKey> KeysToRemove;
+	
+	for (const auto& Pair : TargetCache)
+	{
+		if (Pair.Key.Controller == Controller)
+		{
+			KeysToRemove.Add(Pair.Key);
+		}
+	}
+
+	for (const FTargetCacheKey& Key : KeysToRemove)
+	{
+		TargetCache.Remove(Key);
+	}
+
+	if (KeysToRemove.Num() > 0)
+	{
+		TARGET_LOG(Verbose, "Invalidated %d cache entries for controller: %s", 
+			KeysToRemove.Num(), *Controller->GetName());
+	}
+}
+

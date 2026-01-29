@@ -181,6 +181,36 @@
 		],
 		"CompletionTags": [
 			"Status.Dead"
+		],
+		"Timeline": [
+			{
+				"TimeOffset": 0.0,
+				"TriggerCondition": "",
+				"PlotUpdate": "The mining camp is in full operation. The Orc slaves toil endlessly under the watchful eyes of the Guards. The Lord oversees the brutal work with cold satisfaction.",
+				"DirectiveOverride": "",
+				"BarkID": ""
+			},
+			{
+				"TimeOffset": 15.0,
+				"TriggerCondition": "",
+				"PlotUpdate": "The slaves grow more restless. Whispers of rebellion start to circulate. The Guards tighten their patrols, sensing the tension.",
+				"DirectiveOverride": "",
+				"BarkID": ""
+			},
+			{
+				"TimeOffset": 10.0,
+				"TriggerCondition": "Event.PlayerDetected",
+				"PlotUpdate": "The stranger's presence emboldens the slaves! They rise up against their oppressors, attacking the Guards and the Lord!",
+				"DirectiveOverride": "Directive.Combat",
+				"BarkID": ""
+			},
+			{
+				"TimeOffset": 5.0,
+				"TriggerCondition": "Event.GuardsHostile",
+				"PlotUpdate": "The intruder has been deemed a threat! All Guards are ordered to eliminate the trespasser immediately. The slaves watch in terror as violence erupts.",
+				"DirectiveOverride": "Directive.Combat",
+				"BarkID": ""
+			}
 		]
 	}
 ]

@@ -1,5 +1,8 @@
 #include "World/NarrativeSceneAnchor.h"
+
+#include "AINPC.h"
 #include "Subsystems/NarrativeSquadSubsystem.h"
+#include "Subsystems/NarrativeDirectorSubsystem.h"
 #include "Components/SphereComponent.h"
 #include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerController.h"
@@ -11,20 +14,31 @@ ANarrativeSceneAnchor::ANarrativeSceneAnchor()
 	// Create a root component so this actor has a transform
 	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("SceneRoot"));
 
-	TriggerComponent = CreateDefaultSubobject<USphereComponent>(TEXT("TriggerSphere"));
-	TriggerComponent->SetupAttachment(RootComponent);
-	TriggerComponent->SetSphereRadius(ActivationRadius);  // Use configurable radius (default 2000)
-	TriggerComponent->SetCollisionProfileName(TEXT("Trigger"));
+	// ✅ Outer Trigger: Activates scene when player enters (larger radius)
+	SceneActivationTrigger = CreateDefaultSubobject<USphereComponent>(TEXT("SceneActivationTrigger"));
+	SceneActivationTrigger->SetupAttachment(RootComponent);
+	SceneActivationTrigger->SetSphereRadius(SceneActivationRadius);  // Default 2000
+	SceneActivationTrigger->SetCollisionProfileName(TEXT("Trigger"));
+
+	// ✅ Inner Trigger: Broadcasts Event.PlayerDetected when player gets close (smaller radius)
+	EventTrigger = CreateDefaultSubobject<USphereComponent>(TEXT("EventTrigger"));
+	EventTrigger->SetupAttachment(RootComponent);
+	EventTrigger->SetSphereRadius(EventTriggerRadius);  // Default 800
+	EventTrigger->SetCollisionProfileName(TEXT("Trigger"));
 }
 
 void ANarrativeSceneAnchor::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// Bind Overlap
-	if (TriggerComponent)
+	// Bind Overlaps for both triggers
+	if (SceneActivationTrigger)
 	{
-		TriggerComponent->OnComponentBeginOverlap.AddDynamic(this, &ANarrativeSceneAnchor::OnOverlapBegin);
+		SceneActivationTrigger->OnComponentBeginOverlap.AddDynamic(this, &ANarrativeSceneAnchor::OnSceneActivationOverlap);
+	}
+	if (EventTrigger)
+	{
+		EventTrigger->OnComponentBeginOverlap.AddDynamic(this, &ANarrativeSceneAnchor::OnEventTriggerOverlap);
 	}
 
 	if (UWorld* World = GetWorld())
@@ -39,23 +53,23 @@ void ANarrativeSceneAnchor::BeginPlay()
 				CurrentSquadID = SquadSystem->SpawnSceneAtAnchor(this, SceneTable, SupportedSceneID, NPCTable, false);
 				if (CurrentSquadID != -1)
 				{
-					UE_LOG(LogTemp, Log, TEXT("[NarrativeAnchor] Auto-spawned Squad %d for Scene '%s'"), CurrentSquadID, *SupportedSceneID.ToString());
+					NARRATIVE_LOG( Log, TEXT("[NarrativeAnchor] Auto-spawned Squad %d for Scene '%s'"), CurrentSquadID, *SupportedSceneID.ToString());
 				}
 				else
 				{
-					UE_LOG(LogTemp, Error, TEXT("[NarrativeAnchor] Failed to spawn scene! Check Output Log for Subsystem errors."));
+					NARRATIVE_LOG( Error, TEXT("[NarrativeAnchor] Failed to spawn scene! Check Output Log for Subsystem errors."));
 				}
 			}
 			else
 			{
-				UE_LOG(LogTemp, Warning, TEXT("[NarrativeAnchor] Missing DataTables! SceneTable: %s, NPCTable: %s. Cannot spawn."), 
+				NARRATIVE_LOG( Warning, TEXT("[NarrativeAnchor] Missing DataTables! SceneTable: %s, NPCTable: %s. Cannot spawn."), 
 					SceneTable ? TEXT("OK") : TEXT("MISSING"), 
 					NPCTable ? TEXT("OK") : TEXT("MISSING"));
 			}
 		}
 		else
 		{
-			UE_LOG(LogTemp, Error, TEXT("[NarrativeAnchor] Failed to get NarrativeSquadSubsystem!"));
+			NARRATIVE_LOG( Error, TEXT("[NarrativeAnchor] Failed to get NarrativeSquadSubsystem!"));
 		}
 	}
 		
@@ -75,37 +89,101 @@ void ANarrativeSceneAnchor::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	Super::EndPlay(EndPlayReason);
 }
 
-void ANarrativeSceneAnchor::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+// ✅ Helper: Check if actor is a player
+bool ANarrativeSceneAnchor::IsPlayerActor(AActor* Actor) const
+{
+	if (!Actor) return false;
+	
+	// Check for Player tag
+	if (Actor->ActorHasTag("Player")) return true;
+	
+	// Check if this is a Pawn controlled by a PlayerController
+	if (APawn* Pawn = Cast<APawn>(Actor))
+	{
+		return Cast<APlayerController>(Pawn->GetController()) != nullptr;
+	}
+	
+	return false;
+}
+
+// ✅ Outer Trigger: Activates the scene
+void ANarrativeSceneAnchor::OnSceneActivationOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
 	if (!bAutoTriggerOnOverlap) return;
+	if (!IsPlayerActor(OtherActor)) return;
+	if (CurrentSquadID == -1) return;
 	
-	// Check if already active? (SquadID valid + Squad Active?)
-	// ActivateScene checks IsActive internally, so it's safe to call repeatedly.
-	
-	if (OtherActor)
+	if (UWorld* World = GetWorld())
 	{
-		// ✅ More robust player detection: Check for PlayerController or Player tag
-		bool bIsPlayer = OtherActor->ActorHasTag("Player");
-		
-		// Also check if this is a Pawn controlled by a PlayerController
-		if (!bIsPlayer)
+		if (UNarrativeSquadSubsystem* SquadSystem = World->GetSubsystem<UNarrativeSquadSubsystem>())
 		{
-			if (APawn* Pawn = Cast<APawn>(OtherActor))
-			{
-				bIsPlayer = Cast<APlayerController>(Pawn->GetController()) != nullptr;
-			}
+			NARRATIVE_LOG( Warning, TEXT("🎬 [NarrativeAnchor] Player entered OUTER trigger! Activating Squad %d"), CurrentSquadID);
+			SquadSystem->ActivateScene(CurrentSquadID);
 		}
-		
-		if (bIsPlayer && CurrentSquadID != -1)
+	}
+}
+
+// ✅ Inner Trigger: Broadcasts Event.PlayerDetected
+void ANarrativeSceneAnchor::OnEventTriggerOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	if (!bAutoTriggerOnOverlap) return;
+	if (!IsPlayerActor(OtherActor)) return;
+	
+	if (UWorld* World = GetWorld())
+	{
+		if (UNarrativeDirectorSubsystem* Director = World->GetSubsystem<UNarrativeDirectorSubsystem>())
 		{
-			if (UWorld* World = GetWorld())
-			{
-				if (UNarrativeSquadSubsystem* SquadSystem = World->GetSubsystem<UNarrativeSquadSubsystem>())
-				{
-					UE_LOG(LogTemp, Warning, TEXT("[NarrativeAnchor] Player entered trigger! Activating Squad %d"), CurrentSquadID);
-					SquadSystem->ActivateScene(CurrentSquadID);
-				}
-			}
+			// ✅ RecordEvent takes (Description, Tags), not FNarrativeEvent
+			FString Description = FString::Printf(TEXT("Player entered %s event trigger zone"), *SupportedSceneID.ToString());
+			TArray<FName> EventTags;
+			EventTags.Add("Event.PlayerDetected");
+			
+			Director->RecordEvent(Description, EventTags);
+			
+			NARRATIVE_LOG( Warning, TEXT("📡 [NarrativeAnchor] Player entered INNER trigger! Broadcast Event.PlayerDetected for Scene %s"), *SupportedSceneID.ToString());
 		}
+	}
+}
+
+void ANarrativeSceneAnchor::ApplyTagToRole(FString RoleID, FGameplayTag Tag)
+{
+	NARRATIVE_LOG(Warning, TEXT("🎯 [NarrativeAnchor] ApplyTagToRole called: RoleID='%s', Tag='%s', SquadID=%d"), 
+		*RoleID, *Tag.ToString(), CurrentSquadID);
+
+	if (CurrentSquadID == -1)
+	{
+		NARRATIVE_LOG(Warning, TEXT("❌ ApplyTagToRole FAILED: Scene is not active (SquadID == -1)"));
+		return;
+	}
+
+	if (UWorld* World = GetWorld())
+	{
+		if (UNarrativeSquadSubsystem* SquadSystem = World->GetSubsystem<UNarrativeSquadSubsystem>())
+		{
+			NARRATIVE_LOG(Warning, TEXT("✅ Delegating to NarrativeSquadSubsystem..."));
+			SquadSystem->ApplyTagToRole(CurrentSquadID, RoleID, Tag);
+		}
+		else
+		{
+			NARRATIVE_LOG(Error, TEXT("❌ NarrativeSquadSubsystem not found!"));
+		}
+	}
+}
+
+void ANarrativeSceneAnchor::EnableCombatForRole(FString RoleID)
+{
+	NARRATIVE_LOG(Warning, TEXT("🔥 [NarrativeAnchor] EnableCombatForRole called for RoleID: '%s'"), *RoleID);
+	
+	// Resolve tag Event.Danger.Combat from SocialGameplayTags
+	FGameplayTag CombatTag = FGameplayTag::RequestGameplayTag(FName("Event.Danger.Combat"));
+	
+	if (CombatTag.IsValid())
+	{
+		NARRATIVE_LOG(Warning, TEXT("✅ Tag 'Event.Danger.Combat' resolved successfully"));
+		ApplyTagToRole(RoleID, CombatTag);
+	}
+	else
+	{
+		NARRATIVE_LOG(Error, TEXT("❌ EnableCombatForRole FAILED: Tag 'Event.Danger.Combat' not found!"));
 	}
 }

@@ -1,6 +1,7 @@
 #include "Components/NPCDefinitionComponent.h"
 #include "Components/UtilityAIComponent.h"
 #include "Components/PersonalityComponent.h"
+#include "Components/FactionReputationComponent.h"
 #include "Components/GoalComponent.h"
 #include "AIController.h"
 #include "AINPC.h"
@@ -177,6 +178,22 @@ void UNPCDefinitionComponent::ApplyDefinition(AAIController* Controller)
 
 	ApplyPersonality(Controller);
 	ApplyProfession(Controller);
+	ApplyFaction(Controller->GetPawn());
+}
+
+void UNPCDefinitionComponent::ApplyFaction(AActor* Owner)
+{
+	if (!Owner || FactionID.IsNone()) return;
+
+	if (UFactionReputationComponent* FactionComp = Owner->FindComponentByClass<UFactionReputationComponent>())
+	{
+		FactionComp->CurrentFactionID = FactionID;
+		AINPC_LOG(Log, "Applied FactionID: %s", *FactionID.ToString());
+	}
+	else
+	{
+		AINPC_LOG_WARNING("Failed to apply FactionID: FactionReputationComponent not found on Owner.");
+	}
 }
 
 void UNPCDefinitionComponent::ApplyPersonality(AAIController* Controller)

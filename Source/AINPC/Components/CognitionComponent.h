@@ -78,6 +78,16 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "AI | Cognition")
 	void ReportDecisionContext(const FString& WinnerName, const FString& RunnerUpName, float ConflictLevel);
 
+	/**
+	 * Ask LLM to suggest best target from candidates.
+	 * Used by TargetSelectionSubsystem for narrative-consistent target selection.
+	 * @param CandidateNames - List of potential targets (smart names)
+	 * @param SelectionContext - What is the target needed for? (combat, social, etc.)
+	 * @return Smart name of suggested target (or first candidate if LLM fails)
+	 */
+	UFUNCTION(BlueprintCallable, Category = "AI | Cognition")
+	FString SuggestTarget(const TArray<FString>& CandidateNames, const FString& SelectionContext);
+
 	// Context string describing the last significant decision conflict
 	UPROPERTY(VisibleAnywhere, Category = "AI | Cognition")
 	FString CurrentDecisionContext;
@@ -122,4 +132,9 @@ private:
 	FString BuildWorldviewBlock(const FString& FactionStr);
 	FString BuildContextBlock(const FString& ProfessionName, const FString& ProfessionDesc);
 	FString BuildVolatileBlock(const FString& Situation, const FString& Memories, const FString& GlobalHistory);
+
+	// ✅ Async Target Selection Support
+	TMap<FString, FString> CachedTargetSuggestions; // Context -> TargetName
+	TSet<FString> PendingTargetRequests;            // Contexts currently being queried
+	void OnTargetSuggestionReceived(bool bSuccess, const FString& Response, FString Context);
 };

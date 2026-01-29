@@ -65,4 +65,14 @@ namespace AINPCHelpers
 	 * @return NPCDefinitionComponent if found, nullptr otherwise
 	 */
 	AINPC_API UNPCDefinitionComponent* GetNPCDefinitionComponent(AActor* Actor);
+
+	/**
+	 * Get a smart, human-readable name for an actor.
+	 * Strategies:
+	 * 1. Personality ID (if valid)
+	 * 2. "Player" (if has tag)
+	 * 3. Actor Name (fallback)
+	 */
+	AINPC_API FString GetSmartActorName(AActor* Actor);
+
 }

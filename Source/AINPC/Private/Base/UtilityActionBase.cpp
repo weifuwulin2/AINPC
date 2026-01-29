@@ -37,13 +37,19 @@ void UUtilityActionBase::InitFromConfig(const FUtilityActionConfig& Config)
 	DirectiveTag = Config.DirectiveTag; // 用于 Goal Directive 匹配
     PersonalityInfluence = Config.PersonalityInfluence; // 数据驱动 PAM 配置
 
+    // Target Selection Config
+    bNeedsTarget = Config.bNeedsTarget;
+    TargetContext = Config.TargetContext;
+    TargetConfigOverride = Config.TargetConfigOverride;
+
     // ✅ Transition System fields
     Priority = Config.Priority;
     CommitmentTime = Config.CommitmentTime;
     ExitConditions = Config.ExitConditions;
     
-    UE_LOG(LogTemp, Warning, TEXT("[InitFromConfig] %s: Priority=%d, Commitment=%.1fs, ExitConditions=%d"), 
-           *Config.ActionName, (int32)Priority, CommitmentTime, ExitConditions.Num());
+    // Debug Log (Simplified)
+    // UE_LOG(LogTemp, Warning, TEXT("[InitFromConfig] %s: Priority=%d, Commitment=%.1fs"), 
+    //        *Config.ActionName, (int32)Priority, CommitmentTime);
 
     // Fix: Assign name from config if available
     if (!Config.ActionName.IsEmpty())

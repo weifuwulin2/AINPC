@@ -39,14 +39,77 @@ void UFactionReputationComponent::BeginPlay()
 	}
 }
 
+// Helper to determine if combat logic should supersede safety checks
+bool UFactionReputationComponent::EvaluateCombatPolicy(const AActor* Source, const AActor* Target) const
+{
+	if (!Source || !Target) return false;
+
+	UE_LOG(LogAINPC, Warning, TEXT("🔍 [CombatPolicy] Evaluating: %s → %s"), *Source->GetName(), *Target->GetName());
+
+	// 1. Physical Incapacitation (Highest Priority - Never Combat)
+	if (Source->ActorHasTag("Status.Dead") || Target->ActorHasTag("Status.Dead"))
+	{
+		UE_LOG(LogAINPC, Verbose, TEXT("   ❌ DENIED: Dead actor"));
+		return false;
+	}
+	if (Source->ActorHasTag("Status.Unconscious") || Target->ActorHasTag("Status.Unconscious"))
+	{
+		UE_LOG(LogAINPC, Verbose, TEXT("   ❌ DENIED: Unconscious actor"));
+		return false;
+	}
+
+	// 2. Explicit Combat Triggers (High Priority - Override Scene Safety)
+	auto HasCombatTag = [&](const AActor* Actor) -> bool
+	{
+		bool bHasCombat = Actor->ActorHasTag("Event.Danger.Combat");
+		bool bHasDirective = Actor->ActorHasTag("Directive.Combat");
+		bool bHasGuardsHostile = Actor->ActorHasTag("Event.GuardsHostile");
+		bool bHasLegacy = Actor->ActorHasTag("Combat.Allowed");
+		
+		bool bHasAny = bHasCombat || bHasDirective || bHasGuardsHostile || bHasLegacy;
+		
+		if (bHasAny)
+		{
+			UE_LOG(LogAINPC, Warning, TEXT("   ✅ %s has Combat Tag: Event.Danger=%d, Directive=%d, GuardsHostile=%d, Legacy=%d"), 
+				*Actor->GetName(), bHasCombat, bHasDirective, bHasGuardsHostile, bHasLegacy);
+		}
+		
+		return bHasAny;
+	};
+
+	bool bSourceHasCombat = HasCombatTag(Source);
+	bool bTargetHasCombat = HasCombatTag(Target);
+	
+	if (bSourceHasCombat || bTargetHasCombat)
+	{
+		UE_LOG(LogAINPC, Warning, TEXT("   ✅ ALLOWED: Combat Tag Override (Source=%d, Target=%d)"), bSourceHasCombat, bTargetHasCombat);
+		return true;
+	}
+
+	// 3. Narrative Scene Safety (Medium Priority - Default Peace)
+	bool bSourceInScene = Source->ActorHasTag("Status.InScene");
+	bool bTargetInScene = Target->ActorHasTag("Status.InScene");
+	
+	if (bSourceInScene || bTargetInScene)
+	{
+		UE_LOG(LogAINPC, Warning, TEXT("   ❌ DENIED: Scene Safety (Source.InScene=%d, Target.InScene=%d)"), bSourceInScene, bTargetInScene);
+		return false;
+	}
+
+	// 4. Default: Allow Combat (Let Faction logic decide hostility)
+	UE_LOG(LogAINPC, Verbose, TEXT("   ✅ ALLOWED: Default (no restrictions)"));
+	return true;
+}
+
 float UFactionReputationComponent::GetAttitudeTowards(AActor* Target) const
 {
 	if (!Target) return 50.0f;
 	
-	// NARRATIVE SAFETY: If in a scene, suppress hostility (unless scripted otherwise)
-	if (GetOwner()->ActorHasTag("Status.InScene") || Target->ActorHasTag("Status.InScene"))
+	// ✅ SEMANTIC POLICY CHECK
+	// Use centralized policy to determine if hostile interactions are permitted
+	if (!EvaluateCombatPolicy(GetOwner(), Target))
 	{
-		return 50.0f; 
+		return 50.0f; // Force Neutral/Peaceful
 	}
 
 	if (Target == GetOwner()) return 100.0f;

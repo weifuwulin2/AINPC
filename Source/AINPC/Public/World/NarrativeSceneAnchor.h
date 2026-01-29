@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "GameplayTagContainer.h" // For FGameplayTag
 #include "NarrativeSceneAnchor.generated.h"
 
 /**
@@ -29,8 +30,14 @@ public:
 	int32 CurrentSquadID = -1;
 
 	// --- Trigger Support ---
+	
+	/** Outer trigger: Activates the scene when player enters (larger radius) */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Narrative Trigger")
-	class USphereComponent* TriggerComponent;
+	class USphereComponent* SceneActivationTrigger;
+
+	/** Inner trigger: Broadcasts Event.PlayerDetected when player gets close (smaller radius) */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Narrative Trigger")
+	class USphereComponent* EventTrigger;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Narrative Trigger")
 	class UDataTable* SceneTable;
@@ -41,13 +48,43 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Narrative Trigger")
 	bool bAutoTriggerOnOverlap = true;
 
-	/** Activation radius for scene trigger (in Unreal units). Default 2000 = 20 meters. */
+	/** Outer trigger radius for scene activation (in Unreal units). Default 2000 = 20 meters. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Narrative Trigger")
-	float ActivationRadius = 2000.0f;
+	float SceneActivationRadius = 2000.0f;
+
+	/** Inner trigger radius for event broadcasting (in Unreal units). Default 800 = 8 meters. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Narrative Trigger", meta=(EditCondition="bAutoTriggerOnOverlap"))
+	float EventTriggerRadius = 800.0f;
+
+	// --- Dynamic Control API ---
+
+	/** 
+	 * Applies a GameplayTag to all actors with the specified RoleID in the current scene.
+	 * Delegates to NarrativeSquadSubsystem::ApplyTagToRole.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Narrative Control")
+	void ApplyTagToRole(FString RoleID, FGameplayTag Tag);
+
+	/**
+	 * Helper: Applies 'Event.Danger.Combat' to the specified RoleID.
+	 * Forces actors to enter combat mode, ignoring Scene Safety.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Narrative Control")
+	void EnableCombatForRole(FString RoleID);
 	
 protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
+	/** Callback for outer trigger: Activates the scene */
 	UFUNCTION()
-	void OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);};
+	void OnSceneActivationOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+
+	/** Callback for inner trigger: Broadcasts Event.PlayerDetected */
+	UFUNCTION()
+	void OnEventTriggerOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+
+private:
+	/** Helper: Check if actor is a player */
+	bool IsPlayerActor(AActor* Actor) const;
+};

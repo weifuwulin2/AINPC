@@ -9,8 +9,10 @@
 #include "UtilityAI/UNPCMentalState.h" // 确保路径引用正确
 #include "UtilityAI/MentalStateFields.h"  // ✅ 引入字段配置
 #include "Social/SocialTypes.h"           // ✅ 引入 EOCEANTrait 定义
+#include "Subsystems/TargetSelectionSubsystem.h"
 #include "UtilityActionBase.generated.h"
 
+enum class ETargetSelectionContext : uint8;
 class UUtilityActionBase;
 // 前置声明
 class AAIController;
@@ -160,7 +162,7 @@ struct FUtilityConsideration
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Consideration",
               meta = (DisplayName = "Variable to Consider",
                       ToolTip = "选择要考量的马斯洛变量或环境变量 / Select Maslow or environment variable to consider"))
-    EUtilityInputType InputType;
+    EUtilityInputType InputType = EUtilityInputType::Hunger;
 
     // 曲线类型：选择预设的数学曲线，避免必须创建 CurveAsset
     // Curve Type: Select preset math curve to avoid creating CurveAssets
@@ -170,7 +172,7 @@ struct FUtilityConsideration
     // (可选) 自定义响应曲线：如果设置了此项，将覆盖 CurveType (高级用法)
     // (Optional) Custom Response Curve: If set, overrides CurveType (Advanced usage)
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Response Curve")
-    UCurveFloat* ResponseCurve;
+    UCurveFloat* ResponseCurve = nullptr;
 };
 
 USTRUCT(BlueprintType)
@@ -262,6 +264,24 @@ struct FUtilityActionConfig : public FTableRowBase
 	TMap<EOCEANTrait, float> PersonalityInfluence;
 
     // =========================================================
+    // Target Selection Configuration
+    // =========================================================
+
+    // Does this action need a target?
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Target")
+    bool bNeedsTarget = false;
+
+    // Targeting context for Universal Target Selection
+    // Only used if bNeedsTarget is true
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Target", meta=(EditCondition="bNeedsTarget"))
+    ETargetSelectionContext TargetContext = ETargetSelectionContext::Combat;
+
+    // Target Selection Configuration Override (Optional)
+    // Allows overriding default distances, cache duration, LLM usage per action
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Target", meta=(EditCondition="bNeedsTarget"))
+    FTargetSelectionConfig TargetConfigOverride;
+
+    // =========================================================
     // Transition System Configuration
     // =========================================================
     
@@ -336,6 +356,16 @@ public:
 
     UPROPERTY(Transient)
     FString ActionName;
+
+    // --- Target Configuration (Runtime) ---
+    UPROPERTY(Transient)
+    bool bNeedsTarget = false;
+
+    UPROPERTY(Transient)
+    ETargetSelectionContext TargetContext = ETargetSelectionContext::Combat;
+
+    UPROPERTY(Transient)
+    FTargetSelectionConfig TargetConfigOverride;
 
     // =========================================================
     // Transition System Runtime Fields

@@ -46,7 +46,14 @@ namespace AINPCTags
 	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Directive_Rest);      // Relax, Sleep
 	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Directive_Survival);  // Eat, Heal, Flee
 	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Directive_Social);    // Talk, Trade
+	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Directive_Combat);    // Fight, Attack
 	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Directive_Idle);      // Wander, Stand
+
+	// Timeline Event Triggers (for Narrative System)
+	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_PlayerDetected);   // Player enters perception range
+	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_GuardsHostile);    // Guards become hostile
+	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_PlayerStillNear);  // Player didn't leave after warning
+	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_BanditAttacked);   // Bandit squad takes damage
 
 	// Specific Work Interactions (Sub-types of Interaction.Work)
 	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Work_Mine);           // Mining ("Interaction.Work.Mine") - Kept as Work_Mine per request

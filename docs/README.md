@@ -16,6 +16,8 @@ Welcome to the AINPC Knowledge Base. This index serves as the central hub for al
 *   [**Personality Pipeline**](design/Personality_OCEAN_Maslow_LLM_Pipeline.md) - Detailed flow from OCEAN traits to Maslow needs to LLM prompts.
 *   [**Jurisdiction System**](design/Maslow_Variables_Jurisdiction.md) - Rules defining whether the Engine, Utility AI, or LLM controls specific state variables.
 *   [**Utility AI Algorithm**](design/UtilityAI_TwoPhase_Algorithm.md) - Explanation of the specific scoring algorithm used.
+*   [**Narrative Evolution**](design/NarrativeEvolution_Design.md) - Design for Story Timeline, Directors, and Scenes.
+*   [**Universal Target Selection**](design/Universal_Target_Selection.md) - Design for Hybrid Rule-Based + LLM target acquisition.
 
 ### 🛠️ Configuration Guides
 *   [**Single Point Config**](guides/Single_Point_Configuration_Guide.md) - How to add new mental states using the `MentalStateFields.h` macro system.
@@ -44,4 +46,4 @@ Welcome to the AINPC Knowledge Base. This index serves as the central hub for al
 *   [**Concurrent Request Fix**](reports/Bug4_Fix_Report.md)
 
 ---
-*Last Updated: 2026-01-26*
+*Last Updated: 2026-01-29*

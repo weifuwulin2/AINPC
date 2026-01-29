@@ -73,4 +73,43 @@ namespace AINPCHelpers
 	{
 		return FindComponentInHierarchy<UNPCDefinitionComponent>(Actor);
 	}
+
+	FString GetSmartActorName(AActor* Actor)
+	{
+		FString TargetName = "Unknown";
+		if (!Actor) return TargetName;
+
+		// 1. Try NPC Definition (Highest Priority - Custom Names)
+		if (UNPCDefinitionComponent* DefComp = GetNPCDefinitionComponent(Actor))
+		{
+			FString DisplayName = DefComp->GetDisplayName();
+			if (!DisplayName.IsEmpty() && DisplayName != "Citizen" && DisplayName != "Zombie")
+			{
+				return DisplayName;
+			}
+		}
+
+		// 2. Try Personality Component
+		if (UPersonalityComponent* PersonalityComp = GetPersonalityComponent(Actor))
+		{
+			if (!PersonalityComp->PersonalityID.IsNone())
+			{
+				TargetName = PersonalityComp->PersonalityID.ToString();
+			}
+		}
+		
+		// 2. Try Player Tag
+		if (TargetName == "Unknown" && Actor->ActorHasTag("Player"))
+		{
+			TargetName = "Player";
+		}
+		
+		// 3. Fallback to Object Name
+		if (TargetName == "Unknown")
+		{
+			TargetName = Actor->GetName();
+		}
+		
+		return TargetName;
+	}
 }

@@ -16,9 +16,10 @@
 #include "Subsystems/NarrativeDirectorSubsystem.h"
 #include "Subsystems/NarrativeSquadSubsystem.h"
 #include "UtilityAI/MentalStateInterpolation.h"
+#include "Components/MemoryComponent.h" // ✅ Added
+#include "Social/SocialTypes.h"         // ✅ Added
 
 // ✅ Performance Tracking
-DECLARE_CYCLE_STAT(TEXT("Cognition - Lazy Fetch"), STAT_CognitionLazyFetch, STATGROUP_Game);
 
 UCognitionComponent::UCognitionComponent()
 {
@@ -694,6 +695,94 @@ FString UCognitionComponent::BuildContextBlock(const FString& ProfessionName, co
         }
     }
     return ContextBlock;
+}
+
+// ========================================
+// Target Selection (Async LLM)
+// ========================================
+
+FString UCognitionComponent::SuggestTarget(const TArray<FString>& CandidateNames, const FString& SelectionContext)
+{
+	if (CandidateNames.Num() == 0) return TEXT("");
+	if (!bEnableReasoning || !LLMService) return TEXT("");
+
+	// 1. Check if we have a cached suggestion
+	FString* CachedResult = CachedTargetSuggestions.Find(SelectionContext);
+	
+	// If pending, just return what we have (or empty if nothing yet)
+	if (PendingTargetRequests.Contains(SelectionContext))
+	{
+		return CachedResult ? *CachedResult : TEXT("");
+	}
+
+	// 2. Refresh logic: trusted TargetSelectionSubsystem to only call when cache expires
+	// Initiate new request
+	PendingTargetRequests.Add(SelectionContext);
+
+	// --- Build Prompt ---
+	FString Prompt = FString::Printf(
+		TEXT("You are %s. You need to choose a target for: %s.\n\n"),
+		*RoleDescription,
+		*SelectionContext
+	);
+
+	// Add Memories
+	if (MemoryComp)
+	{
+		Prompt += TEXT("Your recent memories:\n");
+		// Use a broad query for memories related to interaction
+		TArray<FMemoryItem> Memories = MemoryComp->RetrieveRelevantMemories("combat attack kill friend enemy interaction", 5);
+		for (const FMemoryItem& Memory : Memories)
+		{
+			if (Memory.ImportanceScore > 5.0f)
+			{
+				Prompt += FString::Printf(TEXT("- %s (Importance: %.1f)\n"), *Memory.Description, Memory.ImportanceScore);
+			}
+		}
+	}
+
+	// Add Candidates
+	Prompt += TEXT("\nAvailable candidates:\n");
+	for (const FString& Name : CandidateNames)
+	{
+		Prompt += FString::Printf(TEXT("- %s\n"), *Name);
+	}
+
+	Prompt += FString::Printf(
+		TEXT("\nWho should you choose? Reply with ONLY the name from the candidate list. No explanation.")
+	);
+
+	// --- Send Request ---
+	LLMService->SendRequestRaw(Prompt, FOnLLMResponseRaw::CreateLambda(
+		[this, SelectionContext](bool bSuccess, const FString& Response)
+		{
+			this->OnTargetSuggestionReceived(bSuccess, Response, SelectionContext);
+		}
+	));
+
+	return CachedResult ? *CachedResult : TEXT("");
+}
+
+void UCognitionComponent::OnTargetSuggestionReceived(bool bSuccess, const FString& Response, FString Context)
+{
+	PendingTargetRequests.Remove(Context);
+
+	if (bSuccess && !Response.IsEmpty())
+	{
+		FString CleanResponse = Response.TrimStartAndEnd();
+		// Remove punctuation if any
+		CleanResponse = CleanResponse.Replace(TEXT("."), TEXT(""));
+		
+		CachedTargetSuggestions.Add(Context, CleanResponse);
+		
+		UE_LOG(LogAINPCBrain, Log, TEXT("[%s] LLM Suggests Target for %s: %s"), 
+			*GetOwner()->GetName(), *Context, *CleanResponse);
+	}
+	else
+	{
+		UE_LOG(LogAINPCBrain, Warning, TEXT("[%s] LLM Target Selection Failed for %s"), 
+			*GetOwner()->GetName(), *Context);
+	}
 }
 
 FString UCognitionComponent::BuildVolatileBlock(const FString& Situation, const FString& Memories, const FString& GlobalHistory)

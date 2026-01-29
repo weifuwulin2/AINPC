@@ -9,6 +9,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - 2026-01-29
 
+### 🐛 Major Fixes - Combat & Target Selection
+- **Fixed Silent Target Selection Failure**: Identified and fixed critical architecture flaw where Guards (`BP_NPC_Human_Base`) and Player (`BP_ThirdPersonCharacter`) lacked `FactionReputationComponent`.
+  - **Resolution**: Hard-coded the component into C++ base classes `AAINPCCharacter` and `ACombatEnemy`.
+  - **Impact**: All characters now correctly process Faction Attitudes (Hostile/Friendly) instead of default Neutral behavior.
+  - **Fixed Faction Initialization**: Updated `NPCDefinitionComponent` to actively push `FactionID` to `FactionReputationComponent`. Previously, the component existed but remained Neutral even for hostility-configured NPCs.
+
+- **Fixed Narrative Combat Visibility**: Solved issue where plot-relevant actors couldn't attack each other if perceived line-of-sight was blocked.
+  - **Narrative Target Injection**: Implemented `GetSquadMembers` in `NarrativeSquadSubsystem` and integrated it into `TargetSelectionSubsystem`.
+  - **Shared Awareness**: Narrative Squad members now share "Omniscient" awareness of each other, ensuring combat triggers regardless of physical perception.
+
+### 🐛 Fixes - Narrative System
+- **Fixed Death Event Logging**: NPCs now report death events using their Narrative Name (e.g., "Grommash") instead of internal Personality IDs (e.g., "Paranoid").
+  - Updated `AINPCHelpers::GetSmartActorName` to prioritize `NPCDefinitionComponent::GetDisplayName()`.
+- **Fixed Timeline Configuration**: Corrected `DT_NarrativeScenes` Node 2 using `Directive.Social` instead of `Directive.Combat`.
+- **Fixed Tag Confusion**: Clarified combat logic priority: `Directive.Combat` (Unlock) > `Status.InScene` (Lock).
+
+## [Unreleased] - 2026-01-29
+
+### ✨ Features - Universal Target Selection
+- **New Subsystem**: Implemented `TargetSelectionSubsystem` to centralize target acquisition.
+  - **Hybrid Selection Strategy**: Combines Rule-Based Scoring (Fast, Combat) with Async LLM Selection (Slow, Narrative).
+  - **Caching System**: Reduces CPU/LLM load by caching valid targets for 5s (configurable).
+  - **LLM Fallback**: Automatically falls back to Rule-Based if LLM is too slow or fails.
+- **Cognition Integration**: Added `SuggestTarget(Candidates, Context)` to `CognitionComponent`.
+  - Generates context-aware prompts ("Who should I attack?", "Who should I help?").
+  - Includes Memory (Revenge/Gratitude) and Social Context in the decision process.
+- **Action Configuration**: Updated `UtilityActionBase` with Data-Driven Target Config.
+  - `bNeedsTarget`: Switch to enable/disable targeting.
+  - `TargetContext`: Combat, Social, Trade, Follow.
+  - `TargetConfigOverride`: Per-action customization of distance and selection rules.
+
+### 🔧 Fixes & Refactors
+- **Action_Attack Refactor**: Migrated `Action_Attack` to use the new `TargetSelectionSubsystem`, removing ad-hoc `GetFocusActor` dependencies (retained as fallback).
+- **Compilation Fixes**: 
+  - Fixed `UHT` error in `TargetSelectionSubsystem` (Config=Game).
+  - Fixed `FMemoryEntry` type mismatch (migrated to `FMemoryItem` from SocialTypes).
+  - Added `GetSmartActorName` helper to `AINPCHelpers`.
+
+### ✨ Features - Narrative Evolution System
+- **Timeline Architecture**: Implemented `FNarrativeTimelineEntry` and sequence logic in `NarrativeSquadSubsystem`.
+  - Supports phased story beats (e.g., Intro -> Action -> Climax) driven by a Director.
+  - **Hybrid Triggers**: Beats can be triggered by Time (Delay) OR Events (Gameplay Tags).
+- **Event Broadcasting**: Implemented `Event.PlayerDetected` and `BroadcastEvent` API.
+  - Allows world interactions (Trigger Volumes) to advance the narrative timeline.
+- **Prompt Optimization**: Refactored `CognitionComponent` prompt assembly order.
+  - Context/Plot now injected *after* Identity to ensure scene instructions override base behavior.
+
+### 🔧 Logging & Debugging
+- **NARRATIVE_LOG**: Added specialized log category `LogAINPCNarrative` for clean story debugging.
+
+## [Unreleased] - 2026-01-29
+
 ### 🔧 Fixes - Prompt Caching \& Cognition System
 - **Fixed Neutral Faction Blocking**: Modified `CognitionComponent::IsDataReady()` to allow `Faction="Neutral"` for civilian NPCs.
   - Previously blocked all NPCs with Neutral faction from sending LLM requests (infinite retry loops).

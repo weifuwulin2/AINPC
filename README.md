@@ -232,6 +232,18 @@ We maintain a detailed documentation library. Please visit **[📚 Knowledge Bas
 
 ## 🎉 Latest Updates
 
+### v0.6.4 - Narrative Evolution & Universal Targeting (2026-01-29)
+
+#### 🎭 Narrative Evolution
+- **Timeline System**: Implemented `FNarrativeTimelineEntry` for directed storytelling (Intro -> Climax -> Resolution).
+- **Hybrid Triggers**: Scenes progress via Time Delays OR Gameplay Events (e.g., Player detection).
+- **Event Broadcasting**: World interactions now drive the narrative forward.
+
+#### 🎯 Universal Target Selection
+- **Hybrid Targeting**: New Subsystem combines fast Rule-Based scoring (Combat) with slow, thoughtful LLM selection (Social/Narrative).
+- **Async Cognition**: NPCs can now "think" about who to target ("Who killed my friend?") without blocking the game thread.
+- **Smart Caching**: 5s cache ensures high performance in crowded scenes.
+
 ### v0.6.3 - P0 Architecture Stability & Settings (2026-01-29)
 
 #### ⚡ P0 Refactors & Configuration

@@ -17,6 +17,7 @@
 #include "Components/MonsterComponent.h"
 #include "Controller/UtilityAIController.h"
 #include "Components/SensoryComponent.h"
+#include "Components/FactionReputationComponent.h"
 #include "Kismet/GameplayStatics.h"
 
 ACombatEnemy::ACombatEnemy()
@@ -41,6 +42,9 @@ ACombatEnemy::ACombatEnemy()
 
 	// create NPC Definition (Profile)
 	NPCDefinition = CreateDefaultSubobject<UNPCDefinitionComponent>(TEXT("NPCDefinition"));
+
+	// Faction Reputation Component
+	FactionReputationComponent = CreateDefaultSubobject<UFactionReputationComponent>(TEXT("FactionReputationComponent"));
 
 	// set the collision capsule size
 	GetCapsuleComponent()->SetCapsuleSize(35.0f, 90.0f);

@@ -8,10 +8,12 @@
 DECLARE_LOG_CATEGORY_EXTERN(LogAINPC, Log, All);
 
 /** Dedicated Log Categories for Phase 4 Debugging */
-DECLARE_LOG_CATEGORY_EXTERN(LogAINPCBrain, Log, All);    // Decision making (LOD, Directives)
-DECLARE_LOG_CATEGORY_EXTERN(LogAINPCMemory, Log, All);   // Memory system (Store, Decay, Retrieve)
-DECLARE_LOG_CATEGORY_EXTERN(LogAINPCSocial, Log, All);   // Social interactions (Gossip, Speak)
-DECLARE_LOG_CATEGORY_EXTERN(LogAINPCUtility, Log, All);  // Utility AI (Scoring, Actions)
+DECLARE_LOG_CATEGORY_EXTERN(LogAINPCBrain, Log, All);      // Decision making (LOD, Directives)
+DECLARE_LOG_CATEGORY_EXTERN(LogAINPCMemory, Log, All);     // Memory system (Store, Decay, Retrieve)
+DECLARE_LOG_CATEGORY_EXTERN(LogAINPCSocial, Log, All);     // Social interactions (Gossip, Speak)
+DECLARE_LOG_CATEGORY_EXTERN(LogAINPCUtility, Log, All);    // Utility AI (Scoring, Actions)
+DECLARE_LOG_CATEGORY_EXTERN(LogAINPCNarrative, Log, All);  // Narrative Timeline (Squad, Scene, Events)
+DECLARE_LOG_CATEGORY_EXTERN(LogAINPCTargetSelection, Log, All);  // Target Selection (Combat, Social, etc.)
 
 /**
  * Logging macros with automatic class name prefix.
@@ -52,3 +54,11 @@ DECLARE_LOG_CATEGORY_EXTERN(LogAINPCUtility, Log, All);  // Utility AI (Scoring,
 /** Utility Log: Action scoring, consideration values, winning action selection. */
 #define UTILITY_LOG(Verbosity, Format, ...) \
     UE_LOG(LogAINPCUtility, Verbosity, TEXT("[%s] " Format), *FString(__FUNCTION__).Left(FString(__FUNCTION__).Find(TEXT("::"))), ##__VA_ARGS__)
+
+/** Narrative Log: Timeline progression, scene activation, event triggers. */
+#define NARRATIVE_LOG(Verbosity, Format, ...) \
+    UE_LOG(LogAINPCNarrative, Verbosity, TEXT("[%s] " Format), *FString(__FUNCTION__).Left(FString(__FUNCTION__).Find(TEXT("::"))), ##__VA_ARGS__)
+
+/** Target Selection Log: Target selection process, scoring, caching. */
+#define TARGET_LOG(Verbosity, Format, ...) \
+    UE_LOG(LogAINPCTargetSelection, Verbosity, TEXT("[%s] " Format), *FString(__FUNCTION__).Left(FString(__FUNCTION__).Find(TEXT("::"))), ##__VA_ARGS__)

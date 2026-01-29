@@ -95,6 +95,7 @@ public:
 	void ApplyDefinition(AAIController* Controller);
 	void ApplyPersonality(AAIController* Controller);
 	void ApplyProfession(AAIController* Controller);
+	void ApplyFaction(AActor* Owner);
 
 	/** Retrieves the full Backstory definition based on BackstoryID. */
 	UFUNCTION(BlueprintCallable, Category = "NPC Profile")

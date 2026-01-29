@@ -52,6 +52,10 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	class UNPCDefinitionComponent* NPCDefinition;
 
+	/** Faction Reputation Component */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	class UFactionReputationComponent* FactionReputationComponent;
+
 
 public:
 

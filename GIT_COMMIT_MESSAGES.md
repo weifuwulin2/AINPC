@@ -583,3 +583,53 @@ This file contains a log of commit messages for the AINPC project.
 - Threat detection based on actual enemy presence (Faction Attitude), not text parsing.
 - More maintainable, modular code structure for `ProcessStimulus`.
 
+---
+
+## [2026-01-29] Narrative Evolution: Timeline & Event System
+**Type**: feat
+**Scope**: NarrativeSquadSubsystem, CognitionComponent
+**Description**:
+- **Timeline System**: Implemented `FNarrativeTimelineEntry` for phased storytelling.
+- **Hybrid Triggers**: Supported dual triggers (Time delay + Event tag).
+- **Event Broadcasting**: Integrated `NarrativeSceneAnchor::OnOverlap` with `Event.PlayerDetected`.
+- **Debug**: Added `NARRATIVE_LOG` macro.
+- **Refactor**: Reordered Prompt Segments to prioritize Context over Identity.
+
+---
+
+## [2026-01-29] Universal Target Selection & Async AI Targeting
+**Type**: feat/refactor
+**Scope**: UtilityAI, TargetSelectionSubsystem
+**Description**:
+- **New Subsystem**: Implemented `TargetSelectionSubsystem` (Hybrid Rule-Based + LLM).
+  - Caches targets for 5s to reduce overhead.
+  - LLM Fallback: If LLM is slow, temporarily uses Rule-Based scoring.
+- **Cognition Integration**: Added `SuggestTarget` for async LLM decision making.
+- **Action Refactor**: `Action_Attack` now uses Subsystem; `UtilityActionBase` supports Target Config.
+- **Fixes**: Fixed `FMemoryEntry` -> `FMemoryItem` type mismatch; Added `GetSmartActorName`.
+
+---
+
+## [2026-01-29] Narrative Combat & Target Selection Critical Fixes
+**Type**: fix/feat
+**Scope**: TargetSelectionSubsystem, NarrativeSquadSubsystem, FactionReputationComponent
+**Description**:
+- **Fixed Silent Faction Failure**: Hardcoded `FactionReputationComponent` into `AAINPCCharacter` and `ACombatEnemy` base classes.
+  - Resolved issue where characters without Blueprint-added components defaulted to Neutral behavior despite hostility configs.
+  - Updated `NPCDefinitionComponent` to actively inject `FactionID` into the component to prevent "Brainless Glitch".
+- **Narrative Target Injection**: Implemented Shared Awareness for Narrative Squads.
+  - `TargetSelectionSubsystem` now queries `NarrativeSquadSubsystem::GetSquadMembers` to inject squadmates into the target pool.
+  - Ensures plot-critical combat (e.g. Slave Uprising) triggers even if actors are not in direct line-of-sight.
+- **Narrative Name Resolution**: Updated `AINPCHelpers::GetSmartActorName` to prioritize `NPCDefinitionComponent` names.
+  - Fixed Death Logs showing internal IDs ("Paranoid") instead of characters ("Grommash").
+- **Fixed Timeline Logic**: Corrected `DT_NarrativeScenes` using wrong `Directive` tag for combat node.
+
+**Files Changed**:
+- `Source/AINPC/Public/Subsystems/NarrativeSquadSubsystem.h/.cpp`
+- `Source/AINPC/Private/Subsystems/TargetSelectionSubsystem.cpp`
+- `Source/AINPC/Components/NPCDefinitionComponent.h/.cpp`
+- `Source/AINPC/Components/FactionReputationComponent.h`
+- `Source/AINPC/Private/Utilities/AINPCHelpers.cpp`
+- `Source/AINPC/Variant_Combat/AI/CombatEnemy.h/.cpp`
+- `Source/AINPC/AINPCCharacter.h/.cpp`
+

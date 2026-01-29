@@ -8,6 +8,8 @@
 #include "UtilityAI/UNPCMentalState.h"
 #include "AINPC.h"
 
+#include "Subsystems/TargetSelectionSubsystem.h" // ✅ Added include
+
 UAction_Attack::UAction_Attack()
 {
 	ActionName = "Attack";
@@ -16,7 +18,9 @@ UAction_Attack::UAction_Attack()
 	TargetActor = nullptr;
 	OwningController = nullptr;
 	
-	// No need to set InputWeights, Priority, etc. here - they come from DataTable via InitFromConfig
+	// Default Target Config (Can be overwritten by DataTable)
+	bNeedsTarget = true;
+	TargetContext = ETargetSelectionContext::Combat;
 }
 
 void UAction_Attack::Enter_Implementation(AAIController* Controller)
@@ -30,15 +34,69 @@ void UAction_Attack::Enter_Implementation(AAIController* Controller)
 	}
 
 	OwningController = Controller;
-	TargetActor = Controller->GetFocusActor();
+	
+	AINPC_LOG(Warning, "🎯 Action_Attack::Enter called - bNeedsTarget: %s, Controller: %s", 
+		bNeedsTarget ? TEXT("TRUE") : TEXT("FALSE"), 
+		Controller ? *Controller->GetName() : TEXT("NULL"));
+	
+	// ✅ Universal Target Selection Integration
+	// -----------------------------------------------------
+	if (bNeedsTarget)
+	{
+		if (UTargetSelectionSubsystem* TargetSystem = GetWorld()->GetSubsystem<UTargetSelectionSubsystem>())
+		{
+			// Merge Action config with Override
+			FTargetSelectionConfig Config = TargetConfigOverride;
+			
+			// 🔍 Diagnostic: Check candidates BEFORE selection
+			TArray<AActor*> Candidates = TargetSystem->GetTargetCandidates(Controller, TargetContext, Config);
+			AINPC_LOG(Log, "Action_Attack: Found %d target candidates before selection", Candidates.Num());
+			
+			// Select best target (Cached, Rule-Based, or LLM)
+			TargetActor = TargetSystem->SelectTarget(Controller, TargetContext, Config);
+			
+			if (TargetActor)
+			{
+				AINPC_LOG(Log, "Action_Attack: ✅ Selected target '%s' via Subsystem (Context: %d)", 
+					*TargetActor->GetName(), (int32)TargetContext);
+			}
+			else
+			{
+				AINPC_LOG_WARNING("Action_Attack: ❌ Target Selection failed! No valid target found (Candidates: %d)", Candidates.Num());
+			}
+		}
+		else
+		{
+			AINPC_LOG_ERROR("Action_Attack: TargetSelectionSubsystem not found!");
+		}
+	}
+	
+	// Fallback to legacy behavior if Subsystem failed or bNeedsTarget is false (but we still want Focus)
+	if (!TargetActor)
+	{
+		TargetActor = Controller->GetFocusActor();
+		if (TargetActor)
+		{
+			AINPC_LOG(Log, "Action_Attack: Using fallback FocusActor: %s", *TargetActor->GetName());
+		}
+		else
+		{
+			AINPC_LOG_WARNING("Action_Attack: Fallback FocusActor is also null!");
+		}
+	}
+
 	bIsAttacking = false;
 	bHasDealtDamage = false;
 	
 	if (!TargetActor)
 	{
-		AINPC_LOG_WARNING("Action_Attack: No target focused!");
+		AINPC_LOG_WARNING("Action_Attack: ⚠️ No target available - Action will be inactive!");
 		return;
 	}
+	
+	// ✅ UPDATE FOCUS
+	// Ensure Controller focuses on the selected target
+	Controller->SetFocus(TargetActor);
 
 	AINPC_LOG(Log, "⚔️ ATTACK ACTION ENTERED - Target: %s", *TargetActor->GetName());
 }

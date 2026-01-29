@@ -58,4 +58,11 @@ public:
 	/** Helper to find FactionID of any actor (tries Component -> Tag -> Default) */
 	UFUNCTION(BlueprintCallable, Category = "Faction")
 	static FName GetFactionID(AActor* Actor);
+
+	/** 
+	 * Centralized policy to check if combat is allowed regardless of context (e.g. Scene Safety).
+	 * Resolves Tags like Event.Danger, Directive.Combat, etc.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Faction")
+	bool EvaluateCombatPolicy(const AActor* Source, const AActor* Target) const;
 };
