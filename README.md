@@ -26,75 +26,42 @@
 
 ---
 
-## 🎯 Project Introduction
+## 🎯 Project Overview
 
-**AINPC** is an innovative AI NPC system designed to solve the problems of slow response and rigid actions in traditional LLM Agents. Through a **dual-layer decoupled design**, it achieves a perfect combination of intelligent decision-making and real-time response:
+**AINPC** is a **next-generation Game AI solution** that transforms static NPCs into living, breathing characters. Unlike traditional behavior trees (predictable) or raw LLM agents (slow/expensive), AINPC uses a **Hybrid Architecture** to deliver **millisecond-level gameplay response** with **LLM-powered reasoning**.
 
-- **🧠 Cognitive Layer**: Uses LLM to process complex unstructured data (dialogue, environmental perception) and outputs structured emotional parameters.
-- **💪 Action Layer**: Uses a Utility AI system to calculate optimal actions in real-time based on emotional parameters, ensuring **millisecond-level response**.
-
-### Core Advantages
-
-| Traditional LLM Agent | AINPC Hybrid Architecture |
-|:----------------------|:--------------------------|
-| ❌ Response Latency 1-3s | ✅ Action Response < 50ms |
-| ❌ Rigid, Disjointed Actions | ✅ Fluid Behavior Transitions |
-| ❌ Hard to Debug & Optimize | ✅ Visual Parameter Debugging |
-| ❌ Decision requires LLM every time | ✅ LLM only handles cognitive updates |
+It is not just a chatbot; it is a **Society Simulation Engine**.
 
 ---
 
-## ✨ Core Features
+## 🌟 Product Highlights
 
-### 🧬 OCEAN Personality Engine
-**True Individuality** - NPCs are no longer cookie-cutter agents.
-- **Big Five Model**: `Openness`, `Conscientiousness`, `Extraversion`, `Agreeableness`, `Neuroticism`.
-- **Behavioral Impact**: A "Neurotic" NPC creates drama; A "Conscientious" NPC obsesses over work.
-- **Data-Driven**: Configurable via `DT_Personalities` with presets (e.g., *ReclusiveScholar* vs *BraveWarrior*).
+### 🌍 A Living, Breathing Society
+The world operates autonomously, even when the player isn't looking.
+- **Factions & Politics**: Cultists hate Guards; Villagers fear Monsters. Relationships drive emergent conflicts.
+- **Professions & Schedules**: Miners wake up at 6am to dig; Merchants open shops at 8am. They have lives, not just patrol routes.
+- **Smart Ecology**: The world is semantic. Beds are for sleeping, Ore Veins are for mining. NPCs perceive and use the environment intelligently.
 
-### △ Maslow's Hierarchy of Needs
-**Scientific Motivation System** - Replaces simple "state machines" with organic needs.
-- **Physiological**: Hunger, Fatigue (Engine-managed, time-dependent).
-- **Safety**: Threat detection, Shelter seeking.
-- **Social**: Loneliness, Conversation (Proactive social seeking).
-- **Esteem/Self-Actualization**: Boredom drives Work and creative acts.
-*Priorities are dynamically arbitrated by the `GoalComponent`.*
+### 🎬 Situational Narrative System
+Turn emergent chaos into structured storytelling.
+- **The Director AI**: An intelligent subsystem (`NarrativeDirector`) orchestration dramatic moments behind the scenes.
+- **Cinematic Enactment**: NPCs are "cast" into roles (e.g., *Victim*, *Rescuer*) for specific plot scenes (e.g., *Rescue Operation*).
+- **Stage Presence**: During scenes, actors gain **Role Adherence**, ignoring hunger/distractions to focus on the performance (`Status.InScene`).
 
-###  Hybrid Architecture V3
-**The "Bicameral" Mind** - Decoupling high-level intent from low-level execution.
-- **LLM (The Soul)**: Handles "Why" and "What". Outputs intent tags (e.g., `Intention.Attack`) and social context.
-- **Utility AI (The Body)**: Handles "How" and "When". Calculates scores based on distance, needs, and stats (50ms response).
-- **Veto System**: LLM can override survival instincts (e.g., a "Brave" NPC attacking a Giant despite fear).
+### 🧠 Deep Psychology (OCEAN + Maslow)
+Characters are driven by internal needs, not scripts.
+- **Maslow's Hierarchy**: NPCs eat when hungry, seek friends when lonely, and work when bored.
+- **OCEAN Personality**: 
+  - A *Conscientious* Guard never leaves his post.
+  - A *Neurotic* Villager flees at the first sign of danger.
+  - An *Extroverted* Merchant actively hails customers.
+- **Memory & Trauma**: "I remember you hit me." Past events shape future trust and dialogue.
 
-###  Smart Object Ecosystem
-**A World That Makes Sense** - Interactions are semantic, not just scripted.
-- **Semantic Tagging**: Objects broadcast what they offer (`Interaction.Rest`, `Interaction.Work.Mine`).
-- **Offset System**: NPCs know exactly where to stand (e.g., digging *into* the ground vs standing *at* a table).
-- **Reservation Protocol**: Prevents awkward queuing or stacking on a single bed.
-
-### 🎭 Narrative & Identity (Soul Injection)
-**More Than Just Stats** - Every NPC has a story.
-- **Modular Backstory**: `SocialProfile` defines Role, Motivation, and Values.
-- **Trauma System**: Significant past events (e.g., "Attack Victim") shape current behavior.
-- **Context Injection**: LLM prompts are dynamically assembled from these narrative modules.
-
-### ⚡ Optimization Systems
-**Performance at Scale** - Running complex AI without melting the CPU.
-- **Context LOD**: Prompt length scales with distance (Full Identity up close ↔ Minimal Stats far away).
-- **Request Throttling**: Prevents API spam during high-stress situations (Combat).
-- **Amygdala Hijack**: Bypasses LLM for split-second survival reactions.
-
-### ⏰ Living Schedule System
-**Day/Night Cycle & Professions** - NPCs have lives, not just spawn points.
-- **Time Manager**: Global day/night cycle broadcasting hourly events.
-- **Professions**: Customizable daily schedules (e.g., `Merchant`: Work 8-5, `Guard`: Night Shift).
-- **Work Fulfillment**: Boredom drives NPCs to work; Work reduces Boredom.
-
-### ⚖️ GOAP-Lite Goal Arbitration
-**Smart Priority Management** - No more jittery behavior.
-- **Goal Component**: Dynamically arbitrates between conflicting directives.
-- **LOD System**: Priorities shift based on context (Survival > Social > Schedule).
-- **Emergency Overrides**: Hunger/Threat extremes interrupt any routine instantly.
+### 🛠️ Designer-First Workflow
+Built for Game Designers, not just Programmers.
+- **Project Settings Config**: Tweak global AI parameters (e.g., *Loneliness Threshold*) directly in Unreal Editor.
+- **Data-Driven Design**: Mass-produce thousands of unique NPCs using **DataTables** (Excel/JSON).
+  - Configure *Personalities, Professions, Factions, and Dialogues* without touching C++.
 
 ---
 
@@ -149,6 +116,17 @@
 | `UtilityAIComponent` | Utility AI decision loop | `EvaluateActions()`, `ExecuteBestAction()` |
 | `UNPCMentalState` | Emotional state data container | `UpdateFromStruct()`, `ToStruct()` |
 | `UtilityActionBase` | Action base class | `CalculateScore()`, `Execute()` |
+
+### 🌍 World Subsystems
+
+| Subsystem Name | Responsibility | Key Features |
+|:---------------|:---------------|:-------------|
+| `NarrativeDirector` | Global story orchestration | Analyzes world state, triggers Plot Scenes |
+| `NarrativeSquad` | Local scene management | Casts NPCs into roles, manages execution flow |
+| `SmartObjectManager` | World interaction registry | Spatial queries (`FindNearbyBed`), Slot reservations |
+| `TimeManager` | Living world clock | Broadcasts hourly events, drives NPC schedules |
+| `FactionSubsystem` | Relationship management | Resolves hostility (Orc vs Human), Reputation tracking |
+
 
 ---
 
@@ -253,6 +231,17 @@ We maintain a detailed documentation library. Please visit **[📚 Knowledge Bas
 ---
 
 ## 🎉 Latest Updates
+
+### v0.6.3 - P0 Architecture Stability & Settings (2026-01-29)
+
+#### ⚡ P0 Refactors & Configuration
+- **Externalized Settings**: Moved all AI tuning parameters (Utility weights, Needs thresholds) to `UAINPCSettings`.
+  - Adjustable in **Project Settings -> Plugins -> AINPC** (No recompilation needed).
+- **Centralized Helpers**: Created `AINPCHelpers` to unify component lookups across the actor hierarchy.
+- **Narrative Stability**: Implemented `Status_InScene` context tag.
+  - Suppresses social needs during cutscenes.
+  - Boosts directive adherence (3.0x multiplier) to ensure actors stay in character.
+- **Gameplay Tags**: Migrated legacy string-based tags to Native Gameplay Tags for type safety.
 
 ### v0.6.2 - Narrative Logic & UX Refinement (2026-01-28)
 
