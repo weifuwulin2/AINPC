@@ -113,4 +113,13 @@ private:
 	// ✅ Rate Limiting
 	float LastLLMRequestTime = -999.0f;
 	float MinRequestInterval = 2.0f; // Minimum seconds between LLM calls
+
+	// --- Refactor Helpers ---
+	bool CheckAmygdalaHijack(const FString& SituationDescription);
+	bool IsDataReady(const FString& PersonalityID, const FString& FactionStr, const FString& SituationDescription);
+	
+	FString BuildIdentityBlock(const FString& RoleDesc, const FString& PersonalityID, const FString& FactionStr);
+	FString BuildWorldviewBlock(const FString& FactionStr);
+	FString BuildContextBlock(const FString& ProfessionName, const FString& ProfessionDesc);
+	FString BuildVolatileBlock(const FString& Situation, const FString& Memories, const FString& GlobalHistory);
 };

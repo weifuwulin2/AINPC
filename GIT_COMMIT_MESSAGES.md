@@ -550,3 +550,36 @@ This file contains a log of commit messages for the AINPC project.
   - Added template-based `FindComponentInHierarchy` to robustly search Component -> Pawn -> Controller chain.
 - **Build Configuration**: Added `DeveloperSettings` and `SlateCore` modules to `AINPC.Build.cs` to support the new settings class.
 
+---
+
+## [2026-01-29] Fix Prompt Caching Regression & Refactor Amygdala Hijack
+**Type**: fix/refactor
+**Scope**: CognitionComponent
+
+**Description**:
+- **Neutral Faction Blocking Fix**: Modified `CognitionComponent::IsDataReady()` to allow `Faction="Neutral"` for civilian NPCs.
+  - Previously, NPCs with "Neutral" faction were incorrectly flagged as uninitialized (infinite retry loops).
+  - Now only blocks `Faction="None"` or empty strings, treating "Neutral" as valid faction data.
+  - Impact: Narrative Squad NPCs (civilians, slaves, guards) can now speak in scenes.
+- **Amygdala Hijack Architecture Refactor**: Replaced string scanning with proper Faction Attitude queries.
+  - Old logic scanned `SituationDescription` for "HOSTILE" keyword (unreliable, false positives from narrative text).
+  - New logic queries `AIController->GetFocusActor()` and checks `FactionSubsystem->GetBaseAttitude()`.
+  - Only triggers if Reputation ≤ 25.0 (truly hostile actor detected, not text content).
+  - Eliminates false positives from scene descriptions like "rescue from HOSTILE territory".
+- **ProcessStimulus Refactoring**: Extracted helper methods from 400+ line monolithic function:
+  - `CheckAmygdalaHijack()`: Immediate threat response via Faction query.
+  - `IsDataReady()`: Data validation and retry scheduling.
+  - `BuildIdentityBlock()`, `BuildWorldviewBlock()`, `BuildContextBlock()`, `BuildVolatileBlock()`: Prompt segment builders.
+  - Main `ProcessStimulus` reduced to ~50 lines with clear execution flow.
+
+**Files Changed**:
+- `Source/AINPC/Components/CognitionComponent.h` - Added helper method declarations.
+- `Source/AINPC/Components/CognitionComponent.cpp` - Refactored ProcessStimulus, implemented helper methods.
+- `CHANGELOG.md` - Documented fixes and refactorings.
+- `GIT_COMMIT_MESSAGES.md` - Added this commit entry.
+
+**Impact**:
+- Civilian NPCs now speak properly in narrative scenes.
+- Threat detection based on actual enemy presence (Faction Attitude), not text parsing.
+- More maintainable, modular code structure for `ProcessStimulus`.
+

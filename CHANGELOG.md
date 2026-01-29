@@ -9,6 +9,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - 2026-01-29
 
+### 🔧 Fixes - Prompt Caching \& Cognition System
+- **Fixed Neutral Faction Blocking**: Modified `CognitionComponent::IsDataReady()` to allow `Faction="Neutral"` for civilian NPCs.
+  - Previously blocked all NPCs with Neutral faction from sending LLM requests (infinite retry loops).
+  - Now only blocks `Faction="None"` or empty strings, treating "Neutral" as valid.
+  - Impact: Narrative Squad NPCs (civilians, slaves, guards) can now speak properly.
+- **Refactored Amygdala Hijack to Use Faction System**: Replaced unreliable string scanning (`"HOSTILE"` keyword) with proper Faction Attitude queries.
+  - `CheckAmygdalaHijack()` now queries `AIController->GetFocusActor()` and checks `FactionSubsystem->GetBaseAttitude()`.
+  - Only triggers threat response when Reputation ≤ 25.0 (truly hostile actors).
+  - Eliminates false positives from narrative scene descriptions (e.g., "rescue from HOSTILE territory").
+  - Ensures threat detection is based on actual enemy presence, not text content.
+
+### 🔧 Refactors - Code Quality
+- **ProcessStimulus Refactoring**: Extracted helper methods from 400+ line monolithic function:
+  - `CheckAmygdalaHijack()`: Immediate threat response logic.
+  - `IsDataReady()`: Data validation and retry scheduling.
+  - `BuildIdentityBlock()`: Static identity and backstory assembly.
+  - `BuildWorldviewBlock()`: Faction relationship descriptions.
+  - `BuildContextBlock()`: Job and narrative plot context.
+  - `BuildVolatileBlock()`: Dynamic situation, memories, and global history.
+  - Main `ProcessStimulus` reduced to ~50 lines with clear execution flow.
+
+## [Unreleased] - 2026-01-29
+
 ### ✨ Features - Narrative & Utility AI Integration
 - **Narrative Suppression**: Implemented mechanism in `GoalComponent` to block Social needs (e.g., Loneliness) when NPC is in a Narrative Scene (`AINPCTags::Status_InScene`), ensuring focus on roles.
 - **Enhanced Role Adherence**: Tripled `DirectiveMultiplier` (x1.5 -> x3.0) for actions matching directives when in a narrative scene.
