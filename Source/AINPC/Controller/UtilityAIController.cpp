@@ -17,10 +17,12 @@
 // 感知相关头文件
 #include "AINPC.h"
 #include "Engine/DamageEvents.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "LLM/LLMCommunicator.h"
 #include "Perception/AIPerceptionComponent.h"
 #include "Perception/AISenseConfig_Sight.h"
 #include "Perception/AISenseConfig_Hearing.h"
+#include "Navigation/CrowdFollowingComponent.h" // ✅ For Detour Crowd avoidance
 
 AUtilityAIController::AUtilityAIController()
 {
@@ -37,7 +39,31 @@ AUtilityAIController::AUtilityAIController()
     GoalComp = CreateDefaultSubobject<UGoalComponent>(TEXT("GoalComponent"));
 
     // =========================================================
-    // 2. 创建并配置感知组件 (Perception)
+    // 2. ✅ 配置 Detour Crowd 避让系统 (SUPERIOR to RVO!)
+    // =========================================================
+    // Replace default PathFollowingComponent with CrowdFollowingComponent
+    // This provides MUCH better avoidance than simple RVO
+    UCrowdFollowingComponent* CrowdComp = CreateDefaultSubobject<UCrowdFollowingComponent>(TEXT("CrowdFollowingComponent"));
+    if (CrowdComp)
+    {
+        SetPathFollowingComponent(CrowdComp);
+        
+        // Configure crowd avoidance parameters
+        // 配置群体避让参数
+        CrowdComp->SetCrowdSeparationWeight(2.0f);        // 分离权重（避免挤在一起）
+        CrowdComp->SetCrowdCollisionQueryRange(600.0f);  // 6米碰撞查询范围
+        CrowdComp->SetCrowdAnticipateTurns(true);        // 预测转向避让
+        CrowdComp->SetCrowdOptimizeVisibility(true);     // 优化可见性
+        CrowdComp->SetCrowdOptimizeTopology(true);       // 优化拓扑
+        CrowdComp->SetCrowdPathOffset(true);             // 路径偏移（避免走同一条路）
+        CrowdComp->SetCrowdSlowdownAtGoal(true);         // 接近目标时减速
+        CrowdComp->SetCrowdSeparation(true);             // 启用分离行为
+        
+        UE_LOG(LogTemp, Warning, TEXT("✅ CrowdFollowingComponent configured for superior avoidance!"));
+    }
+
+    // =========================================================
+    // 3. 创建并配置感知组件 (Perception)
     // =========================================================
     
     // 创建 AIPerception
@@ -84,6 +110,9 @@ AUtilityAIController::AUtilityAIController()
     {
         AIPerception->SetDominantSense(SightConfig->GetSenseImplementation());
     }
+
+    // ✅ Note: CrowdFollowingComponent already configured above
+    // Additional avoidance settings will be applied in OnPossess() for CharacterMovementComponent
 }
 
 void AUtilityAIController::OnPossess(APawn* InPawn)
@@ -155,6 +184,17 @@ void AUtilityAIController::OnPossess(APawn* InPawn)
         
         AINPC_LOG(Warning, "Monster initialization complete. Skipping NPCDefinition.");
         AINPC_LOG(Warning, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        
+        // ✅ Still configure avoidance for monsters
+        if (ACharacter* CharPawn = Cast<ACharacter>(InPawn))
+        {
+            if (UCharacterMovementComponent* MovementComp = CharPawn->GetCharacterMovement())
+            {
+                MovementComp->bUseRVOAvoidance = true;
+                MovementComp->AvoidanceConsiderationRadius = 500.0f; // 5m
+            }
+        }
+        
         return; // Skip NPCDefinition
     }
 
@@ -167,6 +207,58 @@ void AUtilityAIController::OnPossess(APawn* InPawn)
     else
     {
         AINPC_LOG(Warning, "⚠️ No MonsterComponent or NPCDefinitionComponent found!");
+    }
+    
+    // ✅ Configure Avoidance for ALL AI (both monsters and NPCs)
+    if (ACharacter* CharPawn = Cast<ACharacter>(InPawn))
+    {
+        if (UCharacterMovementComponent* MovementComp = CharPawn->GetCharacterMovement())
+        {
+            // =========================================================
+            // RVO (Reciprocal Velocity Obstacles) Avoidance Configuration
+            // =========================================================
+            
+            // ✅ Enable RVO Avoidance
+            MovementComp->bUseRVOAvoidance = true;
+            
+            // ✅ Avoidance radius - Increased to 8m for better detection
+            MovementComp->AvoidanceConsiderationRadius = 800.0f; // 8 meters (was 5m)
+            
+            // ✅ Avoidance weight - Higher value = stronger avoidance
+            MovementComp->AvoidanceWeight = 0.8f; // Increased from 0.5 to 0.8
+            
+            // ✅ Avoidance groups
+            MovementComp->SetAvoidanceGroup(1);      // This actor is in group 1
+            MovementComp->SetGroupsToAvoid(1);       // Avoid others in group 1
+            MovementComp->SetGroupsToIgnore(0);      // Don't ignore anyone
+            
+            // ✅ Enable velocity-based avoidance for moving NPCs
+            MovementComp->bRequestedMoveUseAcceleration = true;
+            
+            // ✅ Set avoidance UID (unique identifier for RVO)
+            MovementComp->SetAvoidanceGroupMask(1);
+            MovementComp->AvoidanceGroup.SetFlagsDirectly(1);
+            
+            // =========================================================
+            // Debug Logging
+            // =========================================================
+            AINPC_LOG(Warning, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+            AINPC_LOG(Warning, "✅ RVO Avoidance Configured for: %s", *InPawn->GetName());
+            AINPC_LOG(Warning, "  - bUseRVOAvoidance: %s", MovementComp->bUseRVOAvoidance ? TEXT("TRUE") : TEXT("FALSE"));
+            AINPC_LOG(Warning, "  - AvoidanceConsiderationRadius: %.0f cm", MovementComp->AvoidanceConsiderationRadius);
+            AINPC_LOG(Warning, "  - AvoidanceWeight: %.2f", MovementComp->AvoidanceWeight);
+            AINPC_LOG(Warning, "  - AvoidanceGroup: %d", MovementComp->AvoidanceGroup.Packed);
+            AINPC_LOG(Warning, "  - GroupsToAvoid: %d", MovementComp->GroupsToAvoid.Packed);
+            AINPC_LOG(Warning, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        }
+        else
+        {
+            AINPC_LOG_ERROR("❌ Failed to get CharacterMovementComponent for %s!", *InPawn->GetName());
+        }
+    }
+    else
+    {
+        AINPC_LOG(Warning, "⚠️ InPawn is not ACharacter, skipping avoidance config");
     }
     
     AINPC_LOG(Warning, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");

@@ -19,6 +19,7 @@
 #include "Components/SensoryComponent.h"
 #include "Components/FactionReputationComponent.h"
 #include "Kismet/GameplayStatics.h"
+#include "Subsystems/NarrativeDirectorSubsystem.h"
 
 ACombatEnemy::ACombatEnemy()
 {
@@ -235,6 +236,19 @@ void ACombatEnemy::ApplyDamage(float Damage, AActor* DamageCauser, const FVector
 
 void ACombatEnemy::HandleDeath()
 {
+	// ✅ Mark as dead for AI logic & Narrative Linking
+	Tags.Add(FName("Dead"));       // For AI Perception (Legacy)
+	Tags.Add(FName("Status.Dead")); // For Narrative CompletionTags Matching
+	
+	// ✅ REPORT TO NARRATIVE DIRECTOR
+	if (UWorld* World = GetWorld())
+	{
+		if (auto* Director = World->GetSubsystem<UNarrativeDirectorSubsystem>())
+		{
+			Director->RecordNPCDeath(this, LastDamageCauser);
+		}
+	}
+
 	// hide the life bar
 	LifeBar->SetHiddenInGame(true);
 

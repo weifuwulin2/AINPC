@@ -704,7 +704,9 @@ float UUtilityActionBase::GetConsiderationValue(EUtilityInputType InputType, UNP
             // Uses IsHostile() which respects Status.InScene tag
             UFactionReputationComponent* FactionComp = Controller->FindComponentByClass<UFactionReputationComponent>();
             
-            float CheckRadiusSq = FMath::Square(1500.0f); // 15m 范围内
+            // ✅ Match Extended Combat Range (6000.0f)
+            // Was 1500.0f, which caused NPCs to ignore distant visible enemies
+            float CheckRadiusSq = FMath::Square(6000.0f);
 
             // 扫描周围所有 Pawn
             if (UWorld* World = Controller->GetWorld())

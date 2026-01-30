@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased] - 2026-01-31
+
+### 🔥 Feature - Narrative System Overhaul
+- **Scene Completion & Event Logic (Critical Fixes)**:
+  - **Tag Mismatch**: Fixed `NarrativeDirector` broadcasting hardcoded `"Death"` string vs expected `Event.Death` GameplayTag.
+  - **Event Source**: Fixed `CombatEnemy::HandleDeath` failing to report death events to the Narrative Director.
+  - **Identity Resolution**: Replaced `GetActorLabel` (Editor-only/Unstable) with `GetName` (Runtime ID) for checking actor roles.
+  - **Pending Kill Safety**: Moved `CleanupInvalidActors` to post-event processing. Previously, actors killed in the same frame were removed from the Squad *before* their death event could trigger scene progression.
+  - **Directive Cleanup**: `EndScene` now explicitly removes `Directive.Combat` override tags, preventing NPCs from getting stuck in combat mode after a scene ends.
+
+- **Gameplay & Immersion**:
+  - **Persisted Props**: Implemented `bKeepPropsOnEnd` in Scene Defs. Props (like corpses) now remain in the world after the scene finishes instead of vanishing.
+  - **Rule by Decree**: Added `PostSceneStimulus`. Scenes can now broadcast a final context update (e.g., "You are free from slavery!") to surviving NPCs, overriding default routines.
+
+### 🧠 Feature - Brain-Body Connection (Goal x Cognition)
+- **Intention Override**: `GoalComponent` was completely ignoring the Brain's decisions.
+  - **Fix**: Added high-priority logic in `UpdateArbitration` to check `MentalState->Intention`.
+  - **Result**: If the LLM decides to "Celebrate" (Intention.Social) upon freedom, the Goal System immediately prioritizes `Directive.Social` over the default Schedule (which would have forced mining work).
+  - **Compilation Fix**: Resolved private member access error (`Cognition->CurrentIntention` -> `MentalState->Intention`).
+
+### 🔧 System Refactors
+- **Unified Logging**: Converted all scattered `UE_LOG(LogTemp)` in Narrative subsystems to `NARRATIVE_LOG` for clean filtering.
+- **Compilation Stability**: 
+  - Fixed missing include `NarrativeDirectorSubsystem.h` in `CombatEnemy.cpp`.
+  - Fixed `FNativeGameplayTag` struct access syntax (`GetTag().GetTagName()`).
+
 ## [Unreleased] - 2026-01-29
 
 ### 🐛 Major Fixes - Combat & Target Selection

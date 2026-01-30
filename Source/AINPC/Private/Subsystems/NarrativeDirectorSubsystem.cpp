@@ -2,6 +2,7 @@
 #include "Subsystems/NarrativeDirectorSubsystem.h"
 #include "GameFramework/Actor.h"
 #include "Kismet/GameplayStatics.h"
+#include "Social/SocialGameplayTags.h"
 
 void UNarrativeDirectorSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
@@ -34,14 +35,15 @@ void UNarrativeDirectorSubsystem::RecordEvent(FString Description, TArray<FName>
 void UNarrativeDirectorSubsystem::RecordNPCDeath(AActor* Victim, AActor* Killer)
 {
 	if (!Victim) return;
+	
 
-	FString VictimName = Victim->GetActorLabel();
-	FString KillerName = Killer ? Killer->GetActorLabel() : TEXT("Unknown");
+	FString VictimName = Victim->GetName();
+	FString KillerName = Killer ? Killer->GetName() : TEXT("Unknown");
 
 	FString Desc = FString::Printf(TEXT("%s was killed by %s"), *VictimName, *KillerName);
 	
 	TArray<FName> Tags;
-	Tags.Add(FName("Death"));
+	Tags.Add(AINPCTags::Event_Death.GetTag().GetTagName());
 	Tags.Add(FName(*FString::Printf(TEXT("Death_%s"), *VictimName)));
 
 	DeadVIPs.Add(FName(*VictimName));

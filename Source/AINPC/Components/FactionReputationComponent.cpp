@@ -160,16 +160,23 @@ FName UFactionReputationComponent::GetFactionID(AActor* Actor)
 
 	// 1. Narrative Override (Centralized Logic)
 	// Check for InScene Tag on Actor or Pawn/Controller
-	if (Actor->ActorHasTag("Status.InScene")) return "Neutral";
+	// ✅ EXCEPTION: If Directive.Combat is present, DO NOT force Neutral.
+	// This allows plot-driven combat (e.g. Uprisings) to use real Factions.
+	bool bHasCombatDirective = Actor->ActorHasTag("Directive.Combat");
 	
-	if (APawn* P = Cast<APawn>(Actor)) 
-	{ 
-		if (P->GetController() && P->GetController()->ActorHasTag("Status.InScene")) return "Neutral"; 
-	}
-	
-	if (AController* C = Cast<AController>(Actor)) 
-	{ 
-		if (C->GetPawn() && C->GetPawn()->ActorHasTag("Status.InScene")) return "Neutral"; 
+	if (!bHasCombatDirective)
+	{
+		if (Actor->ActorHasTag("Status.InScene")) return "Neutral";
+		
+		if (APawn* P = Cast<APawn>(Actor)) 
+		{ 
+			if (P->GetController() && P->GetController()->ActorHasTag("Status.InScene")) return "Neutral"; 
+		}
+		
+		if (AController* C = Cast<AController>(Actor)) 
+		{ 
+			if (C->GetPawn() && C->GetPawn()->ActorHasTag("Status.InScene")) return "Neutral"; 
+		}
 	}
 
 	// 2. Try finding this component

@@ -48,11 +48,8 @@ void UAction_Attack::Enter_Implementation(AAIController* Controller)
 			// Merge Action config with Override
 			FTargetSelectionConfig Config = TargetConfigOverride;
 			
-			// 🔍 Diagnostic: Check candidates BEFORE selection
-			TArray<AActor*> Candidates = TargetSystem->GetTargetCandidates(Controller, TargetContext, Config);
-			AINPC_LOG(Log, "Action_Attack: Found %d target candidates before selection", Candidates.Num());
-			
 			// Select best target (Cached, Rule-Based, or LLM)
+			// Note: GetTargetCandidates is called internally with detailed logging
 			TargetActor = TargetSystem->SelectTarget(Controller, TargetContext, Config);
 			
 			if (TargetActor)
@@ -62,7 +59,7 @@ void UAction_Attack::Enter_Implementation(AAIController* Controller)
 			}
 			else
 			{
-				AINPC_LOG_WARNING("Action_Attack: ❌ Target Selection failed! No valid target found (Candidates: %d)", Candidates.Num());
+				AINPC_LOG_WARNING("Action_Attack: ❌ Target Selection failed! No valid target found");
 			}
 		}
 		else

@@ -45,18 +45,18 @@ void UNarrativeSquadSubsystem::Deinitialize()
 	Super::Deinitialize();
 }
 
-int32 UNarrativeSquadSubsystem::CreateSceneSquad(FString PlotOutline, TArray<FName> CompletionTags)
+int32 UNarrativeSquadSubsystem::CreateSceneSquad(FString PlotOutline, TArray<FNarrativeEventMatcher> CompletionConditions)
 {
 	int32 NewID = NextSquadID++;
 	FNarrativeSceneSquad Squad;
 	Squad.SquadID = NewID;
 	Squad.PlotOutline = PlotOutline;
-	Squad.CompletionTags = CompletionTags;
+	Squad.CompletionConditions = CompletionConditions;
 	Squad.bIsActive = false;  // Scene waits for player to activate
 
 	ActiveSquads.Add(NewID, Squad);
 	
-	UE_LOG(LogTemp, Log, TEXT("[NarrativeSquad] Created Squad %d: %s"), NewID, *PlotOutline);
+	NARRATIVE_LOG(Log, TEXT("[NarrativeSquad] Created Squad %d: %s"), NewID, *PlotOutline);
 	return NewID;
 }
 
@@ -68,6 +68,9 @@ void UNarrativeSquadSubsystem::AssignMemberRole(int32 SquadID, AActor* NPC, FStr
 	FNarrativeSceneSquad& Squad = ActiveSquads[SquadID];
 	Squad.MemberRoles.Add(NPC, RoleDescription);
 	ActorSquadMap.Add(NPC, SquadID);
+
+	NARRATIVE_LOG(Error, TEXT("🛑 [NarrativeSquad] ASSIGNED ROLE: '%s' to Actor '%s' (Squad %d)"), 
+		*RoleDescription, *NPC->GetName(), SquadID);
 	
 	// Mark as In-Scene (Suppresses Hostility)
 	if (UGoalComponent* GoalComp = AINPCHelpers::GetGoalComponent(NPC))
@@ -80,7 +83,7 @@ void UNarrativeSquadSubsystem::AssignMemberRole(int32 SquadID, AActor* NPC, FStr
 	// ✅ DEBUG: Log NPC configuration
 	if (UNPCDefinitionComponent* DefComp = NPC->FindComponentByClass<UNPCDefinitionComponent>())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[NarrativeSquad] Assigned Role '%s' to NPC (Profession: %s, Faction: %s)"), 
+		NARRATIVE_LOG(Warning, TEXT("[NarrativeSquad] Assigned Role '%s' to NPC (Profession: %s, Faction: %s)"), 
 			*RoleDescription, *DefComp->ProfessionID.ToString(), *DefComp->FactionID.ToString());
 	}
 
@@ -110,7 +113,7 @@ void UNarrativeSquadSubsystem::AssignMemberRole(int32 SquadID, AActor* NPC, FStr
 		}
 
 		Cognition->RoleDescription = CombinedRole;
-		UE_LOG(LogTemp, Warning, TEXT("[NarrativeSquad] Updated RoleDescription for %s: %s"), *NPC->GetName(), *CombinedRole);
+		NARRATIVE_LOG(Warning, TEXT("[NarrativeSquad] Updated RoleDescription for %s: %s"), *NPC->GetName(), *CombinedRole);
 		
 		// Note: No ProcessStimulus here - just update the role silently
 		// The role will be used next time CognitionComponent::ProcessStimulus is called
@@ -159,9 +162,11 @@ void UNarrativeSquadSubsystem::AssignRolesToArea(int32 SquadID, FVector Origin, 
 
 void UNarrativeSquadSubsystem::OnNarrativeEventRecorded(const FNarrativeEvent& Event)
 {
-	NARRATIVE_LOG(Warning, TEXT("🎬 [NarrativeSquadSubsystem] OnNarrativeEventRecorded called! Event: '%s', Tags: %d"), *Event.Description, Event.Tags.Num());
+	NARRATIVE_LOG(Error, TEXT("🛑 [NarrativeSquad] RECEIVED EVENT: '%s'. Tags: %d"), *Event.Description, Event.Tags.Num());
 	
-	// Check all squads
+	// Removed CleanupInvalidActors() here as it prevents processing Death events for PendingKill actors.
+	// CleanupInvalidActors();
+	
 	TArray<int32> SquadsToEnd;
 
 	for (auto& Elem : ActiveSquads)
@@ -169,45 +174,132 @@ void UNarrativeSquadSubsystem::OnNarrativeEventRecorded(const FNarrativeEvent& E
 		FNarrativeSceneSquad& Squad = Elem.Value;
 		if (!Squad.bIsActive) continue;
 
-		// ✅ Check Timeline Event Triggers (Hybrid Triggers)
+		// =========================================================================================
+		// EXTRACT CONTEXT FROM EVENT (Dead Actor details)
+		// =========================================================================================
+		// We try to find if this event is about a member of THIS squad.
+		
+		FString DeadMemberName = "";
+		FString DeadMemberRole = "";
+		FString DeadMemberProfession = "";
+		AActor* DeadMemberActor = nullptr;
+
+		// Check for Death Tags to extract context
+		for (const FName& RawTag : Event.Tags)
+		{
+			FString TagStr = RawTag.ToString();
+			if (TagStr.StartsWith("Death_"))
+			{
+				FString PossibleName = TagStr.RightChop(6); // Remove "Death_" prefix
+				
+				// Is this actor in our squad?
+				for (const auto& MemberPair : Squad.MemberRoles)
+				{
+					FString MemberName = MemberPair.Key ? MemberPair.Key->GetName() : TEXT("NULL");
+					NARRATIVE_LOG(Warning, TEXT("   - Inspecting Squad Member: '%s' (Role: %s) vs Event Actor: '%s'"), 
+						*MemberName, *MemberPair.Value, *PossibleName);
+
+					if (MemberPair.Key && MemberPair.Key->GetName() == PossibleName)
+					{
+						DeadMemberActor = MemberPair.Key;
+						DeadMemberName = PossibleName;
+						DeadMemberRole = MemberPair.Value;
+						
+						if (UNPCDefinitionComponent* Def = DeadMemberActor->FindComponentByClass<UNPCDefinitionComponent>())
+						{
+							if (!Def->ProfessionID.IsNone())
+							{
+								DeadMemberProfession = Def->ProfessionID.ToString();
+							}
+						}
+						break; // Found member
+					}
+				}
+			}
+			if (DeadMemberActor) break;
+		}
+
+		// Helper matcher lambda
+		auto MatchesEvent = [&](const FNarrativeEventMatcher& Matcher) -> bool
+		{
+			if (!Matcher.IsValid()) return false;
+
+			// 1. Tag Match (Must contain the specific tag, e.g. Event.Death)
+			bool bTagFound = false;
+			for (const FName& T : Event.Tags)
+			{
+				if (T == Matcher.Tag.GetTagName())
+				{
+					bTagFound = true;
+					break;
+				}
+			}
+			if (!bTagFound) return false;
+
+			// 2. Payload Match (Optional)
+			if (Matcher.Payload.IsEmpty())
+			{
+				return true; // Tag match is enough if no payload specified
+			}
+
+			// 3. Payload Check Logic
+			// Check against Role, Profession, Name
+			if (DeadMemberActor)
+			{
+				if (DeadMemberRole.Contains(Matcher.Payload)) return true;
+				if (DeadMemberProfession.Contains(Matcher.Payload)) return true;
+				if (DeadMemberName.Contains(Matcher.Payload)) return true;
+				
+				// Special case: Exact match against Role string (e.g. "Tyrant Lord")
+				if (DeadMemberRole == Matcher.Payload) return true;
+			}
+			
+			return false;
+		};
+
+		// =========================================================================================
+		// 1. TIMELINE TRIGGERS CHECK
+		// =========================================================================================
+		
 		TArray<int32> TriggeredNodes;
 		for (const TPair<int32, FGameplayTag>& Pending : Squad.PendingEventTriggers)
 		{
-			// Check if any event tag matches the trigger condition
-			// Convert FGameplayTag to FName for comparison with FNarrativeEvent.Tags
-			FName TriggerTagName = Pending.Value.GetTagName();
-			
-			for (const FName& EventTag : Event.Tags)
+			// Current Runtime Map only supports Tags. We need to look up the static definition for Payload.
+			if (Squad.SceneTimeline.IsValidIndex(Pending.Key))
 			{
-				if (EventTag == TriggerTagName)
+				const FNarrativeTimelineEntry& Node = Squad.SceneTimeline[Pending.Key];
+				// Use the static Trigger definition which has the Payload
+				if (MatchesEvent(Node.Trigger))
 				{
-					NARRATIVE_LOG(Warning, TEXT("📜 Event Trigger Matched! Node %d triggered by %s for Squad %d"), 
-						Pending.Key, *EventTag.ToString(), Squad.SquadID);
+					NARRATIVE_LOG(Warning, TEXT("📜 Event Trigger Matched! Node %d triggered by %s (Payload: %s)"), 
+						Pending.Key, *Node.Trigger.Tag.ToString(), *Node.Trigger.Payload);
 					TriggeredNodes.Add(Pending.Key);
-					break;
 				}
 			}
 		}
 
-		// Execute timeline nodes triggered by this event
+		// Execute triggered timeline nodes
 		for (int32 NodeIndex : TriggeredNodes)
 		{
 			TriggerTimelineNode(Squad.SquadID, NodeIndex);
 			Squad.PendingEventTriggers.Remove(NodeIndex);
 			
-			// If this was the current node, advance index
 			if (NodeIndex == Squad.CurrentTimelineIndex)
 			{
 				Squad.CurrentTimelineIndex++;
 			}
 		}
 
-		// Original Completion Tag logic (unchanged)
-		for (const FName& Tag : Event.Tags)
+		// =========================================================================================
+		// 2. SCENE COMPLETION CHECK
+		// =========================================================================================
+		
+		for (const FNarrativeEventMatcher& Condition : Squad.CompletionConditions)
 		{
-			if (Squad.CompletionTags.Contains(Tag))
+			if (MatchesEvent(Condition))
 			{
-				UE_LOG(LogTemp, Log, TEXT("[NarrativeSquad] Squad %d Completed by Event Tag: %s"), Squad.SquadID, *Tag.ToString());
+				NARRATIVE_LOG(Warning, TEXT("[NarrativeSquad] 🎬 SCENE COMPLETE! Squad %d Ending. Trigger: %s (Payload: %s)"),
+					Squad.SquadID, *Condition.Tag.ToString(), *Condition.Payload);
 				SquadsToEnd.Add(Squad.SquadID);
 				break;
 			}
@@ -230,12 +322,12 @@ int32 UNarrativeSquadSubsystem::SpawnSceneFromTemplate(UDataTable* SceneTable, F
 	const FNarrativeSceneDef* SceneDef = SceneTable->FindRow<FNarrativeSceneDef>(TemplateID, Context);
 	if (!SceneDef)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("SpawnSceneFromTemplate: Failed to find scene '%s'"), *TemplateID.ToString());
+		NARRATIVE_LOG(Warning, TEXT("SpawnSceneFromTemplate: Failed to find scene '%s'"), *TemplateID.ToString());
 		return -1;
 	}
 
 	// 2. Create Squad
-	int32 SquadID = CreateSceneSquad(SceneDef->PlotOutline, SceneDef->CompletionTags);
+	int32 SquadID = CreateSceneSquad(SceneDef->PlotOutline, SceneDef->CompletionConditions);
 	if (SquadID == -1) return -1;
 
 	// Set Initial Active State
@@ -245,6 +337,8 @@ int32 UNarrativeSquadSubsystem::SpawnSceneFromTemplate(UDataTable* SceneTable, F
 		
 		// ✅ Copy Timeline from SceneDef to runtime Squad
 		Squad->SceneTimeline = SceneDef->Timeline;
+		Squad->bKeepPropsOnEnd = SceneDef->bKeepPropsOnEnd;
+		Squad->PostSceneStimulus = SceneDef->PostSceneStimulus;
 	}
 
 	// 3. Spawn Props FIRST (so SmartObjects are registered before NPCs start searching)
@@ -303,7 +397,7 @@ int32 UNarrativeSquadSubsystem::SpawnSceneFromTemplate(UDataTable* SceneTable, F
 			}
 		}
 		
-		UE_LOG(LogTemp, Log, TEXT("NarrativeSquad: Delayed NPC spawn completed for Squad %d"), SquadID);
+		NARRATIVE_LOG(Log, TEXT("NarrativeSquad: Delayed NPC spawn completed for Squad %d"), SquadID);
 		
 	}, 0.1f, false); // 100ms delay
 
@@ -464,15 +558,18 @@ void UNarrativeSquadSubsystem::EndScene(int32 SquadID)
 		Squad.AssignedAnchor = nullptr;
 	}
 
-	// Destroy Props
-	for (AActor* Prop : Squad.SpawnedProps)
+	// Destroy Props (unless configured to keep them)
+	if (!Squad.bKeepPropsOnEnd)
 	{
-		if (IsValid(Prop))
+		for (AActor* Prop : Squad.SpawnedProps)
 		{
-			Prop->Destroy();
+			if (IsValid(Prop))
+			{
+				Prop->Destroy();
+			}
 		}
+		Squad.SpawnedProps.Empty();
 	}
-	Squad.SpawnedProps.Empty();
 
 	// Reset roles for all members
 	for (auto& Elem : Squad.MemberRoles)
@@ -482,27 +579,32 @@ void UNarrativeSquadSubsystem::EndScene(int32 SquadID)
 		
 		if (Member)
 		{
-			// Remove Scene Tag
+			// Remove Scene Tag and Directives
 			if (UGoalComponent* GoalComp = AINPCHelpers::GetGoalComponent(Member))
-
 			{
 				GoalComp->RemoveContextTag(AINPCTags::Status_InScene);
+				// Ensure they stop receiving combat overrides from the scene
+				GoalComp->RemoveContextTag(AINPCTags::Directive_Combat); 
 			}
 			Member->Tags.Remove("Status.InScene"); // Legacy / Fallback
 
 
 			// Reset Cognition
 			if (UCognitionComponent* Cognition = AINPCHelpers::GetCognitionComponent(Member))
-
 			{
 				Cognition->RoleDescription = TEXT(""); 
-				Cognition->ProcessStimulus(TEXT("The scene has ended. I return to my daily routine."));
+				
+				FString FinalStimulus = Squad.PostSceneStimulus.IsEmpty() 
+					? TEXT("The scene has ended. I return to my daily routine.") 
+					: Squad.PostSceneStimulus;
+				
+				Cognition->ProcessStimulus(FinalStimulus);
 			}
 		}
 	}
 	
 	ActiveSquads.Remove(SquadID);
-	UE_LOG(LogTemp, Log, TEXT("Scene Squad %d Ended and Disbanded."), SquadID);
+	NARRATIVE_LOG(Log, TEXT("Scene Squad %d Ended and Disbanded."), SquadID);
 }
 
 // ============================================================================
@@ -709,10 +811,10 @@ void UNarrativeSquadSubsystem::RequestAmbientDialogue(AActor* Speaker, const FNa
 		TEXT("You are currently in this scene: %s\n"
 			 "Your role in this scene: %s\n"
 			 "Current activity: %s\n\n"
-			 "Generate a brief ambient line (1-2 sentences) that reflects your character and current situation. "
-			 "This is NOT to advance the plot, just to add atmosphere and immersion. "
-			 "Feel free to comment on your surroundings, your feelings, or what you're doing. "
-			 "Keep it natural and in-character."),
+			 "Generate a brief, impactful line (1-2 sentences) that reflects your character's reaction to the immediate PLOT CONFLICT. "
+			 "Do NOT engage in idle chitchat or talk about the weather. "
+			 "Instead, reveal your stance, your fears, or your determination regarding the events unfolding (e.g. the uprising, the specific danger). "
+			 "Your goal is to build tension and reinforce the narrative situation."),
 		*Squad->PlotOutline,
 		*Squad->MemberRoles.FindRef(Speaker),
 		*CurrentActivity
@@ -799,14 +901,14 @@ void UNarrativeSquadSubsystem::TickTimeline(int32 SquadID)
 		}
 
 		// Check if this node has an event trigger
-		if (Node.TriggerCondition.IsValid())
+		if (Node.Trigger.IsValid())
 		{
 			// Add to pending triggers (wait for event)
 			if (!Squad->PendingEventTriggers.Contains(Squad->CurrentTimelineIndex))
 			{
-				Squad->PendingEventTriggers.Add(Squad->CurrentTimelineIndex, Node.TriggerCondition);
-				NARRATIVE_LOG(Warning, TEXT("📜 Timeline Node %d (T+%.1fs): Waiting for event %s"), 
-					Squad->CurrentTimelineIndex, Node.TimeOffset, *Node.TriggerCondition.ToString());
+				Squad->PendingEventTriggers.Add(Squad->CurrentTimelineIndex, Node.Trigger.Tag);
+				NARRATIVE_LOG(Warning, TEXT("📜 Timeline Node %d (T+%.1fs): Waiting for event %s (Payload: %s)"), 
+					Squad->CurrentTimelineIndex, Node.TimeOffset, *Node.Trigger.Tag.ToString(), *Node.Trigger.Payload);
 			}
 			break; // Stop processing, wait for event
 		}
@@ -847,6 +949,13 @@ void UNarrativeSquadSubsystem::TriggerTimelineNode(int32 SquadID, int32 NodeInde
 		// Refresh context for all squad members (same logic as AssignMemberRole)
 		for (const TPair<AActor*, FString>& MemberPair : Squad->MemberRoles)
 		{
+			// ✅ Safety: Ensure NPC is valid before accessing components
+			if (!IsValid(MemberPair.Key))
+			{
+				NARRATIVE_LOG(Warning, TEXT("   ⚠️ Skipping invalid NPC in MemberRoles during PlotUpdate"));
+				continue;
+			}
+			
 			if (auto CogComp = AINPCHelpers::GetCognitionComponent(MemberPair.Key))
 			{
 				// Build combined role description (like AssignMemberRole does)
@@ -881,6 +990,13 @@ void UNarrativeSquadSubsystem::TriggerTimelineNode(int32 SquadID, int32 NodeInde
 		for (const TPair<AActor*, FString>& MemberPair : Squad->MemberRoles)
 		{
 			AActor* NPC = MemberPair.Key;
+			
+			// ✅ Safety: Ensure NPC is valid before accessing
+			if (!IsValid(NPC))
+			{
+				NARRATIVE_LOG(Warning, TEXT("   ⚠️ Skipping invalid NPC in MemberRoles during DirectiveOverride"));
+				continue;
+			}
 			
 			// 1. Apply to GoalComponent (for Utility AI)
 			if (auto GoalComp = AINPCHelpers::GetGoalComponent(NPC))
@@ -945,7 +1061,8 @@ void UNarrativeSquadSubsystem::ApplyTagToRole(int32 SquadID, FString RoleID, FGa
 			// Check if Role matches (Case insensitive)
 			if (NPCRole.Equals(RoleID, ESearchCase::IgnoreCase))
 			{
-				if (NPC)
+				// ✅ Safety: Ensure NPC is valid before accessing
+				if (IsValid(NPC))
 				{
 					// 1. Apply as FName Tag (for FactionReputationComponent::EvaluateCombatPolicy)
 					FName TagName = Tag.GetTagName();
@@ -960,6 +1077,10 @@ void UNarrativeSquadSubsystem::ApplyTagToRole(int32 SquadID, FString RoleID, FGa
 					UE_LOG(LogAINPCSocial, Log, TEXT("[Narrative] Applied Tag '%s' to %s (Role: %s)"), 
 						*TagName.ToString(), *NPC->GetName(), *RoleID);
 					Count++;
+				}
+				else
+				{
+					NARRATIVE_LOG(Warning, TEXT("   ⚠️ Skipping invalid NPC '%s' in ApplyTagToRole"), *NPCRole);
 				}
 			}
 		}
@@ -977,5 +1098,39 @@ void UNarrativeSquadSubsystem::ApplyTagToRole(int32 SquadID, FString RoleID, FGa
 	else
 	{
 		NARRATIVE_LOG(Warning, TEXT("ApplyTagToRole: Squad %d not found!"), SquadID);
+	}
+}
+
+void UNarrativeSquadSubsystem::CleanupInvalidActors()
+{
+	int32 TotalCleaned = 0;
+	
+	// Iterate through all squads
+	for (auto& SquadPair : ActiveSquads)
+	{
+		FNarrativeSceneSquad& Squad = SquadPair.Value;
+		
+		// Find invalid actors in this squad
+		TArray<AActor*> InvalidActors;
+		for (const auto& MemberPair : Squad.MemberRoles)
+		{
+			if (!IsValid(MemberPair.Key))
+			{
+				InvalidActors.Add(MemberPair.Key);
+			}
+		}
+		
+		// Remove invalid actors from the squad and reverse map
+		for (AActor* InvalidActor : InvalidActors)
+		{
+			Squad.MemberRoles.Remove(InvalidActor);
+			ActorSquadMap.Remove(InvalidActor);
+			TotalCleaned++;
+		}
+	}
+	
+	if (TotalCleaned > 0)
+	{
+		NARRATIVE_LOG(Warning, TEXT("🧹 CleanupInvalidActors: Removed %d invalid actors from squads"), TotalCleaned);
 	}
 }

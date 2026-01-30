@@ -15,6 +15,7 @@ class UInputAction;
 struct FInputActionValue;
 class UCombatLifeBar;
 class UWidgetComponent;
+class UNavigationInvokerComponent; // ✅ For dynamic NavMesh generation on large maps
 
 DECLARE_LOG_CATEGORY_EXTERN(LogCombatCharacter, Log, All);
 
@@ -42,6 +43,10 @@ class ACombatCharacter : public ACharacter, public ICombatAttacker, public IComb
 	/** Life bar widget component */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
 	UWidgetComponent* LifeBar;
+
+	/** Navigation Invoker - generates NavMesh around this character for large map optimization */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
+	UNavigationInvokerComponent* NavigationInvoker;
 	
 protected:
 

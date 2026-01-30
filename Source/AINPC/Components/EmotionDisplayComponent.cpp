@@ -241,11 +241,9 @@ void UEmotionDisplayComponent::UpdateNameplate(const FString& Name, const FStrin
 	// 尝试设置文本 (Try to set text)
 	// Format: [Faction] [Personality] Name <Profession>
 	
-	FString DisplayText = FString::Printf(TEXT("[%s] [%s] %s"), *Faction, *Personality, *Name);
-	if (!Profession.IsEmpty() && Profession != TEXT("None"))
-	{
-		DisplayText += FString::Printf(TEXT(" <%s>"), *Profession);
-	}
+	// Simplified Format: [Faction] Name
+	// Name string now contains (Profession, Personality) details from AINPCHelpers::GetSmartActorName logic
+	FString DisplayText = FString::Printf(TEXT("[%s] %s"), *Faction, *Name);
 
 	UE_LOG(LogTemp, Warning, TEXT("[EmotionDisplay] Updating Nameplate: %s"), *DisplayText);
 

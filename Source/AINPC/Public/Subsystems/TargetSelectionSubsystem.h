@@ -79,11 +79,12 @@ public:
 	 * Get all valid target candidates for the given context.
 	 * Filters out dead, invalid, or inappropriate targets.
 	 */
-	UFUNCTION(BlueprintCallable, Category = "AI|Target Selection")
 	TArray<AActor*> GetTargetCandidates(
 		AAIController* Controller,
 		ETargetSelectionContext Context,
-		const FTargetSelectionConfig& Config
+		const FTargetSelectionConfig& Config,
+		APawn* MyPawn,
+		UFactionReputationComponent* FactionComp
 	);
 
 	/** Clear cached results for a specific controller (e.g., when situation changes dramatically) */
@@ -96,14 +97,18 @@ private:
 		AAIController* Controller,
 		const TArray<AActor*>& Candidates,
 		ETargetSelectionContext Context,
-		const FTargetSelectionConfig& Config
+		const FTargetSelectionConfig& Config,
+		APawn* MyPawn,
+		UCognitionComponent* Cognition,
+		UFactionReputationComponent* FactionComp
 	);
 
 	/** LLM-enhanced selection for narrative consistency */
 	AActor* SelectTargetByLLM(
 		AAIController* Controller,
 		const TArray<AActor*>& Candidates,
-		ETargetSelectionContext Context
+		ETargetSelectionContext Context,
+		UCognitionComponent* Cognition
 	);
 
 	/** Calculate score for a target in given context */
@@ -163,7 +168,13 @@ private:
 	bool IsCacheValid(const FTargetCacheKey& Key) const;
 
 	/** Get cached target if valid */
-	AActor* GetCachedTarget(AAIController* Controller, ETargetSelectionContext Context);
+	AActor* GetCachedTarget(
+		AAIController* Controller, 
+		ETargetSelectionContext Context,
+		const FTargetSelectionConfig& Config,
+		APawn* MyPawn,
+		UFactionReputationComponent* FactionComp
+	);
 
 	/** Cache a target selection result */
 	void CacheTarget(AAIController* Controller, ETargetSelectionContext Context, AActor* Target);

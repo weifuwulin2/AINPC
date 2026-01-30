@@ -633,3 +633,29 @@ This file contains a log of commit messages for the AINPC project.
 - `Source/AINPC/Variant_Combat/AI/CombatEnemy.h/.cpp`
 - `Source/AINPC/AINPCCharacter.h/.cpp`
 
+---
+
+## [2026-01-31] Narrative Logic & Brain-Body Connection Overhaul
+**Type**: feat/fix
+**Scope**: NarrativeSquadSubsystem, GoalComponent, CognitionComponent
+**Description**:
+- **Narrative Logic & Event System**:
+  - **Critical Tag Fix**: Fixed `NarrativeDirector` using raw `"Death"` string instead of `Event.Death` GameplayTag, causing all kill events to be ignored by the Squad system.
+  - **Event Source Reporting**: Implemented `Director->RecordNPCDeath` call in `CombatEnemy::HandleDeath`, enabling enemies to actually report their demise.
+  - **Identity Stability**: Switched from `GetActorLabel` (Editor-only) to `GetName` (Runtime Unique ID) for reliable actor matching in Event Payload.
+  - **Race Condition Fix**: Moved `CleanupInvalidActors` to the *end* of event processing. Resolves issue where actors killed in the same frame were removed from memory before their death event could trigger scene progression.
+
+- **Brain-Body Architecture (Cognition Integration)**:
+  - **Intention Override**: `GoalComponent` now reads `MentalState->Intention`. If LLM sets an intention (e.g., "Social/Celebrate"), it overrides low-priority Schedule/Work directives.
+  - **Free Will Restoration**: Solved logic gap where freed slaves would immediately return to mining because `GoalComponent` ignored the "Freedom" context from `CognitionComponent`.
+
+- **Gameplay & UX Refinements**:
+  - **Prop Persistence**: Added `bKeepPropsOnEnd` to `FNarrativeSceneDef`. Corpses and debris now persist after scene completion instead of vanishing.
+  - **Context Broadcast**: Added `PostSceneStimulus` to broadcast global context updates (e.g., "Tyrant is dead, you are free!") to all survivors upon scene end.
+  - **State Cleanup**: `EndScene` now explicitly removes `Directive.Combat` override tags to prevent NPCs getting stuck in combat mode.
+
+- **Code Quality & Compilation**:
+  - **Unified Logging**: Replaced scattered `LogTemp` with `NARRATIVE_LOG` for clean channel filtering.
+  - **Access Fixes**: Resolved `FNativeGameplayTag` access (`GetTag().GetTagName()`) and `MentalState` member access issues.
+  - **Include Fixes**: Added missing `NarrativeDirectorSubsystem.h` to `CombatEnemy.cpp`.
+

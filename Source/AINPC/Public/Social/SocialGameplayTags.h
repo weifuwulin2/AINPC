@@ -40,7 +40,6 @@ namespace AINPCTags
 	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Death);
 	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Death_Self);
 	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Death_Witnessed);
-
 	// Goal Directives (High-Level Motivations)
 	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Directive_Work);      // Go to work
 	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Directive_Rest);      // Relax, Sleep
@@ -49,11 +48,12 @@ namespace AINPCTags
 	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Directive_Combat);    // Fight, Attack
 	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Directive_Idle);      // Wander, Stand
 
-	// Timeline Event Triggers (for Narrative System)
-	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_PlayerDetected);   // Player enters perception range
-	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_GuardsHostile);    // Guards become hostile
-	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_PlayerStillNear);  // Player didn't leave after warning
-	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_BanditAttacked);   // Bandit squad takes damage
+	// Timeline Event Triggers (Generic)
+	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Scene_Trigger);    // Generic trigger for timeline (Payload defines specifics)
+	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_State_Hostile);    // Something became hostile (Payload: Role/Faction)
+	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Combat_Damage);    // Damage taken (Payload: Victim Role)
+    AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_PlayerDetected);   // Keep this as it's a very common global event
+    // Removed: Event_GuardsHostile, Event_PlayerStillNear, Event_BanditAttacked
 
 	// Specific Work Interactions (Sub-types of Interaction.Work)
 	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Work_Mine);           // Mining ("Interaction.Work.Mine") - Kept as Work_Mine per request

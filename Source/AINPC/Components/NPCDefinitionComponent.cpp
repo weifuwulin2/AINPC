@@ -101,37 +101,49 @@ bool UNPCDefinitionComponent::GetSocialProfileDef(FSocialProfileDef& OutDef) con
 
 FString UNPCDefinitionComponent::GetDisplayName() const
 {
-	// 1. Try to get configured Name (First + Last)
+	FString FinalName = "";
+
+	// 1. Base Name (First + Last)
 	FNPCNameDef NameDef;
 	if (GetNameDef(NameDef))
 	{
-		FString FullName = NameDef.FirstName;
+		FinalName = NameDef.FirstName;
 		if (!NameDef.Surname.IsEmpty())
 		{
-			FullName += " " + NameDef.Surname;
+			FinalName += " " + NameDef.Surname;
 		}
-		return FullName;
 	}
 
-	// 2. Fallback: Profession (e.g., "Merchant", "Guard")
+	// Fallback Base Name if no custom name
+	if (FinalName.IsEmpty())
+	{
+		// Try Object Name as base if really nothing else? 
+		// Or maybe Faction generic name?
+		if (FactionID.ToString().Contains("Zombie")) FinalName = "Zombie";
+		else FinalName = "Citizen";
+	}
+
+	// 2. Append Identity Details (Profession + Personality)
+	TArray<FString> ExtraDetails;
+
 	if (!ProfessionID.IsNone() && ProfessionID != TEXT("None"))
 	{
-		return ProfessionID.ToString();
+		ExtraDetails.Add(ProfessionID.ToString());
+	}
+	
+	if (!PersonalityID.IsNone() && PersonalityID != TEXT("None") && PersonalityID != TEXT("Default"))
+	{
+		ExtraDetails.Add(PersonalityID.ToString());
 	}
 
-	// 3. Fallback: Faction-based Identity (e.g., "Zombie", "Citizen")
-	FString FacStr = FactionID.ToString();
-	if (FacStr.Contains("Monster") || FacStr.Contains("Zombie"))
+	// 3. Combine
+	if (ExtraDetails.Num() > 0)
 	{
-		return TEXT("Zombie"); // Or specific monster type
-	}
-	else if (FacStr.Contains("Bandit"))
-	{
-		return TEXT("Bandit");
+		FString DetailsStr = FString::Join(ExtraDetails, TEXT(", "));
+		FinalName += FString::Printf(TEXT(" (%s)"), *DetailsStr);
 	}
 
-	// 4. Ultimate Fallback
-	return TEXT("Citizen");
+	return FinalName;
 }
 
 bool UNPCDefinitionComponent::GetNameDef(FNPCNameDef& OutDef) const

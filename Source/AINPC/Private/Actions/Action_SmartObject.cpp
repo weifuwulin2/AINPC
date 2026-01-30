@@ -72,7 +72,9 @@ void UAction_SmartObject::Enter_Implementation(AAIController* Controller)
 	}
 
 	// Use Manager to find object with available slot
-	TargetSmartObject = SmartObjectMgr->FindBestSmartObject(Controller->GetPawn(), SmartObjectTag);
+	// ✅ Limit search radius to 50m to avoid assigning SmartObjects outside NavMesh range
+	const float MaxSmartObjectSearchRadius = 5000.0f; // 50 meters
+	TargetSmartObject = SmartObjectMgr->FindBestSmartObject(Controller->GetPawn(), SmartObjectTag, MaxSmartObjectSearchRadius);
 
 	if (TargetSmartObject)
 	{
@@ -125,7 +127,7 @@ void UAction_SmartObject::Enter_Implementation(AAIController* Controller)
 	}
 	else
 	{
-		AINPC_LOG(Warning, "[%s] No valid unreserved Smart Object found for tag: %s", *ActionName, *SmartObjectTag.ToString());
+		AINPC_LOG(Warning, "[%s] No valid unreserved Smart Object found for tag: %s within %.0f cm", *ActionName, *SmartObjectTag.ToString(), MaxSmartObjectSearchRadius);
 	}
 }
 
@@ -164,7 +166,9 @@ void UAction_SmartObject::Execute_Implementation(AAIController* Controller)
 
 		if (SmartObjectMgr && SmartObjectTag.IsValid())
 		{
-			TargetSmartObject = SmartObjectMgr->FindBestSmartObject(Controller->GetPawn(), SmartObjectTag);
+			// ✅ Use same search radius limit
+			const float MaxSmartObjectSearchRadius = 5000.0f;
+			TargetSmartObject = SmartObjectMgr->FindBestSmartObject(Controller->GetPawn(), SmartObjectTag, MaxSmartObjectSearchRadius);
 			
 			if (TargetSmartObject)
 			{
@@ -481,12 +485,23 @@ void UAction_SmartObject::SetupRecoveryTimer(AAIController* Controller)
 		}
 	}
 
+	// ✅ Capture WeakPtr to prevent crash if Controller is destroyed
+	TWeakObjectPtr<AAIController> WeakController(Controller);
+
 	// ✅ Setup Timer (1 second interval, repeat)
 	Controller->GetWorld()->GetTimerManager().SetTimer(
 		RecoveryTimerHandle,
-		[this, Controller]()
+		[this, WeakController]()
 		{
-			RestoreStats(Controller);
+			if (AAIController* StrongController = WeakController.Get())
+			{
+				RestoreStats(StrongController);
+			}
+			else
+			{
+				// Controller is dead, clear timer if possible (though difficult from inside lambda without world access)
+				// At least we don't crash.
+			}
 		},
 		1.0f,  // 每1秒执行一次
 		true   // 重复执行

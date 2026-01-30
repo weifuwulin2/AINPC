@@ -14,6 +14,7 @@
 #include "UtilityAI/UNPCMentalState.h"
 #include "Actions/Action_TalkTo.h"
 #include "Variant_Combat/AI/CombatEnemy.h"
+#include "Utilities/AINPCHelpers.h" // ✅ Added for unified name resolution
 
 USensoryComponent::USensoryComponent()
 {
@@ -517,19 +518,8 @@ void USensoryComponent::ReceiveSpeech(AActor* Speaker, FString Message)
     // Validate
     if (!Speaker || Message.IsEmpty()) return;
 
-    // 1. Get Speaker Name (try for better name)
-    FString SpeakerName = Speaker->GetName();
-    if (APawn* SpeakerPawn = Cast<APawn>(Speaker))
-    {
-         if (UNPCDefinitionComponent* DefComp = SpeakerPawn->FindComponentByClass<UNPCDefinitionComponent>())
-         {
-             FNPCNameDef NameDef;
-             if (DefComp->GetNameDef(NameDef))
-             {
-                 SpeakerName = NameDef.FirstName; 
-             }
-         }
-    }
+    // 1. Get Speaker Name (Standardized)
+    FString SpeakerName = AINPCHelpers::GetSmartActorName(Speaker);
     
     AINPC_LOG(Warning, "💬 SPEECH RECEIVED from %s: \"%s\"", *SpeakerName, *Message);
 
@@ -642,31 +632,8 @@ void USensoryComponent::HandleDeath(AActor* DeadActor, AActor* Killer)
         
         if (Killer)
         {
-            FString KillerName = "Unknown";
-            
-            // Get killer's meaningful name
-            if (APawn* KillerPawn = Cast<APawn>(Killer))
-            {
-                if (AController* KillerController = KillerPawn->GetController())
-                {
-                    if (UPersonalityComponent* PersonalityComp = KillerController->FindComponentByClass<UPersonalityComponent>())
-                    {
-                        if (!PersonalityComp->PersonalityID.IsNone())
-                        {
-                            KillerName = PersonalityComp->PersonalityID.ToString();
-                        }
-                    }
-                }
-            }
-            else if (Killer->ActorHasTag("Player"))
-            {
-                KillerName = "Player";
-            }
-            
-            if (KillerName == "Unknown")
-            {
-                KillerName = Killer->GetName();
-            }
+            // ✅ Standardized Killer Name
+            FString KillerName = AINPCHelpers::GetSmartActorName(Killer);
             
             Desc = DeadActorDesc + FString::Printf(TEXT(" (killed by %s)"), *KillerName);
         }
@@ -719,7 +686,7 @@ void USensoryComponent::HandleDeath(AActor* DeadActor, AActor* Killer)
         {
              // Try both Smart Name (e.g. "zombie") and Object Name (e.g. "BP_Zombie_C_0")
              // 尝试使用 Smart Name 和 Object Name 进行清除
-             FString SmartName = GetSmartActorName(DeadActor);
+             FString SmartName = AINPCHelpers::GetSmartActorName(DeadActor);
              MemoryComp->MarkMemoriesResolvedForActor(SmartName);
              MemoryComp->MarkMemoriesResolvedForActor(DeadActor->GetName());
         }
@@ -758,55 +725,12 @@ FString USensoryComponent::FormatDescription(FString Verb, AActor* Target, FStri
     
     if (Target)
     {
-        if (APawn* TargetPawn = Cast<APawn>(Target))
-        {
-            if (AController* TargetController = TargetPawn->GetController())
-            {
-                // 1. Try UtilityAIController (Personality)
-                if (AUtilityAIController* UtilityController = Cast<AUtilityAIController>(TargetController))
-                {
-                    if (UtilityController->PersonalityComp && !UtilityController->PersonalityComp->PersonalityID.IsNone())
-                    {
-                        TargetName = UtilityController->PersonalityComp->PersonalityID.ToString();
-                    }
-                }
-
-                // 2. Try NPCDefinition (Profession) - Check Controller first
-                if (UNPCDefinitionComponent* NPCDef = TargetController->FindComponentByClass<UNPCDefinitionComponent>())
-                {
-                    if (!NPCDef->ProfessionID.IsNone())
-                    {
-                        ProfessionInfo = FString::Printf(TEXT(" (%s)"), *NPCDef->ProfessionID.ToString());
-                    }
-                }
-            }
-            
-            // 3. Try NPCDefinition on Pawn (CombatEnemy case)
-            if (ProfessionInfo.IsEmpty())
-            {
-                 if (UNPCDefinitionComponent* NPCDef = TargetPawn->FindComponentByClass<UNPCDefinitionComponent>())
-                 {
-                    if (!NPCDef->ProfessionID.IsNone())
-                    {
-                        ProfessionInfo = FString::Printf(TEXT(" (%s)"), *NPCDef->ProfessionID.ToString());
-                    }
-                 }
-            }
-        }
-        
-        if (TargetName == "Unknown" && Target->ActorHasTag("Player"))
-        {
-            TargetName = "Player";
-        }
-        
-        if (TargetName == "Unknown")
-        {
-            TargetName = Target->GetName();
-        }
+        // ✅ Standardized Target Name (Includes Name, Profession, Personality)
+        TargetName = AINPCHelpers::GetSmartActorName(Target);
     }
     
-    // Append Profession to Name if available
-    FString DisplayName = TargetName + ProfessionInfo;
+    // Name already contains details
+    FString DisplayName = TargetName;
     
     if (ExtraInfo.IsEmpty())
         return FString::Printf(TEXT("I %s %s"), *Verb, *DisplayName);
@@ -823,56 +747,13 @@ FString USensoryComponent::FormatDescriptionWithContext(FString Verb, AActor* Ta
     
     if (Target)
     {
-        if (APawn* TargetPawn = Cast<APawn>(Target))
-        {
-            if (AController* TargetController = TargetPawn->GetController())
-            {
-                if (AUtilityAIController* UtilityController = Cast<AUtilityAIController>(TargetController))
-                {
-                    if (UtilityController->PersonalityComp && !UtilityController->PersonalityComp->PersonalityID.IsNone())
-                    {
-                        TargetName = UtilityController->PersonalityComp->PersonalityID.ToString();
-                    }
-                }
-
-                // Try NPCDefinition (Profession)
-                if (UNPCDefinitionComponent* NPCDef = TargetController->FindComponentByClass<UNPCDefinitionComponent>())
-                {
-                    if (!NPCDef->ProfessionID.IsNone())
-                    {
-                        ProfessionInfo = FString::Printf(TEXT(" (%s)"), *NPCDef->ProfessionID.ToString());
-                    }
-                }
-            }
-
-            // Try NPCDefinition on Pawn
-            if (ProfessionInfo.IsEmpty())
-            {
-                 if (UNPCDefinitionComponent* NPCDef = TargetPawn->FindComponentByClass<UNPCDefinitionComponent>())
-                 {
-                    if (!NPCDef->ProfessionID.IsNone())
-                    {
-                        ProfessionInfo = FString::Printf(TEXT(" (%s)"), *NPCDef->ProfessionID.ToString());
-                    }
-                 }
-            }
-        }
-        
-        if (TargetName == "Unknown" && Target->ActorHasTag("Player"))
-        {
-            TargetName = "Player";
-        }
-        
-        if (TargetName == "Unknown")
-        {
-            TargetName = Target->GetName();
-        }
+        // ✅ Standardized Target Name
+        TargetName = AINPCHelpers::GetSmartActorName(Target);
     }
     
     // ✅ Build context-aware description
-    // 构建包含上下文的描述
-    // Append Profession Info
-    FString DisplayName = TargetName + ProfessionInfo;
+    // Name now includes Profession info, so we don't need to append it again.
+    FString DisplayName = TargetName;
     FString Description = FString::Printf(TEXT("I %s %s"), *Verb, *DisplayName);
     
     // Add faction information

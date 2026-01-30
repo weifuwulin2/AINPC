@@ -726,6 +726,26 @@ FString UCognitionComponent::SuggestTarget(const TArray<FString>& CandidateNames
 		*SelectionContext
 	);
 
+	// ✅ Inject Narrative Plot Context (CRITICAL for plot-driven target selection)
+	if (UWorld* World = GetWorld())
+	{
+		if (UNarrativeSquadSubsystem* SquadSys = World->GetSubsystem<UNarrativeSquadSubsystem>())
+		{
+			FString PlotContext = SquadSys->GetMemberContext(GetOwner());
+			if (PlotContext.IsEmpty())
+			{
+				if (AAIController* AICon = Cast<AAIController>(GetOwner()))
+					if (APawn* Pawn = AICon->GetPawn())
+						PlotContext = SquadSys->GetMemberContext(Pawn);
+			}
+
+			if (!PlotContext.IsEmpty())
+			{
+				Prompt += FString::Printf(TEXT("[CURRENT PLOT EVENT]\n%s\n\n"), *PlotContext);
+			}
+		}
+	}
+
 	// Add Memories
 	if (MemoryComp)
 	{

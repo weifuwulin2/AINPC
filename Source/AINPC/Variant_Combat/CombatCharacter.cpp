@@ -15,6 +15,7 @@
 #include "TimerManager.h"
 #include "Engine/LocalPlayer.h"
 #include "CombatPlayerController.h"
+#include "NavigationInvokerComponent.h" // ✅ For dynamic NavMesh generation on large maps
 
 ACombatCharacter::ACombatCharacter()
 {
@@ -46,6 +47,17 @@ ACombatCharacter::ACombatCharacter()
 	// create the life bar widget component
 	LifeBar = CreateDefaultSubobject<UWidgetComponent>(TEXT("LifeBar"));
 	LifeBar->SetupAttachment(RootComponent);
+
+	// ✅ Create Navigation Invoker for dynamic NavMesh generation
+	// 为大地图创建导航调用者，只在角色周围生成导航网格
+	NavigationInvoker = CreateDefaultSubobject<UNavigationInvokerComponent>(TEXT("NavigationInvoker"));
+	if (NavigationInvoker)
+	{
+		// Set the radius around this character where NavMesh should be generated
+		// 设置角色周围导航网格生成半径（单位：厘米）
+		// ✅ Increased to 60m to cover SmartObject search range (50m) with buffer
+		NavigationInvoker->SetGenerationRadii(6000.0f, 8000.0f); // 60m active, 80m removal
+	}
 
 	// set the player tag
 	Tags.Add(FName("Player"));

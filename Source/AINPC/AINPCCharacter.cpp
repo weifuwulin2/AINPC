@@ -10,6 +10,7 @@
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
+#include "NavigationInvokerComponent.h" // ✅ For dynamic NavMesh generation
 #include "AINPC.h"
 
 AAINPCCharacter::AAINPCCharacter()
@@ -45,6 +46,17 @@ AAINPCCharacter::AAINPCCharacter()
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
 	FollowCamera->bUsePawnControlRotation = false;
+
+	// ✅ Create Navigation Invoker for dynamic NavMesh generation
+	// 为大地图创建导航调用者，只在玩家周围生成导航网格
+	NavigationInvoker = CreateDefaultSubobject<UNavigationInvokerComponent>(TEXT("NavigationInvoker"));
+	if (NavigationInvoker)
+	{
+		// Set the radius around player where NavMesh should be generated
+		// 设置玩家周围导航网格生成半径（单位：厘米）
+		// ✅ Increased to 70m to cover SmartObject search range with extra buffer
+		NavigationInvoker->SetGenerationRadii(7000.0f, 9000.0f); // 70m active, 90m removal (larger than AI)
+	}
 
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
 	// are set in the derived blueprint asset named ThirdPersonCharacter (to avoid direct content references in C++)

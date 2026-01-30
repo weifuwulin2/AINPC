@@ -25,18 +25,40 @@ AActor* UTargetSelectionSubsystem::SelectTarget(
 {
 	if (!Controller) return nullptr;
 
-	// ✅ Step 1: Check Cache First
-	AActor* CachedTarget = GetCachedTarget(Controller, Context);
+	APawn* MyPawn = Controller->GetPawn();
+	if (!MyPawn) return nullptr;
+
+	// ========================================
+	// ✅ FIX: Lookup all components ONCE
+	// 修复：只查找一次所有组件
+	// ========================================
+	UFactionReputationComponent* FactionComp = MyPawn->FindComponentByClass<UFactionReputationComponent>();
+	UCognitionComponent* Cognition = MyPawn->FindComponentByClass<UCognitionComponent>();
+
+	// ✅ Step 1: Check Cache First (with Combat Policy validation)
+	AActor* CachedTarget = GetCachedTarget(Controller, Context, Config, MyPawn, FactionComp);
 	if (CachedTarget)
 	{
-		// Verify cached target is still valid (not dead, still in range)
+		// Verify cached target is still valid (not dead, still in range, Combat Policy)
 		if (!CachedTarget->ActorHasTag("Dead"))
 		{
-			APawn* MyPawn = Controller->GetPawn();
-			if (MyPawn)
+			float Distance = FVector::Dist(MyPawn->GetActorLocation(), CachedTarget->GetActorLocation());
+			if (Distance <= Config.MaxDistance)
 			{
-				float Distance = FVector::Dist(MyPawn->GetActorLocation(), CachedTarget->GetActorLocation());
-				if (Distance <= Config.MaxDistance)
+				// ✅ FIX: Validate Combat Policy for cached targets
+				// 修复：为缓存目标验证战斗策略
+				if (Context == ETargetSelectionContext::Combat)
+				{
+					if (FactionComp && !FactionComp->EvaluateCombatPolicy(MyPawn, CachedTarget))
+					{
+						// InScene started, cached combat target invalid
+						TARGET_LOG(Log, "   ⚠️ Cached target invalid: Combat Policy changed (InScene?)");
+						InvalidateCache(Controller);
+						CachedTarget = nullptr; // Force re-selection
+					}
+				}
+				
+				if (CachedTarget) // Still valid after all checks
 				{
 					TARGET_LOG(Verbose, "Using cached target: %s for context: %d", 
 						*CachedTarget->GetName(), (int32)Context);
@@ -49,8 +71,8 @@ AActor* UTargetSelectionSubsystem::SelectTarget(
 		InvalidateCache(Controller);
 	}
 
-	// ✅ Step 2: Get Candidates
-	TArray<AActor*> Candidates = GetTargetCandidates(Controller, Context, Config);
+	// ✅ Step 2: Get Candidates (pass FactionComp)
+	TArray<AActor*> Candidates = GetTargetCandidates(Controller, Context, Config, MyPawn, FactionComp);
 	
 	if (Candidates.Num() == 0)
 	{
@@ -77,25 +99,25 @@ AActor* UTargetSelectionSubsystem::SelectTarget(
 		bShouldUseLLM = false;
 	}
 
-	// ✅ Step 4: Select Target
+	// ✅ Step 4: Select Target (pass components)
 	bool bWasFallback = false;
 	if (bShouldUseLLM)
 	{
 		// 🧠 LLM-Enhanced Selection (Slow but narrative-aware)
-		SelectedTarget = SelectTargetByLLM(Controller, Candidates, Context);
+		SelectedTarget = SelectTargetByLLM(Controller, Candidates, Context, Cognition);
 		
 		// Fallback if LLM fails (returns null)
 		if (!SelectedTarget)
 		{
 			TARGET_LOG(Warning, "LLM selection failed/pending, falling back to rule-based");
-			SelectedTarget = SelectTargetByScoring(Controller, Candidates, Context, Config);
+			SelectedTarget = SelectTargetByScoring(Controller, Candidates, Context, Config, MyPawn, Cognition, FactionComp);
 			bWasFallback = true; // Mark as fallback so we don't cache this "temporary" decision long-term
 		}
 	}
 	else
 	{
 		// ⚡ Rule-Based Selection (Fast)
-		SelectedTarget = SelectTargetByScoring(Controller, Candidates, Context, Config);
+		SelectedTarget = SelectTargetByScoring(Controller, Candidates, Context, Config, MyPawn, Cognition, FactionComp);
 	}
 
 	// ✅ Step 5: Cache Result
@@ -119,12 +141,13 @@ AActor* UTargetSelectionSubsystem::SelectTarget(
 TArray<AActor*> UTargetSelectionSubsystem::GetTargetCandidates(
 	AAIController* Controller,
 	ETargetSelectionContext Context,
-	const FTargetSelectionConfig& Config
+	const FTargetSelectionConfig& Config,
+	APawn* MyPawn,
+	UFactionReputationComponent* FactionComp
 )
 {
 	TArray<AActor*> Candidates;
 
-	APawn* MyPawn = Controller->GetPawn();
 	if (!MyPawn) return Candidates;
 
 	// Get AIPerceptionComponent to find perceived actors
@@ -134,9 +157,6 @@ TArray<AActor*> UTargetSelectionSubsystem::GetTargetCandidates(
 		TARGET_LOG(Warning, "No AIPerceptionComponent found on %s", *Controller->GetName());
 		return Candidates;
 	}
-
-	// Get FactionComponent for reputation checks
-	UFactionReputationComponent* FactionComp = MyPawn->FindComponentByClass<UFactionReputationComponent>();
 
 	// Get all perceived actors
 	TArray<AActor*> PerceivedActors;
@@ -193,18 +213,16 @@ AActor* UTargetSelectionSubsystem::SelectTargetByScoring(
 	AAIController* Controller,
 	const TArray<AActor*>& Candidates,
 	ETargetSelectionContext Context,
-	const FTargetSelectionConfig& Config
+	const FTargetSelectionConfig& Config,
+	APawn* MyPawn,
+	UCognitionComponent* Cognition,
+	UFactionReputationComponent* FactionComp
 )
 {
-	APawn* MyPawn = Controller->GetPawn();
 	if (!MyPawn || Candidates.Num() == 0) return nullptr;
 
 	TARGET_LOG(Warning, "🎯 [SelectTargetByScoring] Scoring %d candidates for %s (Context: %d)", 
 		Candidates.Num(), *MyPawn->GetName(), (int32)Context);
-
-	// Get components for scoring
-	UCognitionComponent* Cognition = MyPawn->FindComponentByClass<UCognitionComponent>();
-	UFactionReputationComponent* FactionComp = MyPawn->FindComponentByClass<UFactionReputationComponent>();
 	
 	TARGET_LOG(Warning, "   Components: Cognition=%s, FactionComp=%s", 
 		Cognition ? TEXT("YES") : TEXT("NO"), 
@@ -327,13 +345,13 @@ float UTargetSelectionSubsystem::CalculateTargetScore(
 AActor* UTargetSelectionSubsystem::SelectTargetByLLM(
 	AAIController* Controller,
 	const TArray<AActor*>& Candidates,
-	ETargetSelectionContext Context
+	ETargetSelectionContext Context,
+	UCognitionComponent* Cognition
 )
 {
 	APawn* MyPawn = Controller->GetPawn();
 	if (!MyPawn) return nullptr;
 
-	UCognitionComponent* Cognition = MyPawn->FindComponentByClass<UCognitionComponent>();
 	if (!Cognition)
 	{
 		TARGET_LOG(Warning, "No CognitionComponent for LLM selection, falling back to scoring");
@@ -378,12 +396,54 @@ AActor* UTargetSelectionSubsystem::SelectTargetByLLM(
 	AActor** FoundActor = NameToActorMap.Find(SelectedName);
 	if (FoundActor && *FoundActor)
 	{
-		TARGET_LOG(Log, "LLM selected target: %s for context: %s", 
+		TARGET_LOG(Log, "LLM selected target (Exact Match): %s for context: %s", 
 			*SelectedName, *ContextString);
 		return *FoundActor;
 	}
 
-	TARGET_LOG(Warning, "LLM selection failed to find actor for: %s", *SelectedName);
+	// ✅ Fuzzy Match Fallback
+	// LLM might reply "Grim Redbeard" instead of "Grim Redbeard (Guard, Stoic)"
+	AActor* BestMatchActor = nullptr;
+	int32 BestMatchLength = 0;
+
+	for (const auto& Pair : NameToActorMap)
+	{
+		FString CandidateName = Pair.Key;
+		
+		// 1. Check if Candidate contains Selection (e.g. Candidate="Grim (Guard)", Selection="Grim")
+		if (CandidateName.Contains(SelectedName))
+		{
+			// Prefer the shortest match that contains selection (most precise?) or longest?
+			// Actually, just taking the first strong match is usually fine for names.
+			BestMatchActor = Pair.Value;
+			break;
+		}
+		
+		// 2. Check if Selection contains Candidate (e.g. Selection="I choose Grim (Guard)", Candidate="Grim (Guard)")
+		if (SelectedName.Contains(CandidateName))
+		{
+			BestMatchActor = Pair.Value;
+			break;
+		}
+
+		// 3. Check partial name match (First name basis)
+		// Split strings by space and check first token? 
+		// Simpler: Check if Candidate starts with Selection
+		if (CandidateName.StartsWith(SelectedName))
+		{
+			BestMatchActor = Pair.Value;
+			break;
+		}
+	}
+
+	if (BestMatchActor)
+	{
+		TARGET_LOG(Warning, "LLM selected target (Fuzzy Match): '%s' matched with candidate '%s'", 
+			*SelectedName, *AINPCHelpers::GetSmartActorName(BestMatchActor));
+		return BestMatchActor;
+	}
+
+	TARGET_LOG(Warning, "LLM selection failed to find actor for: %s (No exact or fuzzy match found)", *SelectedName);
 	return nullptr;
 }
 
@@ -401,7 +461,8 @@ bool UTargetSelectionSubsystem::IsValidTarget(
 {
 	if (!Target || Target == MyPawn) return false;
 
-	TARGET_LOG(Warning, "🔍 [IsValidTarget] Checking %s for %s (Context: %d)", 
+	// ✅ FIX: Reduced log verbosity to prevent flooding
+	TARGET_LOG(Verbose, "🔍 [IsValidTarget] Checking %s for %s (Context: %d)", 
 		*Target->GetName(), *MyPawn->GetName(), (int32)Context);
 
 	// Check if dead
@@ -413,35 +474,59 @@ bool UTargetSelectionSubsystem::IsValidTarget(
 
 	// Check distance
 	float Distance = FVector::Dist(MyPawn->GetActorLocation(), Target->GetActorLocation());
-	if (Distance > Config.MaxDistance)
+	
+	// ✅ Combat Context Range Boost
+	// Allow selecting targets further away in combat to prevent "freezing" when enemy is visible but out of standard range.
+	// We can select them, then MoveTo will handle closing the distance.
+	float EffectiveMaxDist = Config.MaxDistance;
+	if (Context == ETargetSelectionContext::Combat)
 	{
-		TARGET_LOG(Verbose, "   ❌ REJECTED: Distance %.0f > MaxDistance %.0f", Distance, Config.MaxDistance);
+		EffectiveMaxDist = FMath::Max(Config.MaxDistance * 2.0f, 6000.0f); 
+	}
+
+	if (Distance > EffectiveMaxDist)
+	{
+		TARGET_LOG(Verbose, "   ❌ REJECTED: Distance %.0f > MaxDistance %.0f (Effective: %.0f)", 
+			Distance, Config.MaxDistance, EffectiveMaxDist);
 		return false;
 	}
 
 	// Context-specific validation
 	if (Context == ETargetSelectionContext::Combat)
 	{
+		// ✅ CRITICAL FIX: Check Combat Policy BEFORE selecting combat targets
+		// This prevents NPCs from entering Attack Action during InScene
+		// 关键修复：在选择战斗目标前检查战斗策略
+		// 这防止 NPC 在 InScene 时进入攻击动作
+		if (FactionComp)
+		{
+			if (!FactionComp->EvaluateCombatPolicy(MyPawn, Target))
+			{
+				TARGET_LOG(Warning, "   ❌ REJECTED: Combat Policy DENIED (InScene protection)");
+				return false; // InScene protection - no combat targets allowed
+			}
+		}
+		
 		// For combat, avoid friendly targets
 		if (FactionComp)
 		{
 			float Attitude = FactionComp->GetAttitudeTowards(Target);
-			TARGET_LOG(Warning, "   → Attitude check: %.1f (Threshold: %.1f)", Attitude, Config.FriendlyReputationThreshold);
+			TARGET_LOG(Verbose, "   → Attitude check: %.1f (Threshold: %.1f)", Attitude, Config.FriendlyReputationThreshold);
 			
 			if (Attitude > Config.FriendlyReputationThreshold)
 			{
-				TARGET_LOG(Warning, "   ❌ REJECTED: Too friendly (Attitude %.1f > %.1f)", 
+				TARGET_LOG(Verbose, "   ❌ REJECTED: Too friendly (Attitude %.1f > %.1f)", 
 					Attitude, Config.FriendlyReputationThreshold);
 				return false;  // Too friendly to attack
 			}
 		}
 		else
 		{
-			TARGET_LOG(Warning, "   ⚠️ No FactionComp - skipping attitude check");
+			TARGET_LOG(Verbose, "   ⚠️ No FactionComp - skipping attitude check");
 		}
 	}
 
-	TARGET_LOG(Warning, "   ✅ ACCEPTED as valid target");
+	TARGET_LOG(Verbose, "   ✅ ACCEPTED as valid target");
 	return true;
 }
 
@@ -468,7 +553,13 @@ AActor* UTargetSelectionSubsystem::GetActorFocus(AActor* Actor)
 // Caching System
 // ========================================
 
-AActor* UTargetSelectionSubsystem::GetCachedTarget(AAIController* Controller, ETargetSelectionContext Context)
+AActor* UTargetSelectionSubsystem::GetCachedTarget(
+	AAIController* Controller, 
+	ETargetSelectionContext Context,
+	const FTargetSelectionConfig& Config,
+	APawn* MyPawn,
+	UFactionReputationComponent* FactionComp
+)
 {
 	FTargetCacheKey Key;
 	Key.Controller = Controller;

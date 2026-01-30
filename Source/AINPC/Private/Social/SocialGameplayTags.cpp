@@ -31,9 +31,8 @@ namespace AINPCTags
 
 	// Life Events
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Event_Death, "Event.Death", "Death event (generic)");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Event_Death_Self, "Event.Death.Self", "Self death event");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Event_Death_Witnessed, "Event.Death.Witnessed", "Witnessed another's death");
-
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Event_Death_Self, "Event.Death.Self", "Death event (Self)");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Event_Death_Witnessed, "Event.Death.Witnessed", "Death event (Witnessed)");
 	// Goal Directives
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Directive_Work, "Directive.Work", "Goal: Go to work");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Directive_Rest, "Directive.Rest", "Goal: Rest or Sleep");
@@ -42,11 +41,12 @@ namespace AINPCTags
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Directive_Combat, "Directive.Combat", "Goal: Fight / Attack");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Directive_Idle, "Directive.Idle", "Goal: Idle / Wander");
 
-	// Timeline Event Triggers (for Narrative System)
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Event_PlayerDetected, "Event.PlayerDetected", "Timeline Trigger: Player enters perception range");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Event_GuardsHostile, "Event.GuardsHostile", "Timeline Trigger: Guards become hostile");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Event_PlayerStillNear, "Event.PlayerStillNear", "Timeline Trigger: Player didn't leave after warning");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Event_BanditAttacked, "Event.BanditAttacked", "Timeline Trigger: Bandit squad takes damage");
+	// Timeline Event Triggers
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Event_Scene_Trigger, "Event.Scene.Trigger", "Generic Timeline Trigger");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Event_State_Hostile, "Event.State.Hostile", "Hostility State Change");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Event_Combat_Damage, "Event.Combat.Damage", "Damage Taken Event");
+    UE_DEFINE_GAMEPLAY_TAG_COMMENT(Event_PlayerDetected, "Event.PlayerDetected", "Timeline Trigger: Player enters perception range");
+    // Generic abstraction replaces specific scenarions (GuardsHostile, etc.)
 
 	// Work Activities
 	// Defining them under Interaction.Work hierarchy so broad filters work

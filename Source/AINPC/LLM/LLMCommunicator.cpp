@@ -174,7 +174,7 @@ void ULLMCommunicator::OnResponseReceived(FHttpRequestPtr Request, FHttpResponse
 
     // Navigate: choices[0] -> message -> content
     const TArray<TSharedPtr<FJsonValue>>* ChoicesArray;
-    if (JsonResponse->TryGetArrayField("choices", ChoicesArray))
+    if (JsonResponse->TryGetArrayField(TEXT("choices"), ChoicesArray))
     {
         // ✅ P0 Fix: Check array bounds before accessing
         if (ChoicesArray->Num() == 0)
@@ -186,8 +186,8 @@ void ULLMCommunicator::OnResponseReceived(FHttpRequestPtr Request, FHttpResponse
         }
 
         TSharedPtr<FJsonObject> FirstChoice = (*ChoicesArray)[0]->AsObject();
-        TSharedPtr<FJsonObject> MessageObj = FirstChoice->GetObjectField("message");
-        FString InnerContentString = MessageObj->GetStringField("content");
+        TSharedPtr<FJsonObject> MessageObj = FirstChoice->GetObjectField(TEXT("message"));
+        FString InnerContentString = MessageObj->GetStringField(TEXT("content"));
 
         // Cleanup Markdown if present (e.g. ```json ... ```)
         InnerContentString = InnerContentString.Replace(TEXT("```json"), TEXT("")).Replace(TEXT("```"), TEXT("")).TrimStartAndEnd();
@@ -407,7 +407,7 @@ void ULLMCommunicator::OnResponseReceivedRaw(FHttpRequestPtr Request, FHttpRespo
     {
         // 提取 choices[0].message.content
         const TArray<TSharedPtr<FJsonValue>>* ChoicesArray;
-        if (JsonResponse->TryGetArrayField("choices", ChoicesArray))
+        if (JsonResponse->TryGetArrayField(TEXT("choices"), ChoicesArray))
         {
             // ✅ P0 Fix: Check array bounds before accessing
             if (ChoicesArray->Num() == 0)
@@ -418,8 +418,8 @@ void ULLMCommunicator::OnResponseReceivedRaw(FHttpRequestPtr Request, FHttpRespo
             }
 
             TSharedPtr<FJsonObject> FirstChoice = (*ChoicesArray)[0]->AsObject();
-            TSharedPtr<FJsonObject> MessageObj = FirstChoice->GetObjectField("message");
-            FString Content = MessageObj->GetStringField("content");
+            TSharedPtr<FJsonObject> MessageObj = FirstChoice->GetObjectField(TEXT("message"));
+            FString Content = MessageObj->GetStringField(TEXT("content"));
 
             // 清理 Markdown (```json ... ```) 以防万一
             Content = Content.Replace(TEXT("```json"), TEXT("")).Replace(TEXT("```"), TEXT("")).TrimStartAndEnd();

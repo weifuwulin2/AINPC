@@ -35,6 +35,28 @@ struct FScenePropDef
 	FTransform RelativeTransform;
 };
 
+USTRUCT(BlueprintType)
+struct FNarrativeEventMatcher
+{
+	GENERATED_BODY()
+
+	/** The event type to listen for (e.g. Event.Death) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta=(Categories="Event"))
+	FGameplayTag Tag;
+
+	/** Optional parameter to filter by (e.g. "Tyrant Lord", "Guard") */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FString Payload;
+
+	bool IsValid() const { return Tag.IsValid(); }
+    
+    // Serialization for maps/sets if needed
+	bool operator==(const FNarrativeEventMatcher& Other) const
+	{
+		return Tag == Other.Tag && Payload == Other.Payload;
+	}
+};
+
 /**
  * Defines a single node in a Narrative Scene's Timeline.
  * Allows plot and directives to evolve over time.
@@ -48,9 +70,9 @@ struct FNarrativeTimelineEntry
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Timeline")
 	float TimeOffset = 0.0f;
 
-	/** Optional event condition. If set, node triggers only after TimeOffset AND receiving this event. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Timeline", meta=(Categories="Event"))
-	FGameplayTag TriggerCondition;
+	/** Optional event condition. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Timeline")
+	FNarrativeEventMatcher Trigger;
 
 	/** New plot outline to inject into NPC context (LLM). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Timeline", meta=(MultiLine=true))
@@ -80,12 +102,21 @@ struct FNarrativeSceneDef : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TArray<FScenePropDef> Props;
 
+	/** Conditions to end the scene (OR logic: if any matches, scene ends) */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TArray<FName> CompletionTags;
+	TArray<FNarrativeEventMatcher> CompletionConditions;
 
 	/** Timeline of plot evolution nodes. Enables dynamic scene progression. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Timeline")
 	TArray<FNarrativeTimelineEntry> Timeline;
+
+	/** If true, spawned props will NOT be destroyed when the scene ends. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Config")
+	bool bKeepPropsOnEnd = false;
+
+	/** Message sent to NPC Cognition when scene ends (e.g. "The Tyrant is dead! We are free!"). Overrides default routine method. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Config")
+	FString PostSceneStimulus;
 };
 
 USTRUCT(BlueprintType)
@@ -107,13 +138,19 @@ struct FNarrativeSceneSquad
 	TArray<AActor*> SpawnedProps;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-	TArray<FName> CompletionTags;
+	TArray<FNarrativeEventMatcher> CompletionConditions;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	bool bIsActive = false;
 	
 	UPROPERTY()
 	class ANarrativeSceneAnchor* AssignedAnchor = nullptr;
+
+	UPROPERTY()
+	bool bKeepPropsOnEnd = false;
+
+	UPROPERTY()
+	FString PostSceneStimulus;
 
 	// --- Ambient Dialogue Configuration ---
 	
@@ -187,7 +224,7 @@ public:
 	 * @return SquadID
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Narrative Squad")
-	int32 CreateSceneSquad(FString PlotOutline, TArray<FName> CompletionTags);
+	int32 CreateSceneSquad(FString PlotOutline, TArray<FNarrativeEventMatcher> CompletionConditions);
 
 	/**
 	 * Assigns an NPC to a squad with a specific Role.
@@ -291,6 +328,9 @@ protected:
 
 	/** Execute a timeline node (update plot/directive) */
 	void TriggerTimelineNode(int32 SquadID, int32 NodeIndex);
+
+	/** Clean up destroyed/invalid actors from all squads */
+	void CleanupInvalidActors();
 
 protected:
 

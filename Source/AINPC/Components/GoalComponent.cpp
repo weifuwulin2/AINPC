@@ -218,6 +218,32 @@ void UGoalComponent::UpdateArbitration()
 		return;
 	}
 
+	// 1.5. ✅ COGNITION OVERRIDE (LLM Intention)
+	// If the Brain (LLM) has explicitly decided on an intention (via MentalState), respect it!
+	if (MentalState && !MentalState->Intention.IsEmpty())
+	{
+		FString IntentionStr = MentalState->Intention;
+		
+		// Skip Idle intention strings
+		if (!IntentionStr.Contains("Idle") && !IntentionStr.Contains("None"))
+		{
+			FGameplayTag MappedDirective = FGameplayTag::EmptyTag;
+
+			// String-based matching (robust against partial matches)
+			if (IntentionStr.Contains("Attack") || IntentionStr.Contains("Combat")) MappedDirective = AINPCTags::Directive_Combat;
+			else if (IntentionStr.Contains("Flee") || IntentionStr.Contains("Survival")) MappedDirective = AINPCTags::Directive_Survival;
+			else if (IntentionStr.Contains("Talk") || IntentionStr.Contains("Social") || IntentionStr.Contains("Interact")) MappedDirective = AINPCTags::Directive_Social;
+			else if (IntentionStr.Contains("Work")) MappedDirective = AINPCTags::Directive_Work;
+			
+			if (MappedDirective.IsValid())
+			{
+				SetDirective(MappedDirective);
+				SetLOD(EContextLOD::Standard);
+				return;
+			}
+		}
+	}
+
 	// 2. Social Layer
 	bool bSocialTriggered = false;
 	

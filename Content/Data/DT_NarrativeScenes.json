@@ -8,7 +8,7 @@
 				"RelativeTransform": {
 					"Rotation": {
 						"X": 0,
-						"Y": -0,
+						"Y": 0,
 						"Z": 0,
 						"W": 1
 					},
@@ -30,7 +30,7 @@
 				"RelativeTransform": {
 					"Rotation": {
 						"X": 0,
-						"Y": -0,
+						"Y": 0,
 						"Z": 0,
 						"W": 1
 					},
@@ -120,7 +120,7 @@
 				"RelativeTransform": {
 					"Rotation": {
 						"X": 0,
-						"Y": -0,
+						"Y": 0,
 						"Z": 0,
 						"W": 1
 					},
@@ -141,12 +141,12 @@
 				"RelativeTransform": {
 					"Rotation": {
 						"X": 0,
-						"Y": -0,
+						"Y": 0,
 						"Z": 0,
 						"W": 1
 					},
 					"Translation": {
-						"X": 1050,
+						"X": 3000,
 						"Y": -150,
 						"Z": 0
 					},
@@ -162,7 +162,7 @@
 				"RelativeTransform": {
 					"Rotation": {
 						"X": 0,
-						"Y": -0,
+						"Y": 0,
 						"Z": 0,
 						"W": 1
 					},
@@ -177,39 +177,95 @@
 						"Z": 1
 					}
 				}
+			},
+			{
+				"PropClass": "/Script/Engine.BlueprintGeneratedClass'/Game/Blueprint/BP_SmartObject_Guard.BP_SmartObject_Guard_C'",
+				"RelativeTransform": {
+					"Rotation": {
+						"X": 0,
+						"Y": 0,
+						"Z": 0,
+						"W": 1
+					},
+					"Translation": {
+						"X": 2000,
+						"Y": 0,
+						"Z": 0
+					},
+					"Scale3D": {
+						"X": 1,
+						"Y": 1,
+						"Z": 1
+					}
+				}
 			}
 		],
-		"CompletionTags": [
-			"Status.Dead"
+		"CompletionConditions": [
+			{
+				"Tag": {
+					"TagName": "Event.Death"
+				},
+				"Payload": "Tyrant Lord"
+			}
 		],
+		"bKeepPropsOnEnd": true,
+		"PostSceneStimulus": "The Tyrant Lord is dead! You are free from your slavery! You should celebrate your freedom or run away.",
 		"Timeline": [
 			{
-				"TimeOffset": 0.0,
-				"TriggerCondition": "",
+				"TimeOffset": 0,
+				"Trigger": {
+					"Tag": {
+						"TagName": "None"
+					},
+					"Payload": ""
+				},
 				"PlotUpdate": "The mining camp is in full operation. The Orc slaves toil endlessly under the watchful eyes of the Guards. The Lord oversees the brutal work with cold satisfaction.",
-				"DirectiveOverride": "",
-				"BarkID": ""
+				"DirectiveOverride": {
+					"TagName": "None"
+				},
+				"BarkID": "None"
 			},
 			{
-				"TimeOffset": 15.0,
-				"TriggerCondition": "",
+				"TimeOffset": 15,
+				"Trigger": {
+					"Tag": {
+						"TagName": "None"
+					},
+					"Payload": ""
+				},
 				"PlotUpdate": "The slaves grow more restless. Whispers of rebellion start to circulate. The Guards tighten their patrols, sensing the tension.",
-				"DirectiveOverride": "",
-				"BarkID": ""
+				"DirectiveOverride": {
+					"TagName": "Directive.Combat"
+				},
+				"BarkID": "None"
 			},
 			{
-				"TimeOffset": 10.0,
-				"TriggerCondition": "Event.PlayerDetected",
+				"TimeOffset": 10,
+				"Trigger": {
+					"Tag": {
+						"TagName": "Event.PlayerDetected"
+					},
+					"Payload": ""
+				},
 				"PlotUpdate": "The stranger's presence emboldens the slaves! They rise up against their oppressors, attacking the Guards and the Lord!",
-				"DirectiveOverride": "Directive.Combat",
-				"BarkID": ""
+				"DirectiveOverride": {
+					"TagName": "Directive.Combat"
+				},
+				"BarkID": "None"
 			},
 			{
-				"TimeOffset": 5.0,
-				"TriggerCondition": "Event.GuardsHostile",
+				"TimeOffset": 5,
+				"Trigger": {
+					"Tag": {
+						"TagName": "Event.State.Hostile"
+					},
+					"Payload": ""
+				},
 				"PlotUpdate": "The intruder has been deemed a threat! All Guards are ordered to eliminate the trespasser immediately. The slaves watch in terror as violence erupts.",
-				"DirectiveOverride": "Directive.Combat",
-				"BarkID": ""
+				"DirectiveOverride": {
+					"TagName": "Directive.Combat"
+				},
+				"BarkID": "None"
 			}
 		]
 	}

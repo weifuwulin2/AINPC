@@ -232,6 +232,16 @@ We maintain a detailed documentation library. Please visit **[📚 Knowledge Bas
 
 ## 🎉 Latest Updates
 
+### v0.6.5 - Brain-Body Connection & Narrative Fixes (2026-01-31)
+
+#### 🧠 Brain-Body Connection
+- **Intention Override**: The Goal System (`Body`) now directly respects the Cognition Component (`Brain`).
+- **Free Will**: If the LLM decides to "Celebrate" (Intention.Social), it immediately overrides the "Work" schedule, solving ludonarrative dissonance (e.g., freed slaves returning to mines).
+
+#### 🎭 Narrative Logic Overhaul
+- **Scene Completion**: Fixed event tag matching and added `PostSceneStimulus` to broadcast global context updates (e.g., "Tyrant is Dead").
+- **Persisted Props**: Scenes can now leave behind permanent changes (debris, corpses) via `bKeepPropsOnEnd`.
+
 ### v0.6.4 - Narrative Evolution & Universal Targeting (2026-01-29)
 
 #### 🎭 Narrative Evolution
