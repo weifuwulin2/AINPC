@@ -13,6 +13,7 @@
 #include "UtilityAI/MentalStateInterpolation.h"
 #include "UtilityAI/UNPCMentalState.h"
 #include "Actions/Action_TalkTo.h"
+#include "Social/FactionSubsystem.h"
 #include "Variant_Combat/AI/CombatEnemy.h"
 #include "Utilities/AINPCHelpers.h" // ✅ Added for unified name resolution
 
@@ -847,16 +848,13 @@ bool USensoryComponent::AreActorsHostile(AActor* ActorA, AActor* ActorB) const
 	if (!ActorA || !ActorB) return false;
 	if (ActorA == ActorB) return false;
 
-	// ✅ Use FactionReputationComponent for numerical check (0-100)
-
-	// ✅ Use FactionReputationComponent for numerical check (0-100)
-    // First try Component on A (Primary Source of Truth)
+	// 1. Personal Reputation Check (Highest Priority)
+	// Check Local Components for Override (e.g. "I personally hate YOU")
     if (UFactionReputationComponent* FacCompA = ActorA->FindComponentByClass<UFactionReputationComponent>())
     {
         return FacCompA->IsHostile(ActorB);
     }
-
-    // Fallback: If A is just a Pawn, maybe its Controller has the component
+    // Check fallback Controller/Pawn for A
     if (APawn* PawnA = Cast<APawn>(ActorA))
     {
         if (AController* ConA = PawnA->GetController())
@@ -868,21 +866,34 @@ bool USensoryComponent::AreActorsHostile(AActor* ActorA, AActor* ActorB) const
         }
     }
 
-    // Double Fallback: Check from B's perspective (Mutual Hostility?)
-    if (UFactionReputationComponent* FacCompB = ActorB->FindComponentByClass<UFactionReputationComponent>())
-    {
-        return FacCompB->IsHostile(ActorA);
-    }
+	// 2. Global Faction Relation Check (Data-Driven)
+	// Even if components are missing (e.g. Player), we can derive FactionID and check the Matrix.
+	UWorld* World = GetWorld(); // Assuming this component is in a world
+	if (!World && ActorA) World = ActorA->GetWorld();
+	
+	if (World)
+	{
+		if (UFactionSubsystem* Subsystem = World->GetSubsystem<UFactionSubsystem>())
+		{
+			FName FactionA = UFactionReputationComponent::GetFactionID(ActorA);
+			FName FactionB = UFactionReputationComponent::GetFactionID(ActorB);
+			
+			// This returns true ONLY if the Faction Matrix explicitly says < 25.0
+			// If not defined, it defaults to Neutral (50), which is NOT hostile.
+			return Subsystem->AreFactionsHostile(FactionA, FactionB);
+		}
+	}
 
-    // Final Fallback: Legacy Enum Logic (for actors without components)
-    EFactionType FactionA = GetFaction(ActorA);
-    EFactionType FactionB = GetFaction(ActorB);
+    // 3. Final Legacy Fallback (Enum Check - The "Old Way")
+	// Only run this if Subsystem failed (e.g. valid World not found?)
+    EFactionType TypeA = GetFaction(ActorA);
+    EFactionType TypeB = GetFaction(ActorB);
 
-    if (FactionA == EFactionType::Neutral || FactionB == EFactionType::Neutral)
+    if (TypeA == EFactionType::Neutral || TypeB == EFactionType::Neutral)
     {
         return false; 
     }
-    return FactionA != FactionB;
+    return TypeA != TypeB;
 }
 
 // Non-const implementations for compatibility

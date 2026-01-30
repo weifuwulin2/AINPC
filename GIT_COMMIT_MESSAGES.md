@@ -659,3 +659,8 @@ This file contains a log of commit messages for the AINPC project.
   - **Access Fixes**: Resolved `FNativeGameplayTag` access (`GetTag().GetTagName()`) and `MentalState` member access issues.
   - **Include Fixes**: Added missing `NarrativeDirectorSubsystem.h` to `CombatEnemy.cpp`.
 
+- **Configuration**:
+  - **Faction Update**: Added explicit `"Player"` faction to `DT_Factions.json`.
+  - **Attitude Fix**: Configured `"Orcs" -> "Player"` relationship to 50.0 (Neutral), preventing default hostility.
+  - **Hostility Logic**: Updated `SensoryComponent::AreActorsHostile` to prioritize this data-driven system over legacy enum checks.
+

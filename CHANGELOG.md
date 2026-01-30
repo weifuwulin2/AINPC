@@ -20,6 +20,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Gameplay & Immersion**:
   - **Persisted Props**: Implemented `bKeepPropsOnEnd` in Scene Defs. Props (like corpses) now remain in the world after the scene finishes instead of vanishing.
   - **Rule by Decree**: Added `PostSceneStimulus`. Scenes can now broadcast a final context update (e.g., "You are free from slavery!") to surviving NPCs, overriding default routines.
+  - **Faction Logic Fix**: Refactored `AreActorsHostile` to use the Data-Driven `FactionSubsystem` before falling back to legacy checks.
+    - **Issue**: Previously, Orcs attacked Players by default because Legacy Logic assumed `Human != Monster` is always Hostile.
+    - **Fix**: Now queries the Global Faction Matrix. If no relationship is defined (e.g. Orcs <-> Player), it defaults to **Neutral**, respecting the intended reputation system.
 
 ### 🧠 Feature - Brain-Body Connection (Goal x Cognition)
 - **Intention Override**: `GoalComponent` was completely ignoring the Brain's decisions.
