@@ -61,6 +61,21 @@ class AINPC_API UTargetSelectionSubsystem : public UWorldSubsystem
 	GENERATED_BODY()
 
 public:
+	// ========================================
+	// Events
+	// ========================================
+	
+	/** Delegate fired when a cached target becomes invalid (died, left range, etc.) */
+	DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnTargetInvalidated, AAIController*, Controller, AActor*, OldTarget);
+	
+	/** Broadcast when a cached target is no longer valid */
+	UPROPERTY(BlueprintAssignable, Category = "AI|Target Selection")
+	FOnTargetInvalidated OnTargetInvalidated;
+
+	// ========================================
+	// Core API
+	// ========================================
+	
 	/**
 	 * Select best target for the given context.
 	 * @param Controller - The AI controller requesting target
@@ -139,12 +154,11 @@ private:
 	// Performance Optimization: Caching
 	// ========================================
 
-	/** Cache key for target selection results */
+	/** Cache key for target selection results (immutable lookup key) */
 	struct FTargetCacheKey
 	{
 		AAIController* Controller;
 		ETargetSelectionContext Context;
-		float Timestamp;
 
 		bool operator==(const FTargetCacheKey& Other) const
 		{
@@ -157,15 +171,22 @@ private:
 		}
 	};
 
+	/** Cache entry containing target and timestamp (mutable cached data) */
+	struct FTargetCacheEntry
+	{
+		TWeakObjectPtr<AActor> Target;
+		float CachedTime = 0.0f;
+	};
+
 	/** Cached target selection results */
-	TMap<FTargetCacheKey, TWeakObjectPtr<AActor>> TargetCache;
+	TMap<FTargetCacheKey, FTargetCacheEntry> TargetCache;
 
 	/** Cache validity duration (seconds) */
 	UPROPERTY(Config)
 	float CacheDuration = 5.0f;
 
 	/** Check if cached result is still valid */
-	bool IsCacheValid(const FTargetCacheKey& Key) const;
+	bool IsCacheValid(const FTargetCacheEntry& Entry) const;
 
 	/** Get cached target if valid */
 	AActor* GetCachedTarget(

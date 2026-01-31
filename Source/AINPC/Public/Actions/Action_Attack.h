@@ -41,9 +41,8 @@ public:
 
 protected:
 	// Runtime state
-	UPROPERTY()
-	AActor* TargetActor;
-
+	// NOTE: TargetActor removed - use Controller->GetFocusActor() as single source of truth
+	
 	UPROPERTY()
 	AAIController* OwningController;
 
@@ -54,4 +53,8 @@ protected:
 	
 	UFUNCTION()
 	void OnAttackAnimFinished(UAnimMontage* Montage, bool bInterrupted);
+
+	/** Callback when TargetSelectionSubsystem detects target is invalid */
+	UFUNCTION()
+	void OnTargetInvalidated(AAIController* Controller, AActor* OldTarget);
 };

@@ -590,15 +590,11 @@ AActor* UTargetSelectionSubsystem::GetCachedTarget(
 	FTargetCacheKey Key;
 	Key.Controller = Controller;
 	Key.Context = Context;
-	Key.Timestamp = GetWorld()->GetTimeSeconds();
 
-	if (IsCacheValid(Key))
+	FTargetCacheEntry* CachedEntry = TargetCache.Find(Key);
+	if (CachedEntry && IsCacheValid(*CachedEntry) && CachedEntry->Target.IsValid())
 	{
-		TWeakObjectPtr<AActor>* CachedPtr = TargetCache.Find(Key);
-		if (CachedPtr && CachedPtr->IsValid())
-		{
-			return CachedPtr->Get();
-		}
+		return CachedEntry->Target.Get();
 	}
 
 	return nullptr;
@@ -611,24 +607,26 @@ void UTargetSelectionSubsystem::CacheTarget(AAIController* Controller, ETargetSe
 	FTargetCacheKey Key;
 	Key.Controller = Controller;
 	Key.Context = Context;
-	Key.Timestamp = GetWorld()->GetTimeSeconds();
 
-	TargetCache.Add(Key, Target);
+	FTargetCacheEntry Entry;
+	Entry.Target = Target;
+	Entry.CachedTime = GetWorld()->GetTimeSeconds();
+
+	TargetCache.Add(Key, Entry);
 	
 	TARGET_LOG(Verbose, "Cached target: %s for context: %d (valid for %.1fs)", 
 		*Target->GetName(), (int32)Context, CacheDuration);
 }
 
-bool UTargetSelectionSubsystem::IsCacheValid(const FTargetCacheKey& Key) const
+bool UTargetSelectionSubsystem::IsCacheValid(const FTargetCacheEntry& Entry) const
 {
-	const TWeakObjectPtr<AActor>* CachedPtr = TargetCache.Find(Key);
-	if (!CachedPtr || !CachedPtr->IsValid())
+	if (!Entry.Target.IsValid())
 	{
 		return false;
 	}
 
 	float CurrentTime = GetWorld()->GetTimeSeconds();
-	float Age = CurrentTime - Key.Timestamp;
+	float Age = CurrentTime - Entry.CachedTime;
 
 	return Age < CacheDuration;
 }

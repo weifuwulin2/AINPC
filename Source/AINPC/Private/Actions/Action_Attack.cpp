@@ -15,7 +15,6 @@ UAction_Attack::UAction_Attack()
 	ActionName = "Attack";
 	bIsAttacking = false;
 	bHasDealtDamage = false;
-	TargetActor = nullptr;
 	OwningController = nullptr;
 	
 	// Default Target Config (Can be overwritten by DataTable)
@@ -34,13 +33,17 @@ void UAction_Attack::Enter_Implementation(AAIController* Controller)
 	}
 
 	OwningController = Controller;
+	bIsAttacking = false;
+	bHasDealtDamage = false;
 	
 	AINPC_LOG(Warning, "🎯 Action_Attack::Enter called - bNeedsTarget: %s, Controller: %s", 
 		bNeedsTarget ? TEXT("TRUE") : TEXT("FALSE"), 
 		Controller ? *Controller->GetName() : TEXT("NULL"));
 	
-	// ✅ Universal Target Selection Integration
+	// ✅ Target Selection via Subsystem (Single Source of Truth)
 	// -----------------------------------------------------
+	AActor* SelectedTarget = nullptr;
+	
 	if (bNeedsTarget)
 	{
 		if (UTargetSelectionSubsystem* TargetSystem = GetWorld()->GetSubsystem<UTargetSelectionSubsystem>())
@@ -49,13 +52,18 @@ void UAction_Attack::Enter_Implementation(AAIController* Controller)
 			FTargetSelectionConfig Config = TargetConfigOverride;
 			
 			// Select best target (Cached, Rule-Based, or LLM)
-			// Note: GetTargetCandidates is called internally with detailed logging
-			TargetActor = TargetSystem->SelectTarget(Controller, TargetContext, Config);
+			SelectedTarget = TargetSystem->SelectTarget(Controller, TargetContext, Config);
 			
-			if (TargetActor)
+			// ✅ Bind to invalidation event
+			if (!TargetSystem->OnTargetInvalidated.IsAlreadyBound(this, &UAction_Attack::OnTargetInvalidated))
+			{
+				TargetSystem->OnTargetInvalidated.AddDynamic(this, &UAction_Attack::OnTargetInvalidated);
+			}
+
+			if (SelectedTarget)
 			{
 				AINPC_LOG(Log, "Action_Attack: ✅ Selected target '%s' via Subsystem (Context: %d)", 
-					*TargetActor->GetName(), (int32)TargetContext);
+					*SelectedTarget->GetName(), (int32)TargetContext);
 			}
 			else
 			{
@@ -68,63 +76,78 @@ void UAction_Attack::Enter_Implementation(AAIController* Controller)
 		}
 	}
 	
-	// Fallback to legacy behavior if Subsystem failed or bNeedsTarget is false (but we still want Focus)
-	if (!TargetActor)
+	// Fallback to legacy behavior if Subsystem failed
+	if (!SelectedTarget)
 	{
-		TargetActor = Controller->GetFocusActor();
-		if (TargetActor)
+		SelectedTarget = Controller->GetFocusActor();
+		if (SelectedTarget)
 		{
-			AINPC_LOG(Log, "Action_Attack: Using fallback FocusActor: %s", *TargetActor->GetName());
+			AINPC_LOG(Log, "Action_Attack: Using fallback FocusActor: %s", *SelectedTarget->GetName());
 		}
 		else
 		{
 			AINPC_LOG_WARNING("Action_Attack: Fallback FocusActor is also null!");
 		}
 	}
-
-	bIsAttacking = false;
-	bHasDealtDamage = false;
 	
-	if (!TargetActor)
+	if (!SelectedTarget)
 	{
 		AINPC_LOG_WARNING("Action_Attack: ⚠️ No target available - Action will be inactive!");
 		return;
 	}
 	
-	// ✅ UPDATE FOCUS
-	// Ensure Controller focuses on the selected target
-	Controller->SetFocus(TargetActor);
+	// ✅ SET FOCUS - This is now the ONLY source of truth for target
+	Controller->SetFocus(SelectedTarget);
 
-	AINPC_LOG(Log, "⚔️ ATTACK ACTION ENTERED - Target: %s", *TargetActor->GetName());
+	AINPC_LOG(Log, "⚔️ ATTACK ACTION ENTERED - Target: %s", *SelectedTarget->GetName());
 }
 
 void UAction_Attack::Execute_Implementation(AAIController* Controller)
 {
 	Super::Execute_Implementation(Controller);
 
-	if (!Controller || !TargetActor)
+	if (!Controller)
 	{
-		AINPC_LOG_WARNING("Action_Attack: Invalid Controller or Target during Execute");
-		
-		// ✅ FIX: Clear state so HasAttackTarget returns 0, triggering action transition
-		TargetActor = nullptr;
-		if (Controller)
-		{
-			Controller->ClearFocus(EAIFocusPriority::Gameplay);
-		}
+		AINPC_LOG_WARNING("Action_Attack: Invalid Controller during Execute");
 		return;
 	}
-
+	
 	OwningController = Controller;
+	
+	// ✅ Get target from Focus (single source of truth)
+	AActor* Target = Controller->GetFocusActor();
+	
+	if (!Target)
+	{
+		// ⚠️ Recovery: Focus lost but action still active. Try to recover via Subsystem.
+		if (UTargetSelectionSubsystem* TargetSystem = GetWorld()->GetSubsystem<UTargetSelectionSubsystem>())
+		{
+			FTargetSelectionConfig Config = TargetConfigOverride;
+			Target = TargetSystem->SelectTarget(Controller, TargetContext, Config);
+			
+			if (Target)
+			{
+				// Recovered! Restore focus.
+				Controller->SetFocus(Target);
+				AINPC_LOG(Log, "Action_Attack: 🔄 Recovered lost focus target: %s", *Target->GetName());
+			}
+		}
+		
+		if (!Target)
+		{
+			AINPC_LOG_WARNING("Action_Attack: No FocusActor and Recovery Failed - clearing action state");
+			Controller->ClearFocus(EAIFocusPriority::Gameplay);
+			// Force invalidation
+			bIsAttacking = false;
+			return;
+		}
+	}
 
 	// Check if target is still valid and alive
-	if (!IsValid(TargetActor) || TargetActor->IsPendingKillPending() ||
-		TargetActor->ActorHasTag(FName("Dead")) || TargetActor->ActorHasTag(FName("Status.Dead")))
+	if (!IsValid(Target) || Target->IsPendingKillPending() ||
+		Target->ActorHasTag(FName("Dead")) || Target->ActorHasTag(FName("Status.Dead")))
 	{
 		AINPC_LOG(Log, "Action_Attack: Target is dead or invalid, clearing focus...");
-		
-		// ✅ FIX: Clear target and focus to trigger action transition
-		TargetActor = nullptr;
 		Controller->ClearFocus(EAIFocusPriority::Gameplay);
 		return;
 	}
@@ -137,7 +160,7 @@ void UAction_Attack::Execute_Implementation(AAIController* Controller)
 		return;
 	}
 
-	float DistSq = FVector::DistSquared(Pawn->GetActorLocation(), TargetActor->GetActorLocation());
+	float DistSq = FVector::DistSquared(Pawn->GetActorLocation(), Target->GetActorLocation());
 	float RangeSq = AttackRange * AttackRange;
 
 	if (DistSq <= RangeSq)
@@ -148,7 +171,7 @@ void UAction_Attack::Execute_Implementation(AAIController* Controller)
 	else
 	{
 		// Out of range - pursue target
-		FAIMoveRequest MoveReq(TargetActor);
+		FAIMoveRequest MoveReq(Target);
 		MoveReq.SetAcceptanceRadius(AttackRange * 0.8f);
 		Controller->MoveTo(MoveReq);
 		AINPC_LOG_VERBOSE("Action_Attack: Moving to target (distance: %.1f)", FMath::Sqrt(DistSq));
@@ -160,7 +183,6 @@ void UAction_Attack::Exit_Implementation(AAIController* Controller)
 	Super::Exit_Implementation(Controller);
 
 	bIsAttacking = false;
-	TargetActor = nullptr;
 	OwningController = nullptr;
 
 	if (Controller)
@@ -168,14 +190,27 @@ void UAction_Attack::Exit_Implementation(AAIController* Controller)
 		Controller->StopMovement();
 		Controller->ClearFocus(EAIFocusPriority::Gameplay);
 	}
+	
+	if (UTargetSelectionSubsystem* TargetSystem = GetWorld()->GetSubsystem<UTargetSelectionSubsystem>())
+	{
+		TargetSystem->OnTargetInvalidated.RemoveDynamic(this, &UAction_Attack::OnTargetInvalidated);
+	}
 
 	AINPC_LOG_VERBOSE("Action_Attack: Exited");
 }
 
 void UAction_Attack::PerformAttack(AAIController* Controller)
 {
-	if (bIsAttacking || !Controller || !TargetActor)
+	if (bIsAttacking || !Controller)
 	{
+		return;
+	}
+	
+	// Get target from Focus
+	AActor* Target = Controller->GetFocusActor();
+	if (!Target)
+	{
+		AINPC_LOG_WARNING("Action_Attack::PerformAttack - No target in focus!");
 		return;
 	}
 	
@@ -191,7 +226,7 @@ void UAction_Attack::PerformAttack(AAIController* Controller)
 
 	// Stop movement and face target
 	Controller->StopMovement();
-	Controller->SetFocus(TargetActor);
+	// Note: Focus is already set, no need to SetFocus again
 
 	// Play attack animation
 	if (AttackMontage)
@@ -210,16 +245,16 @@ void UAction_Attack::PerformAttack(AAIController* Controller)
 		// Apply damage (in production, this should be triggered by AnimNotify)
 		if (!bHasDealtDamage)
 		{
-			UGameplayStatics::ApplyDamage(TargetActor, DamageAmount, Controller, Character, UDamageType::StaticClass());
+			UGameplayStatics::ApplyDamage(Target, DamageAmount, Controller, Character, UDamageType::StaticClass());
 			bHasDealtDamage = true;
-			AINPC_LOG(Log, "Action_Attack: Dealt %.1f damage to %s", DamageAmount, *TargetActor->GetName());
+			AINPC_LOG(Log, "Action_Attack: Dealt %.1f damage to %s", DamageAmount, *Target->GetName());
 		}
 	}
 	else
 	{
 		// No animation - just deal damage instantly
 		AINPC_LOG_WARNING("Action_Attack: No AttackMontage assigned, dealing instant damage");
-		UGameplayStatics::ApplyDamage(TargetActor, DamageAmount, Controller, Character, UDamageType::StaticClass());
+		UGameplayStatics::ApplyDamage(Target, DamageAmount, Controller, Character, UDamageType::StaticClass());
 		bIsAttacking = false;
 		bHasDealtDamage = true;
 	}
@@ -232,5 +267,27 @@ void UAction_Attack::OnAttackAnimFinished(UAnimMontage* Montage, bool bInterrupt
 		bIsAttacking = false;
 		AINPC_LOG_VERBOSE("Action_Attack: Animation finished (Interrupted: %s)", bInterrupted ? TEXT("Yes") : TEXT("No"));
 		// Action can now be re-evaluated by Utility AI system
+	}
+}
+
+void UAction_Attack::OnTargetInvalidated(AAIController* Controller, AActor* OldTarget)
+{
+	if (Controller != OwningController)
+	{
+		return;
+	}
+
+	AActor* CurrentTarget = Controller ? Controller->GetFocusActor() : nullptr;
+	if (CurrentTarget == OldTarget)
+	{
+		AINPC_LOG(Log, "Action_Attack: Current target %s invalidated externally! Ending action.", *OldTarget->GetName());
+		if (Controller)
+		{
+			Controller->ClearFocus(EAIFocusPriority::Gameplay);
+			Controller->StopMovement();
+		}
+		
+		// Force action update/exit
+		bIsAttacking = false;
 	}
 }

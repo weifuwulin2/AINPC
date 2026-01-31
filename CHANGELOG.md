@@ -64,9 +64,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `CalculateScheduleBonus()`, `ApplyPersonalityModifier()`, `ApplyEmotionMatrix()`, `ApplyDirectiveModifier()`
 - **Benefit**: Each function handles one concern, making debugging and maintenance much easier.
 
+
 ### 🐛 Fix - TargetSelectionSubsystem Cache Bug
 - **Bug**: `FTargetCacheKey::Timestamp` was ignored in `operator==`, causing incorrect cache behavior.
 - **Fix**: Separated into `FTargetCacheKey` (lookup) and `FTargetCacheEntry` (data + timestamp).
+
+### 🏗️ Refactor - Unified Target Management
+- **Single Source of Truth**: Removed `TargetActor` local variable from `Action_Attack`. Now relies entirely on `Controller->GetFocusActor()` and `TargetSelectionSubsystem`.
+- **Target Recovery**: `Action_Attack::Execute` now attempts to recover target via Subsystem if Focus is lost but Action is still active.
+- **Invalidation Handling**: Added `OnTargetInvalidated` event to TargetSelectionSubsystem. Actions subscribe to this to immediately abort when targets die or vanish.
 
 ### 🧠 Feature - Brain-Body Connection (Goal x Cognition)
 - **Intention Override**: `GoalComponent` was completely ignoring the Brain's decisions.

@@ -27,6 +27,25 @@ This file contains a log of commit messages for the AINPC project.
 - **Fix**: Separated cache structure into `FTargetCacheKey` (lookup key: Controller + Context) and `FTargetCacheEntry` (cached data: Target + CachedTime).
 - **Result**: Cache expiration now works correctly based on the time the target was actually cached.
 
+## [2026-01-31] Fix TargetSelectionSubsystem Cache Bug
+**Type**: fix
+**Scope**: TargetSelectionSubsystem
+**Description**:
+- **Bug**: `FTargetCacheKey::Timestamp` was included in the struct but ignored by `operator==`. This caused cache entries to be overwritten incorrectly when new targets were cached.
+- **Fix**: Separated cache structure into `FTargetCacheKey` (lookup key: Controller + Context) and `FTargetCacheEntry` (cached data: Target + CachedTime).
+- **Result**: Cache expiration now works correctly based on the time the target was actually cached.
+
+## [2026-01-31] Unified Target Management
+**Type**: refactor
+**Scope**: Action System (Targeting)
+**Description**:
+- **Problem**: `Action_Attack` kept its own `TargetActor` state, conflicting with `Controller->FocusActor` and `TargetSelectionSubsystem` cache. This caused infinite loops where Action kept executing with no valid target.
+- **Solution**:
+    - Removed `TargetActor` from `Action_Attack`.
+    - `Execute` now recovers target from Subsystem if Focus is lost.
+    - Added `OnTargetInvalidated` event to handle target death immediately.
+- **Result**: Eliminated "No FocusActor - clearing action state" infinite loop spam.
+
 ## [2026-01-31] Fix Scene End Directive
 **Type**: fix
 **Scope**: NarrativeSquadSubsystem

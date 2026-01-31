@@ -9,11 +9,11 @@ This document outlines the refactoring plan for the two core systems identified 
 ---
 
 ## Phase 1: Immediate Fixes (P0 - Completed)
-
+ 
 ### ✅ 1.1 Fix Cache Key Design (DONE - 2026-01-31)
-
+ 
 **Problem**: `FTargetCacheKey::Timestamp` was ignored in `operator==` but used in `IsCacheValid`, causing non-deterministic cache behavior.
-
+ 
 **Solution**: Separated `FTargetCacheKey` (lookup key) from `FTargetCacheEntry` (cached data with timestamp).
 
 **Files Changed**:
@@ -128,19 +128,23 @@ float UUtilityActionBase::CalculateScore(UNPCMentalState* MentalState, AAIContro
 
 ---
 
-### 2.2 Unify Target Management
-
+### ✅ 2.2 Unify Target Management (DONE - 2026-01-31)
+ 
 **Current State**: Dual sources of truth - `Action::TargetActor` and `Controller->GetFocusActor()`.
-
+ 
 **Target State**: Single source of truth via `TargetSelectionSubsystem`.
-
+ 
 #### Step 2.2.1: Remove TargetActor from Action Classes
-
-- Remove `TargetActor` member from `Action_Attack`, `Action_TalkTo`, etc.
-- All target queries go through `TargetSelectionSubsystem::SelectTarget()`
-- `Controller->SetFocus()` remains the "execution-time" target
-
+ 
+- ✅ Removed `TargetActor` member from `Action_Attack`.
+- ✅ All target queries go through `TargetSelectionSubsystem::SelectTarget()` in `Enter()`.
+- ✅ `Controller->GetFocusActor()` is the single source of truth during `Execute()`.
+ 
 #### Step 2.2.2: Add Target Invalidation Events
+ 
+- ✅ Added `OnTargetInvalidated` delegate to `TargetSelectionSubsystem`.
+- ✅ `Action_Attack` binds to this event in `Enter()` and unbinds in `Exit()`.
+- ✅ Action immediately terminates if target is invalidated.
 
 ```cpp
 // In TargetSelectionSubsystem.h
@@ -268,7 +272,7 @@ private:
 | **2.1** | ScoreModifier Base + 3 Modifiers | 4 hours | 2.1.1 |
 | **2.1** | Remaining Modifiers | 3 hours | 2.1.2 |
 | **2.1** | Refactor CalculateScore | 2 hours | 2.1.3 |
-| **2.2** | Unify Target Management | 3 hours | None |
+| **2.2** | Unify Target Management | ✅ Done | None |
 | **3.1** | Transition Rule DataTable | 2 hours | None |
 | **3.1** | Refactor CanTransition | 2 hours | 3.1.1 |
 | **4.1** | Selection Strategy Pattern | 4 hours | Phase 1 |
