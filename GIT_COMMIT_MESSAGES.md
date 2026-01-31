@@ -46,6 +46,16 @@ This file contains a log of commit messages for the AINPC project.
     - Added `OnTargetInvalidated` event to handle target death immediately.
 - **Result**: Eliminated "No FocusActor - clearing action state" infinite loop spam.
 
+## [2026-01-31] Relax Transition Priority Rules
+**Type**: fix
+**Scope**: Transition System
+**Description**:
+- **Problem**: High priority actions (e.g., Combat) were too sticky, preventing transition to lower priority actions (e.g., Idle) even when the high priority action's score was mediocre (0.3).
+- **Solution**: 
+    - Raised the "Priority Decay" threshold from 0.25 to 0.4.
+    - Added "Overwhelming Score" exception: if CandidateScore > 2.0 * CurrentScore, priority is ignored.
+- **Result**: NPCs can now correctly exit combat/high-stress states when they lose interest, without getting stuck.
+
 ## [2026-01-31] Fix Scene End Directive
 **Type**: fix
 **Scope**: NarrativeSquadSubsystem

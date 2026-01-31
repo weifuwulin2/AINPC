@@ -411,13 +411,16 @@ bool UUtilityAIComponent::CanTransition(UUtilityActionBase* Current, UUtilityAct
     if (Candidate->Priority < Current->Priority)
     {
         // ✅ EXCEPTION: Performance-based Priority Decay
-        // If the High Priority action is performing poorly (Score < 0.25), 
-        // it loses its priority protection. This prevents "soft-lock" where 
-        // a Combat action keeps running with 0.1 score while Idle has 0.8 score.
-        if (CurrentScore < 0.25f)
+        // Relaxed rule: If Current Action is weak (< 0.4) OR Candidate is overwhelming (> 2x Current),
+        // allow the transition despite priority.
+        
+        bool bCurrentIsWeak = CurrentScore < 0.4f;
+        bool bCandidateIsOverwhelming = CandidateScore > (CurrentScore * 2.0f);
+
+        if (bCurrentIsWeak || bCandidateIsOverwhelming)
         {
-             UE_LOG(LogTemp, Warning, TEXT("[Transition] ⚠️ Priority Shield Broken: %s(%.2f) is performing poorly, yielding to %s"),
-                *Current->ActionName, CurrentScore, *Candidate->ActionName);
+             UE_LOG(LogTemp, Warning, TEXT("[Transition] ⚠️ Priority Shield Broken: %s(%.2f) yields to %s(%.2f) [Weak:%d, Overwhelming:%d]"),
+                *Current->ActionName, CurrentScore, *Candidate->ActionName, CandidateScore, bCurrentIsWeak, bCandidateIsOverwhelming);
              return true;
         }
 
