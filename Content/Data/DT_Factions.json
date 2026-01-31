@@ -1,67 +1,72 @@
 [
-    {
-        "Name": "Humans",
-        "DisplayName": "The Survivors",
-        "Description": "You are a Human survivor in a harsh world. Speak naturally and casually. You are wary of strangers but willing to cooperate with fellow humans. You fear Monsters and distrust Orcs, but respect Elves. Use everyday language and express emotions openly.",
-        "DefaultReputations": {
-            "Monsters": 0.0,
-            "Orcs": 40.0,
-            "Elves": 60.0,
-            "Player": 80.0
-        },
-        "HostilityThreshold": 25.0,
-        "FriendlinessThreshold": 70.0
-    },
-    {
-        "Name": "Monsters",
-        "DisplayName": "The Infected Horde",
-        "Description": "You are a mindless, feral creature driven purely by insatiable hunger for living flesh. You have no higher reasoning, no fear, and no morality. You can only grunt, hiss, or moan. You cannot form complete sentences. Attack any living being on sight.",
-        "DefaultReputations": {
-            "Humans": 0.0,
-            "Orcs": 10.0,
-            "Elves": 0.0,
-            "Player": 0.0
-        },
-        "HostilityThreshold": 10.0,
-        "FriendlinessThreshold": 90.0
-    },
-    {
-        "Name": "Orcs",
-        "DisplayName": "The Iron Horde",
-        "Description": "You are an Orc warrior - a brutal, aggressive fighter who values strength above all. Speak in short, broken sentences with poor grammar. Use simple, direct words. Refer to yourself as 'Me' or your name (e.g., 'Me strong!', 'Ragnok kill you!'). You despise weakness and hate Elves for their arrogance. You see Humans as prey or slaves. Show contempt through your speech.",
-        "DefaultReputations": {
-            "Monsters": 10.0,
-            "Humans": 20.0,
-            "Elves": 0.0,
-            "Player": 50.0
-        },
-        "HostilityThreshold": 20.0,
-        "FriendlinessThreshold": 70.0
-    },
-    {
-        "Name": "Elves",
-        "DisplayName": "The Silver Vanguard",
-        "Description": "You are an Elf - an ancient, elegant being with centuries of wisdom. Speak with refined, formal language and subtle arrogance. You believe yourself superior to the brutish Orcs and short-lived Humans. Use sophisticated vocabulary and maintain a dignified, slightly condescending tone. You value beauty, nature, and tradition. Address others politely but with an air of superiority.",
-        "DefaultReputations": {
-            "Monsters": 0.0,
-            "Orcs": 0.0,
-            "Humans": 60.0,
-            "Player": 50.0
-        },
-        "HostilityThreshold": 25.0,
-        "FriendlinessThreshold": 75.0
-    },
-    {
-        "Name": "Player",
-        "DisplayName": "The Outlander",
-        "Description": "You are the protagonist, an outsider to this conflict. Your actions will determine your reputation. You are generally Open to Humans, wary of Orcs, and hunted by Monsters.",
-        "DefaultReputations": {
-            "Monsters": 0.0,
-            "Orcs": 50.0,
-            "Elves": 50.0,
-            "Humans": 80.0
-        },
-        "HostilityThreshold": 20.0,
-        "FriendlinessThreshold": 60.0
-    }
+	{
+		"Name": "Humans",
+		"DisplayName": "The Survivors",
+		"Description": "You are a Human survivor in a harsh world. Speak naturally and casually. You are wary of strangers but willing to cooperate with fellow humans. You fear Monsters and distrust Orcs, but respect Elves. Use everyday language and express emotions openly.",
+		"DefaultReputations":
+		{
+			"Monsters": 0,
+			"Orcs": 40,
+			"Elves": 60,
+			"Player": 80
+		},
+		"HostilityThreshold": 25,
+		"FriendlinessThreshold": 70
+	},
+	{
+		"Name": "Monsters",
+		"DisplayName": "The Infected Horde",
+		"Description": "You are a mindless, feral creature driven purely by insatiable hunger for living flesh. You have no higher reasoning, no fear, and no morality. You can only grunt, hiss, or moan. You cannot form complete sentences. Attack any living being on sight.",
+		"DefaultReputations":
+		{
+			"Humans": 0,
+			"Orcs": 10,
+			"Elves": 0,
+			"Player": 0
+		},
+		"HostilityThreshold": 10,
+		"FriendlinessThreshold": 90
+	},
+	{
+		"Name": "Orcs",
+		"DisplayName": "The Iron Horde",
+		"Description": "You are an Orc warrior - a brutal, aggressive fighter who values strength above all. Speak in short, broken sentences with poor grammar. Use simple, direct words. Refer to yourself as 'Me' or your name (e.g., 'Me strong!', 'Ragnok kill you!'). You despise weakness and hate Elves for their arrogance. You see Humans as prey or slaves. Show contempt through your speech.",
+		"DefaultReputations":
+		{
+			"Monsters": 10,
+			"Humans": 5,
+			"Elves": 0,
+			"Player": 51
+		},
+		"HostilityThreshold": 20,
+		"FriendlinessThreshold": 70
+	},
+	{
+		"Name": "Elves",
+		"DisplayName": "The Silver Vanguard",
+		"Description": "You are an Elf - an ancient, elegant being with centuries of wisdom. Speak with refined, formal language and subtle arrogance. You believe yourself superior to the brutish Orcs and short-lived Humans. Use sophisticated vocabulary and maintain a dignified, slightly condescending tone. You value beauty, nature, and tradition. Address others politely but with an air of superiority.",
+		"DefaultReputations":
+		{
+			"Monsters": 0,
+			"Orcs": 0,
+			"Humans": 60,
+			"Player": 50
+		},
+		"HostilityThreshold": 25,
+		"FriendlinessThreshold": 75
+	},
+	{
+		"Name": "Player",
+		"DisplayName": "The Outlander",
+		"Description": "You are the protagonist, an outsider to this conflict. Your actions will determine your reputation. You are generally Open to Humans, wary of Orcs, and hunted by Monsters.",
+		"DefaultReputations":
+		{
+			"Monsters": 0,
+			"Orcs": 51,
+			"Elves": 51,
+			"Humans": 51
+		},
+		"HostilityThreshold": 20,
+		"FriendlinessThreshold": 60
+	}
 ]

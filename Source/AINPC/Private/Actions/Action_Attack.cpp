@@ -20,6 +20,10 @@ UAction_Attack::UAction_Attack()
 	// Default Target Config (Can be overwritten by DataTable)
 	bNeedsTarget = true;
 	TargetContext = ETargetSelectionContext::Combat;
+	
+	// ✅ Override Threshold for Combat Actions
+	// Ensure Neutrals (50) are safe from attack. Threshold must be < 50.
+	TargetConfigOverride.FriendlyReputationThreshold = 45.0f;
 }
 
 void UAction_Attack::Enter_Implementation(AAIController* Controller)

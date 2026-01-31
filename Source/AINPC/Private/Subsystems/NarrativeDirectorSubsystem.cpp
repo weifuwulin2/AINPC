@@ -3,6 +3,7 @@
 #include "GameFramework/Actor.h"
 #include "Kismet/GameplayStatics.h"
 #include "Social/SocialGameplayTags.h"
+#include "Utilities/AINPCHelpers.h"
 
 void UNarrativeDirectorSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
@@ -36,9 +37,8 @@ void UNarrativeDirectorSubsystem::RecordNPCDeath(AActor* Victim, AActor* Killer)
 {
 	if (!Victim) return;
 	
-
-	FString VictimName = Victim->GetName();
-	FString KillerName = Killer ? Killer->GetName() : TEXT("Unknown");
+	FString VictimName = AINPCHelpers::GetSmartActorName(Victim);
+	FString KillerName = Killer ? AINPCHelpers::GetSmartActorName(Killer) : TEXT("Unknown");
 
 	FString Desc = FString::Printf(TEXT("%s was killed by %s"), *VictimName, *KillerName);
 	
