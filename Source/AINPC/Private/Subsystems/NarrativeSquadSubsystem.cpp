@@ -617,10 +617,10 @@ void UNarrativeSquadSubsystem::EndScene(int32 SquadID)
 					
 					// ✅ Force immediate behavior change
 					// Setting a new directive interrupts the current action (e.g., stop mining)
-					// Social directive fits the "celebrating freedom" narrative
-					GoalComp->SetDirective(AINPCTags::Directive_Social);
+					// Idle directive allows NPC to transition back to normal behavior
+					GoalComp->SetDirective(AINPCTags::Directive_Idle);
 					
-					NARRATIVE_LOG(Warning, TEXT("🎓 NPC %s: Profession updated to %s, Directive forced to Social"), 
+					NARRATIVE_LOG(Warning, TEXT("🎓 NPC %s: Profession updated to %s, Directive forced to Idle"), 
 						*Member->GetName(), *TargetProfession.ToString());
 				}
 				else

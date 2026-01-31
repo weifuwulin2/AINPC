@@ -55,6 +55,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Feature**: Scenes can now fundamentally change an NPC's life path. Upon scene completion, NPCs can be "Promoted" to a new Profession (e.g., Slave -> Citizen).
   - **Content**: Updated `Scene_OrcRescue` so freed Orcs become `Citizen` (Standard Schedule) instead of staying `Slave` (Mining Schedule).
 
+  - **End Scene Directive**: Changed post-scene directive from `Directive.Social` to `Directive.Idle` to prevent forced celebration logic.
+
+### 🏗️ Refactor - CalculateScore Function (SRP Compliance)
+- **Before**: Monolithic 516-line function with 8+ mixed responsibilities.
+- **After**: Clean 90-line orchestrator calling 6 focused helper functions:
+  - `CheckCooldown()`, `CalculateConsiderations()`, `CalculateIntentionBonus()`
+  - `CalculateScheduleBonus()`, `ApplyPersonalityModifier()`, `ApplyEmotionMatrix()`, `ApplyDirectiveModifier()`
+- **Benefit**: Each function handles one concern, making debugging and maintenance much easier.
+
+### 🐛 Fix - TargetSelectionSubsystem Cache Bug
+- **Bug**: `FTargetCacheKey::Timestamp` was ignored in `operator==`, causing incorrect cache behavior.
+- **Fix**: Separated into `FTargetCacheKey` (lookup) and `FTargetCacheEntry` (data + timestamp).
+
 ### 🧠 Feature - Brain-Body Connection (Goal x Cognition)
 - **Intention Override**: `GoalComponent` was completely ignoring the Brain's decisions.
   - **Fix**: Added high-priority logic in `UpdateArbitration` to check `MentalState->Intention`.

@@ -66,11 +66,11 @@ void UUtilityActionBase::InitFromConfig(const FUtilityActionConfig& Config)
 
 float UUtilityActionBase::CalculateScore(UNPCMentalState* MentalState, AAIController* Controller, bool bLogDebug)
 {
-    // 0. 安全检查
+    // =========================================================
+    // Step 0: Safety Checks
+    // =========================================================
     if (!Controller) return 0.0f;
     
-    // ✅ 死亡检查：如果 Pawn 已死亡或无效，所有动作得分为 0
-    // Death Check: If Pawn is dead or invalid, all actions score 0
     APawn* ControlledPawn = Controller->GetPawn();
     if (!ControlledPawn || !IsValid(ControlledPawn) || ControlledPawn->IsPendingKillPending())
     {
@@ -78,77 +78,119 @@ float UUtilityActionBase::CalculateScore(UNPCMentalState* MentalState, AAIContro
         return 0.0f;
     }
 
-    // ❌ 移除死亡动画检查 - 吃饭/睡觉动画也会触发 IsAnyMontagePlaying()
-    // ❌ Removed death animation check - Eating/Sleeping animations also trigger IsAnyMontagePlaying()
-    // TODO: 如果需要死亡检查，应该使用专门的死亡标记或动画标签
-    // TODO: If death check is needed, use specific death flag or animation tags
-
-    // ❌ 移除了错误的 Duration 检查
-    // ❌ Removed broken Duration check
-    // ShouldExit 返回 true 的意思是"允许切换"，不是"这个动作不能被选择"
-    // ShouldExit returning true means "allow switching", NOT "disable this action"
-    // 这个检查会导致 SmartObject 动作永远得分 0，因为非活动动作的 ShouldExit 总是返回 true
-    
-    // ✅ 如果没有 Considerations，直接返回 BaseReward
-    // ✅ 如果没有 Considerations，直接返回 BaseReward
+    // No Considerations = Just return BaseReward (simple actions)
     if (Considerations.Num() == 0) 
     {
         if (bLogDebug) UE_LOG(LogTemp, Warning, TEXT("    [%s] ⚠️ No Considerations, returning BaseReward=%.2f"), *ActionName, BaseReward);
         return BaseReward;
     }
 
-    // 1. 冷却检查 (Cooldown)
-    float CurrentTime = 0.0f;
-    if (UWorld* World = Controller->GetWorld())
-    {
-        CurrentTime = World->GetTimeSeconds();
-        // ✅ Check if we are the currently running action
-        bool bIsRunning = false;
-        if (AUtilityAIController* UAICon = Cast<AUtilityAIController>(Controller)) 
-        {
-             if (UAICon->UtilityComp && UAICon->UtilityComp->CurrentAction == this)
-             {
-                 bIsRunning = true;
-             }
-        }
+    // =========================================================
+    // Step 1: Cooldown Check (blocks scoring entirely if on cooldown)
+    // =========================================================
+    float CurrentTime = Controller->GetWorld() ? Controller->GetWorld()->GetTimeSeconds() : 0.0f;
+    float CooldownResult = CheckCooldown(CurrentTime, bLogDebug);
+    if (CooldownResult <= 0.0f) return 0.0f;
 
-        // 如果还在冷却期内 且 不是正在运行，直接返回 0 分
-        // If in cooldown AND not currently running, return 0
-        // (Prevents the running action from disqualifying itself)
-        if (!bIsRunning && CurrentTime - LastExecutedTime < CooldownTime)
-        {
-            if (bLogDebug) UE_LOG(LogTemp, Warning, TEXT("    [%s] ❌ Score=0: Cooldown (%.1fs left)"), 
-                                  *ActionName, CooldownTime - (CurrentTime - LastExecutedTime));
-            return 0.0f; 
-        }
-    }
-
-    // 2. 获取 PersonalityComponent (用于查询权重)
+    // =========================================================
+    // Step 2: Get PersonalityComponent (needed for multiple steps)
+    // =========================================================
     UPersonalityComponent* PersonalityComp = nullptr;
-    
-    // ✅ Priority 1: Check Controller (PersonalityComp is typically on Controller)
     if (AUtilityAIController* UtilityController = Cast<AUtilityAIController>(Controller))
     {
         PersonalityComp = UtilityController->PersonalityComp;
     }
-    
-    // ✅ Priority 2: Fallback to Pawn (if not found on Controller)
-    if (!PersonalityComp)
+    if (!PersonalityComp && Controller->GetPawn())
     {
-        if (APawn* BotPawn = Controller->GetPawn())
-        {
-            PersonalityComp = BotPawn->FindComponentByClass<UPersonalityComponent>();
-        }
+        PersonalityComp = Controller->GetPawn()->FindComponentByClass<UPersonalityComponent>();
     }
 
-    // 3. 两阶段计算 (Two-Phase Calculation)
-    // 第一阶段：动机求和 Σ(Weight × Input)
-    // 第二阶段：必要条件乘积 ∏(Context)
+    // =========================================================
+    // Step 3: Calculate Considerations (Motivation + Context)
+    // =========================================================
+    float MotivationSum = 0.0f;
+    float ContextProduct = 1.0f;
+    CalculateConsiderations(MentalState, Controller, PersonalityComp, MotivationSum, ContextProduct, bLogDebug);
     
-    float MotivationSum = 0.0f;      // 动机总和（加法）
-    float ContextProduct = 1.0f;     // 必要条件乘积（乘法）
+    // Early exit if Context product is zero (necessary conditions not met)
+    if (ContextProduct <= UE_KINDA_SMALL_NUMBER)
+    {
+        return 0.0f;
+    }
 
-    // 🔍 调试：打印初始分数
+    // =========================================================
+    // Step 4: Calculate Additive Bonuses (Intention + Schedule)
+    // =========================================================
+    float IntentionBonus = CalculateIntentionBonus(MentalState, bLogDebug);
+    float ScheduleBonus = CalculateScheduleBonus(Controller, bLogDebug);
+
+    // =========================================================
+    // Step 5: Base Formula
+    // Score = BaseReward × (MotivationSum + IntentionBonus + ScheduleBonus) × ContextProduct
+    // =========================================================
+    float EffectiveMotivation = MotivationSum + IntentionBonus + ScheduleBonus;
+    float FinalScore = BaseReward * EffectiveMotivation * ContextProduct;
+
+    // =========================================================
+    // Step 6: Apply Multiplier Modifiers (PAM, Emotion, Directive)
+    // =========================================================
+    FinalScore = ApplyPersonalityModifier(FinalScore, PersonalityComp, bLogDebug);
+    FinalScore = ApplyEmotionMatrix(FinalScore, Controller, bLogDebug);
+    FinalScore = ApplyDirectiveModifier(FinalScore, Controller, bLogDebug);
+
+    // =========================================================
+    // Debug Summary
+    // =========================================================
+    if (bLogDebug)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("    [%s] 📊 Calculation Summary:"), *ActionName);
+        UE_LOG(LogTemp, Log, TEXT("      • Base Reward: %.2f"), BaseReward);
+        UE_LOG(LogTemp, Log, TEXT("      • Motivation Sum: %.2f"), MotivationSum);
+        UE_LOG(LogTemp, Log, TEXT("      • Intention Bonus: %.2f %s"), IntentionBonus, IntentionBonus > 0 ? TEXT("(✅ APPLIED)") : TEXT(""));
+        UE_LOG(LogTemp, Log, TEXT("      • Schedule Bonus: %.2f %s"), ScheduleBonus, ScheduleBonus > 0 ? TEXT("(✅ APPLIED)") : TEXT(""));
+        UE_LOG(LogTemp, Log, TEXT("      • Context Product: %.2f"), ContextProduct);
+        UE_LOG(LogTemp, Warning, TEXT("      👉 FINAL SCORE = %.3f"), FinalScore);
+    }
+
+    return FinalScore;
+}
+
+// =========================================================
+// Helper: Check Cooldown
+// =========================================================
+float UUtilityActionBase::CheckCooldown(float CurrentTime, bool bLogDebug) const
+{
+    if (CooldownTime <= 0.0f) return 1.0f; // No cooldown configured
+    
+    // Check if this is the currently running action (don't penalize self)
+    // Note: This requires access to UtilityAIComponent, which we check via a simple time comparison
+    if (CurrentTime - LastExecutedTime < CooldownTime)
+    {
+        if (bLogDebug)
+        {
+            UE_LOG(LogTemp, Warning, TEXT("    [%s] ❌ Score=0: Cooldown (%.1fs left)"), 
+                   *ActionName, CooldownTime - (CurrentTime - LastExecutedTime));
+        }
+        return 0.0f;
+    }
+    return 1.0f;
+}
+
+// =========================================================
+// Helper: Calculate Considerations (Motivation + Context)
+// =========================================================
+void UUtilityActionBase::CalculateConsiderations(
+    UNPCMentalState* MentalState, 
+    AAIController* Controller, 
+    UPersonalityComponent* PersonalityComp,
+    float& OutMotivationSum, 
+    float& OutContextProduct, 
+    bool bLogDebug
+)
+{
+    OutMotivationSum = 0.0f;
+    OutContextProduct = 1.0f;
+
     if (bLogDebug)
     {
         UE_LOG(LogTemp, Warning, TEXT("    [%s] Starting calculation: BaseReward=%.2f"), *ActionName, BaseReward);
@@ -158,44 +200,40 @@ float UUtilityActionBase::CalculateScore(UNPCMentalState* MentalState, AAIContro
     {
         const FUtilityConsideration& Factor = Considerations[i];
         
-        // A. 获取原始数据 (0~1 或 实际值)
+        // A. Get raw value (0~1 or actual value)
         float RawValue = GetConsiderationValue(Factor.InputType, MentalState, Controller, bLogDebug);
 
-        // A2. 应用响应曲线 (Response Curve)
+        // B. Apply response curve
         float CurveValue = RawValue;
         
-        // 优先使用自定义曲线资源 (Advanced)
         if (Factor.ResponseCurve)
         {
-            // 假设输入都在 0~1 之间，直接采样
             CurveValue = Factor.ResponseCurve->GetFloatValue(RawValue);
         }
         else
         {
-            // 使用预设的数学曲线 (Built-in)
             switch (Factor.CurveType)
             {
                 case EUtilityCurveType::Linear:
                     CurveValue = RawValue;
                     break;
                 case EUtilityCurveType::Quadratic:
-                    CurveValue = RawValue * RawValue; // y = x^2 (Low values get suppressed)
+                    CurveValue = RawValue * RawValue;
                     break;
                 case EUtilityCurveType::InverseQuadratic:
-                    CurveValue = 1.0f - (1.0f - RawValue) * (1.0f - RawValue); // y = 1-(1-x)^2 (Fast rise)
+                    CurveValue = 1.0f - (1.0f - RawValue) * (1.0f - RawValue);
                     break;
                 case EUtilityCurveType::Logistic:
-                    // Simple sigmoid-like: y = 1 / (1 + e^(-10*(x-0.5)))
                     CurveValue = 1.0f / (1.0f + FMath::Exp(-10.0f * (RawValue - 0.5f)));
                     break;
                 case EUtilityCurveType::Step:
                     CurveValue = (RawValue >= 0.5f) ? 1.0f : 0.0f;
                     break;
-                 case EUtilityCurveType::TargetThreshold:
-                    CurveValue = (RawValue >= 0.1f) ? 1.0f : 0.0f; // 简单的阈值过滤
+                case EUtilityCurveType::TargetThreshold:
+                    CurveValue = (RawValue >= 0.1f) ? 1.0f : 0.0f;
                     break;
-                 case EUtilityCurveType::Inverse:
-                    CurveValue = 1.0f - RawValue; // 反向：有敌人(1.0) -> 0.0, 没敌人(0.0) -> 1.0
+                case EUtilityCurveType::Inverse:
+                    CurveValue = 1.0f - RawValue;
                     break;
                 default:
                     CurveValue = RawValue;
@@ -203,383 +241,250 @@ float UUtilityActionBase::CalculateScore(UNPCMentalState* MentalState, AAIContro
             }
         }
         
-        // 确保输出在合理范围 (0~1)
         CurveValue = FMath::Clamp(CurveValue, 0.0f, 1.0f);
-        
-        // 使用曲线后的值继续计算
-        // Use the curved value for further calculation
         float EffectiveValue = CurveValue;
 
         if (Factor.ConsiderationType == EConsiderationType::Motivation)
         {
-            // === 动机类型：加法求和 ===
-            
-            // B. 获取性格权重 (从 PersonalityComponent)
-            float PersonalityWeight = 1.0f;  // 默认权重
-            
+            // Motivation: Additive sum with personality weight
+            float PersonalityWeight = 1.0f;
             if (PersonalityComp)
             {
                 FString VariableName = GetVariableNameFromInputType(Factor.InputType);
                 PersonalityWeight = PersonalityComp->GetWeightForVariable(VariableName);
             }
 
-            // C. 计算动机得分并累加
             float MotivationScore = EffectiveValue * PersonalityWeight;
-            MotivationSum += MotivationScore;
+            OutMotivationSum += MotivationScore;
             
             if (bLogDebug)
             {
-                // 如果用了曲线，打印一下原始值和曲线值
-                FString CurveInfo;
-                if (Factor.ResponseCurve)
-                    CurveInfo = FString::Printf(TEXT("(CustomCurve: %.2f->%.2f)"), RawValue, CurveValue);
-                else if (Factor.CurveType != EUtilityCurveType::Linear)
-                    CurveInfo = FString::Printf(TEXT("(%s: %.2f->%.2f)"), 
-                        *UEnum::GetValueAsString(Factor.CurveType), RawValue, CurveValue);
-                
-                UE_LOG(LogTemp, Warning, TEXT("      [Motivation %d] %s: %s Raw=%.3f × Weight=%.3f = %.3f (Sum=%.3f)"), 
+                UE_LOG(LogTemp, Warning, TEXT("      [Motivation %d] %s: Raw=%.3f × Weight=%.3f = %.3f (Sum=%.3f)"), 
                        i, *GetVariableNameFromInputType(Factor.InputType), 
-                       *CurveInfo,
-                       EffectiveValue, PersonalityWeight, MotivationScore, MotivationSum);
+                       EffectiveValue, PersonalityWeight, MotivationScore, OutMotivationSum);
             }
         }
         else // EConsiderationType::Context
         {
-            // === 必要条件类型：乘法 ===
-            
-            // Context 直接使用原始值（0~1），不需要权重
-            float OldProduct = ContextProduct;
-            ContextProduct *= EffectiveValue;
+            // Context: Multiplicative (necessary conditions)
+            float OldProduct = OutContextProduct;
+            OutContextProduct *= EffectiveValue;
             
             if (bLogDebug)
             {
                 UE_LOG(LogTemp, Warning, TEXT("      [Context %d] %s: %.3f × %.3f = %.3f"), 
                        i, *GetVariableNameFromInputType(Factor.InputType), 
-                       OldProduct, EffectiveValue, ContextProduct);
+                       OldProduct, EffectiveValue, OutContextProduct);
             }
 
-            // 优化：如果必要条件已经为0，直接返回0
-            if (ContextProduct <= UE_KINDA_SMALL_NUMBER)
+            // Early exit optimization
+            if (OutContextProduct <= UE_KINDA_SMALL_NUMBER)
             {
                 if (bLogDebug)
                 {
-                    UE_LOG(LogTemp, Error, TEXT("      ⛔ ABORTING: Context '%s' is 0! Final Score = 0.0"), 
+                    UE_LOG(LogTemp, Error, TEXT("      ⛔ ABORTING: Context '%s' is 0!"), 
                            *GetVariableNameFromInputType(Factor.InputType));
                 }
-                return 0.0f;
+                return;
             }
         }
     }
+}
 
-    // 4. 计算 LLM 意图加成 (Intention Bonus) - [CHANGED to Additive]
-    // ---------------------------------------------------------
-    // 将意图作为一种"额外的动机" (Extra Motivation)，而不是最终乘数。
-    // Treat Intention as "Extra Motivation" that is added, not multiplied.
-    // 这样做的优点：
-    // 1. Agency: 即使 MotivationSum 为 0 (不饿/不怒)，LLM 也能无中生有驱动行为 ((0 + 1) * Context > 0)。
-    // 2. Safety: 仍然受 Context 制约。如果 Context 为 0 (没子弹)，(Mot + 1) * 0 还是 0。
+// =========================================================
+// Helper: Calculate Intention Bonus (LLM Integration)
+// =========================================================
+float UUtilityActionBase::CalculateIntentionBonus(UNPCMentalState* MentalState, bool bLogDebug) const
+{
+    if (!MentalState || !IntentionTag.IsValid()) return 0.0f;
     
-    float IntentionBonus = 0.0f;
-    if (MentalState && IntentionTag.IsValid())
+    FString CurrentIntention = MentalState->Intention;
+    if (CurrentIntention.IsEmpty()) return 0.0f;
+    
+    // Construct expected Tag name: Intention.<String>
+    FString TagNameToCheck = TEXT("Intention.") + CurrentIntention;
+    
+    if (IntentionTag.ToString().Equals(TagNameToCheck, ESearchCase::IgnoreCase))
     {
-        // 构造预期 Tag 名：Intention.<String>
-        // Construct expected Tag Name: Intention.<String>
-        FString CurrentIntention = MentalState->Intention;
-        if (!CurrentIntention.IsEmpty())
-        {
-            // 例如：LLM 输出 "Attack" => "Intention.Attack"
-            FString TagNameToCheck = TEXT("Intention.") + CurrentIntention;
-            
-            // 简单字符串匹配：检查配置的 Tag 是否与构造的 Tag 名字匹配
-            // Simple string check: Check if configured Tag matches constructed Tag Name
-            // (Using ToString() is safer than RequestGameplayTag for non-existent tags)
-            if (IntentionTag.ToString().Equals(TagNameToCheck, ESearchCase::IgnoreCase))
-            {
-                // IntentionBonus = 1.0f; // OLD Hardcoded
-                IntentionBonus = UAINPCSettings::Get()->IntentionMatchBonus; // Additive Bonus from Settings
-
-            
-                // ✅ 调试：显示意图匹配
-                if (bLogDebug)
-                {
-                    UE_LOG(LogTemp, Warning, TEXT("      [Intention] 🧠 LLM MATCH! ActionTag:'%s' matches MentalState:'%s' (via %s). Bonus:+1.0"), 
-                           *IntentionTag.ToString(), *MentalState->Intention, *TagNameToCheck);
-                }
-            }
-        }
-    }
-
-            
+        float Bonus = UAINPCSettings::Get()->IntentionMatchBonus;
         
-    
-
-    // 4.5. 计算 Schedule Activity 加成 (Schedule Bonus)
-    // ---------------------------------------------------------
-    // 如果当前时刻的 Schedule Activity 与本动作的 ActivityTag 匹配，给予额外动机加成
-    // If current Schedule Activity matches this action's ActivityTag, give extra motivation bonus
-    // 这确保即使没有生理需求 (Hunger=0)，NPC 也会执行日程安排的任务 (强制吃饭/强制工作)
-    // This ensures NPC performs scheduled tasks (Forced Eat/Work) even without physical need
-    
-    float ScheduleBonus = 0.0f;
-    if (ActivityTag.IsValid())
-    {
-        // Find GoalComponent (check Controller first, then Pawn)
-        // Note: Optimization - we could cache GoalComponent, but for now finding it is safe
-        UGoalComponent* GoalComp = nullptr;
-        if (Controller) GoalComp = Controller->FindComponentByClass<UGoalComponent>();
-        if (!GoalComp && Controller && Controller->GetPawn()) GoalComp = Controller->GetPawn()->FindComponentByClass<UGoalComponent>();
-
-        if (GoalComp)
+        if (bLogDebug)
         {
-            FGameplayTag ScheduledActivity = GoalComp->GetScheduledActivity();
-            if (ScheduledActivity.IsValid() && ScheduledActivity.MatchesTag(ActivityTag))
+            UE_LOG(LogTemp, Warning, TEXT("      [Intention] 🧠 LLM MATCH! ActionTag:'%s' matches MentalState:'%s'. Bonus:+%.2f"), 
+                   *IntentionTag.ToString(), *MentalState->Intention, Bonus);
+        }
+        return Bonus;
+    }
+    
+    return 0.0f;
+}
+
+// =========================================================
+// Helper: Calculate Schedule Bonus (GoalComponent Integration)
+// =========================================================
+float UUtilityActionBase::CalculateScheduleBonus(AAIController* Controller, bool bLogDebug) const
+{
+    if (!ActivityTag.IsValid() || !Controller) return 0.0f;
+    
+    // Find GoalComponent
+    UGoalComponent* GoalComp = Controller->FindComponentByClass<UGoalComponent>();
+    if (!GoalComp && Controller->GetPawn())
+    {
+        GoalComp = Controller->GetPawn()->FindComponentByClass<UGoalComponent>();
+    }
+    
+    if (!GoalComp) return 0.0f;
+    
+    FGameplayTag ScheduledActivity = GoalComp->GetScheduledActivity();
+    if (ScheduledActivity.IsValid() && ScheduledActivity.MatchesTag(ActivityTag))
+    {
+        if (bLogDebug)
+        {
+            UE_LOG(LogTemp, Warning, TEXT("      [Schedule] 📅 SCHEDULE MATCH! ActivityTag:'%s' matches Schedule:'%s'. Bonus:+1.0"), 
+                   *ActivityTag.ToString(), *ScheduledActivity.ToString());
+        }
+        return 1.0f;
+    }
+    
+    return 0.0f;
+}
+
+// =========================================================
+// Helper: Apply Personality Action Modifier (PAM)
+// =========================================================
+float UUtilityActionBase::ApplyPersonalityModifier(float Score, UPersonalityComponent* PersonalityComp, bool bLogDebug) const
+{
+    if (!PersonalityComp || PersonalityInfluence.Num() == 0) return Score;
+    
+    float ModifiedScore = Score;
+    
+    for (const auto& Pair : PersonalityInfluence)
+    {
+        EOCEANTrait Trait = Pair.Key;
+        float InfluenceFactor = Pair.Value;
+        
+        float TraitValue = PersonalityComp->GetTraitValue(Trait);
+        float Modifier = 1.0f;
+        
+        if (InfluenceFactor > 0)
+        {
+            // Positive correlation: Higher trait = higher score
+            Modifier = 0.5f + (TraitValue * InfluenceFactor * 1.5f);
+        }
+        else
+        {
+            // Negative correlation: Lower trait = higher score
+            Modifier = 0.5f + ((1.0f - TraitValue) * FMath::Abs(InfluenceFactor) * 1.5f);
+        }
+        
+        const UAINPCSettings* Settings = UAINPCSettings::Get();
+        Modifier = FMath::Clamp(Modifier, Settings->PAMModifierMin, Settings->PAMModifierMax);
+        
+        ModifiedScore *= Modifier;
+    }
+    
+    return ModifiedScore;
+}
+
+// =========================================================
+// Helper: Apply Emotion Matrix Multiplier
+// =========================================================
+float UUtilityActionBase::ApplyEmotionMatrix(float Score, AAIController* Controller, bool bLogDebug) const
+{
+    AUtilityAIController* UtilityController = Cast<AUtilityAIController>(Controller);
+    if (!UtilityController || !UtilityController->EmotionMatrixTable) return Score;
+    
+    // Get current emotion name
+    FString EmotionName = UEnum::GetValueAsString(UtilityController->CurrentEmotion);
+    FString CleanEmotionName;
+    EmotionName.Split(TEXT("::"), nullptr, &CleanEmotionName);
+    FName RowName = FName(*CleanEmotionName);
+
+    static const FString ContextString(TEXT("UtilityActionBase::ApplyEmotionMatrix"));
+    FEmotionMatrixRow* MatrixRow = UtilityController->EmotionMatrixTable->FindRow<FEmotionMatrixRow>(RowName, ContextString);
+    
+    if (MatrixRow)
+    {
+        float EmotionMultiplier = MatrixRow->GetMultiplier(ActivityTag);
+        
+        if (bLogDebug && FMath::Abs(EmotionMultiplier - 1.0f) > KINDA_SMALL_NUMBER)
+        {
+            UE_LOG(LogTemp, Warning, TEXT("      [Emotion] 🎭 Multiplier Applied: %s->%s (x%.2f)"), 
+                   *CleanEmotionName, *ActivityTag.ToString(), EmotionMultiplier);
+        }
+        
+        return Score * EmotionMultiplier;
+    }
+    
+    return Score;
+}
+
+// =========================================================
+// Helper: Apply Directive Modifier (GoalComponent Integration)
+// =========================================================
+float UUtilityActionBase::ApplyDirectiveModifier(float Score, AAIController* Controller, bool bLogDebug) const
+{
+    if (!DirectiveTag.IsValid() || !Controller) return Score;
+    
+    // Find GoalComponent
+    UGoalComponent* GoalComp = Controller->FindComponentByClass<UGoalComponent>();
+    if (!GoalComp && Controller->GetPawn())
+    {
+        GoalComp = Controller->GetPawn()->FindComponentByClass<UGoalComponent>();
+    }
+    
+    if (!GoalComp)
+    {
+        if (bLogDebug)
+        {
+            UE_LOG(LogTemp, Warning, TEXT("      [Directive] ⚠️ GoalComponent not found"));
+        }
+        return Score;
+    }
+    
+    FGameplayTag CurrentDirective = GoalComp->GetCurrentDirective();
+    if (!CurrentDirective.IsValid()) return Score;
+    
+    float DirectiveMultiplier = 0.0f;
+    
+    if (DirectiveTag.MatchesTag(CurrentDirective))
+    {
+        // Match: Apply bonus
+        DirectiveMultiplier = UAINPCSettings::Get()->DirectiveMatchMultiplier;
+        
+        // Narrative boost for InScene
+        if (APawn* P = Controller->GetPawn())
+        {
+            if (P->ActorHasTag("Status.InScene"))
             {
-                ScheduleBonus = 1.0f; // Additive Bonus like Intention
+                float NarrativeBoost = UAINPCSettings::Get()->NarrativeDirectiveBoost;
+                DirectiveMultiplier *= NarrativeBoost;
+                
                 if (bLogDebug)
                 {
-                    UE_LOG(LogTemp, Warning, TEXT("      [Schedule] 📅 SCHEDULE MATCH! ActivityTag:'%s' matches Schedule:'%s'. Bonus:+1.0"), 
-                           *ActivityTag.ToString(), *ScheduledActivity.ToString());
+                    UE_LOG(LogTemp, Warning, TEXT("      [Scene] 🎬 IN SCENE: Directive Multiplier Boosted x%.1f"), NarrativeBoost);
                 }
             }
         }
-    }
-
-    // 5. 最终得分计算 / Final Score Calculation
-    // 公式 / Formula:
-    // Score = BaseReward × (MotivationSum + IntentionBonus + ScheduleBonus) × ContextProduct
-    float EffectiveMotivation = MotivationSum + IntentionBonus + ScheduleBonus;
-    float FinalScore = BaseReward * EffectiveMotivation * ContextProduct;
-
-    // =========================================================
-    // 5.5. 应用数据驱动性格修正 (Data-Driven PAM)
-    // =========================================================
-    // Personality Action Modifier (PAM)
-    // 根据配置直接修正最终分数 (独立于 Maslow 权重)
-    // Directly modify final score based on configuration (independent of Maslow weights)
-    
-    if (PersonalityComp && PersonalityInfluence.Num() > 0)
-    {
-        for (const auto& Pair : PersonalityInfluence)
+        
+        if (bLogDebug)
         {
-            EOCEANTrait Trait = Pair.Key;
-            float InfluenceFactor = Pair.Value; // e.g., -1.0 for Neuroticism on Attack
-            
-            // 获取性格特质值 (0.0 - 1.0)
-            float TraitValue = PersonalityComp->GetTraitValue(Trait);
-            
-            // 计算修正乘数
-            // Calculate Modifier Multiplier
-            // 范围: 0.2x - 2.0x (更强的性格区分)
-            // Range: 0.2x - 2.0x (Stronger personality differentiation)
-            float Modifier = 1.0f;
-            
-            // 逻辑: Influence > 0 表示正相关 (Trait越高分越高)
-            //       Influence < 0 表示负相关 (Trait越低分越高)
-            // Logic: Influence > 0 means positive correlation (Higher trait = higher score)
-            //        Influence < 0 means negative correlation (Lower trait = higher score)
-            
-            if (InfluenceFactor > 0)
-            {
-                // 正相关: 0.5 + (Trait * Factor * 1.5)
-                // e.g. Factor=1.0, Trait=1.0 -> Mod = 0.5 + 1.5 = 2.0x (High bonus)
-                // e.g. Factor=1.0, Trait=0.0 -> Mod = 0.5 + 0.0 = 0.5x
-                Modifier = 0.5f + (TraitValue * InfluenceFactor * 1.5f);
-            }
-            else
-            {
-                // 负相关: 0.5 + ((1.0 - Trait) * Abs(Factor) * 1.5)
-                // e.g. Factor=-1.0, Trait=1.0 (High N) -> Mod = 0.5 + (0.0 * 1.5) = 0.5x (Penalty)
-                // e.g. Factor=-1.0, Trait=0.2 (Low N)  -> Mod = 0.5 + (0.8 * 1.5) = 1.7x (Bonus)
-                // e.g. Factor=-1.0, Trait=0.0 (Very Low N) -> Mod = 0.5 + (1.0 * 1.5) = 2.0x (Max bonus)
-                Modifier = 0.5f + ((1.0f - TraitValue) * FMath::Abs(InfluenceFactor) * 1.5f);
-            }
-            
-            // 钳制到合理范围 / Clamp to reasonable range
-            const UAINPCSettings* Settings = UAINPCSettings::Get();
-            Modifier = FMath::Clamp(Modifier, Settings->PAMModifierMin, Settings->PAMModifierMax);
-
-            
-            // 应用修正
-            // Apply Modifier
-            float OldScore = FinalScore;
-            FinalScore *= Modifier;
-            
-            // ✅ Always log PAM - Disabled by user request
-            // UE_LOG(LogTemp, Warning, TEXT("    ↳ [PAM] %s: %.2f | Factor: %.1f -> Mod: %.2fx (%.2f -> %.2f)"),
-            //        *UEnum::GetValueAsString(Trait), TraitValue, InfluenceFactor, Modifier, OldScore, FinalScore);
+            UE_LOG(LogTemp, Log, TEXT("      [Directive] 🎯 Matches '%s' -> Multiplier x%.1f"), *CurrentDirective.ToString(), DirectiveMultiplier);
         }
     }
     else
     {
-        // ✅ Debug: Why PAM not applied
-        if (PersonalityInfluence.Num() > 0 && !PersonalityComp)
-        {
-            UE_LOG(LogTemp, Error, TEXT("    ❌ [PAM] PersonalityComponent is NULL for %s!"), *ActionName);
-        }
-    }
-
-    // 6. 应用情绪矩阵乘数 / Apply Emotion Matrix Multiplier
-    // ---------------------------------------------------------
-    
-    float EmotionMultiplier = 1.0f;
-    FString EmotionLogInfo = TEXT("None (1.0)");
-    
-    if (AUtilityAIController* UtilityController = Cast<AUtilityAIController>(Controller))
-    {
-        // 🔍 诊断日志: 检查 EmotionMatrixTable 是否存在
+        // Mismatch: Apply penalty
+        DirectiveMultiplier = UAINPCSettings::Get()->DirectiveMismatchMultiplier;
+        
         if (bLogDebug)
         {
-            UE_LOG(LogTemp, Log, TEXT("      [Emotion Debug] Controller=%s, EmotionMatrixTable=%s, CurrentEmotion=%s, ActivityTag=%s"),
-                   *UtilityController->GetName(),
-                   UtilityController->EmotionMatrixTable ? TEXT("VALID") : TEXT("NULL"),
-                   *UEnum::GetValueAsString(UtilityController->CurrentEmotion),
-                   *ActivityTag.ToString());
-        }
-        
-        if (UtilityController->EmotionMatrixTable)
-        {
-            // 获取当前情绪名 (e.g., "Angry", "Scared")
-            FString EmotionName = UEnum::GetValueAsString(UtilityController->CurrentEmotion);
-            FString CleanEmotionName;
-            EmotionName.Split(TEXT("::"), nullptr, &CleanEmotionName);
-            FName RowName = FName(*CleanEmotionName);
-
-            // 查找矩阵行
-            static const FString ContextString(TEXT("UtilityActionBase::CalculateScore"));
-            FEmotionMatrixRow* MatrixRow = UtilityController->EmotionMatrixTable->FindRow<FEmotionMatrixRow>(RowName, ContextString);
-            
-            if (MatrixRow)
-            {
-                // 获取特定 Activity 的乘数
-                EmotionMultiplier = MatrixRow->GetMultiplier(ActivityTag);
-                FinalScore *= EmotionMultiplier;
-                
-                if (bLogDebug && FMath::Abs(EmotionMultiplier - 1.0f) > KINDA_SMALL_NUMBER)
-                {
-                    EmotionLogInfo = FString::Printf(TEXT("%s->%s (x%.2f)"), *CleanEmotionName, *ActivityTag.ToString(), EmotionMultiplier);
-                    UE_LOG(LogTemp, Warning, TEXT("      [Emotion] 🎭 Multiplier Applied: %s"), *EmotionLogInfo);
-                }
-            }
+            UE_LOG(LogTemp, Log, TEXT("      [Directive] ⛔ Mismatch '%s' (Action is '%s') -> Multiplier x%.1f"), 
+                   *CurrentDirective.ToString(), *DirectiveTag.ToString(), DirectiveMultiplier);
         }
     }
-
-    // 🔍 调试：打印最终分数详情
-    if (bLogDebug)
-    {
-        UE_LOG(LogTemp, Warning, TEXT("    [%s] 📊 Calculation Summary:"), *ActionName);
-        UE_LOG(LogTemp, Log, TEXT("      • Base Reward: %.2f"), BaseReward);
-        UE_LOG(LogTemp, Log, TEXT("      • Motivation Sum: %.2f (Sum of inputs * weights)"), MotivationSum);
-        UE_LOG(LogTemp, Log, TEXT("      • Intention Bonus: %.2f %s"), IntentionBonus, IntentionBonus > 0 ? TEXT("(✅ APPLIED)") : TEXT(""));
-        UE_LOG(LogTemp, Log, TEXT("      • Context Product: %.2f (Multiplier)"), ContextProduct);
-        UE_LOG(LogTemp, Log, TEXT("      • Emotion Multiplier: %.2f (%s)"), EmotionMultiplier, *EmotionLogInfo);
-        UE_LOG(LogTemp, Warning, TEXT("      👉 FINAL SCORE = %.2f * (%.2f + %.2f) * %.2f * %.2f = %.3f"), 
-               BaseReward, MotivationSum, IntentionBonus, ContextProduct, EmotionMultiplier, FinalScore);
-    }
-
-    // 7. 应用 Directive 加成/限制 / Apply Directive Bonus/Restriction
-    // ---------------------------------------------------------
-    // Directive 既是"加成"也是"开关"：
-    // - 匹配时：2.0x 分数加成（鼓励在正确时间做正确的事）
-    // - 不匹配时：0.0x 分数（完全禁止）
-    // Directive acts as both "bonus" and "gate":
-    // - When matched: 2.0x score bonus (encourage doing the right thing at the right time)
-    // - When not matched: 0.0x score (completely forbidden)
     
-    if (DirectiveTag.IsValid())
-    {
-        float DirectiveMultiplier = 0.0f; // Default: forbidden
-        
-        // Find GoalComponent (check Controller first, then Pawn)
-        UGoalComponent* GoalComp = nullptr;
-        if (Controller)
-        {
-            GoalComp = Controller->FindComponentByClass<UGoalComponent>();
-        }
-        
-        if (!GoalComp)
-        {
-            APawn* BotPawn = Controller ? Controller->GetPawn() : nullptr;
-            if (BotPawn)
-            {
-                GoalComp = BotPawn->FindComponentByClass<UGoalComponent>();
-            }
-        }
-        
-        if (GoalComp)
-        {
-            FGameplayTag CurrentDirective = GoalComp->GetCurrentDirective();
-            
-            // 4.5. 指令封锁与加成 / Directive Blocking & Bonus
-            if (CurrentDirective.IsValid())
-            {
-               // 如果有指令，检查是否匹配
-               if (DirectiveTag.MatchesTag(CurrentDirective))
-               {
-                   // 匹配指令：给予加成 (x1.5)
-                   DirectiveMultiplier = UAINPCSettings::Get()->DirectiveMatchMultiplier;
-
-                   
-                   // ✅ NARRATIVE PROFESSION OVERRIDE
-                   // In a scene, the Profession (and thus the Directive) is the role they are playing.
-                   // Boost adherence significantly to ensure they do their job (Slave->Work, Guard->Patrol).
-                   // 在剧情模式下，职业就是角色扮演。大幅提高指令加成，确保他们各司其职。
-                   if (Controller)
-                   {
-                       if (APawn* P = Controller->GetPawn())
-                       {
-                           if (P->ActorHasTag("Status.InScene"))
-                           {
-                               float NarrativeBoost = UAINPCSettings::Get()->NarrativeDirectiveBoost;
-                               DirectiveMultiplier *= NarrativeBoost;
-
-                               if (bLogDebug) UE_LOG(LogTemp, Warning, TEXT("      [Scene] 🎬 IN SCENE: Directive Multiplier Boosted x%.1f (%.1f -> %.1f)"), 
-                                   NarrativeBoost, DirectiveMultiplier/NarrativeBoost, DirectiveMultiplier);
-
-                           }
-                       }
-                   }
-
-                   if (bLogDebug) UE_LOG(LogTemp, Log, TEXT("      [Directive] 🎯 Matches Directive '%s' -> Multiplier x%.1f"), *CurrentDirective.ToString(), DirectiveMultiplier);
-               }
-               else if (DirectiveTag.IsValid())
-               {
-                   // 不匹配指令，且该动作本身属于某种指令类型：给予惩罚 (x0.5)
-                   // 例如：指令是 Social，但这动作是 Work，则降权
-                   DirectiveMultiplier = UAINPCSettings::Get()->DirectiveMismatchMultiplier;
-                   if (bLogDebug) UE_LOG(LogTemp, Log, TEXT("      [Directive] ⛔ Mismatch Directive '%s' (Action is '%s') -> Multiplier x%.1f"), *CurrentDirective.ToString(), *DirectiveTag.ToString(), DirectiveMultiplier);
-
-               }
-            }
-        }
-        else if (bLogDebug)
-        {
-            UE_LOG(LogTemp, Warning, TEXT("      [Directive] ⚠️ GoalComponent not found, no directive multiplier applied"));
-        }
-        
-        FinalScore *= DirectiveMultiplier;
-        
-        if (bLogDebug && DirectiveMultiplier > 0.0f)
-        {
-            UE_LOG(LogTemp, Warning, TEXT("      👉 AFTER Directive Multiplier: %.3f * %.2f = %.3f"), 
-                   FinalScore / DirectiveMultiplier, DirectiveMultiplier, FinalScore);
-        }
-    }
-
-    // 3. 惯性奖励 (Inertia / Momentum)
-    // 这里的逻辑假设你会在 Controller 或 Component 里记录 CurrentAction
-    // 如果没有这个机制，可以先注释掉下面这段
-    /*
-    if (UUtilityComponent* UtilityComp = Controller->FindComponentByClass<UUtilityComponent>())
-    {
-        if (UtilityComp->GetCurrentAction() == this)
-        {
-             // 加上惯性分（或者使用乘法 FinalScore *= 1.2f）
-             FinalScore += InertiaBonus;
-        }
-    }
-    */
-    
-    return FinalScore;
+    return Score * DirectiveMultiplier;
 }
 
 void UUtilityActionBase::MarkExecutionTime(float CurrentTime)

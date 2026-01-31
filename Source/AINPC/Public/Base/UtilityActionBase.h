@@ -12,6 +12,7 @@
 #include "Subsystems/TargetSelectionSubsystem.h"
 #include "UtilityActionBase.generated.h"
 
+class UPersonalityComponent;
 enum class ETargetSelectionContext : uint8;
 class UUtilityActionBase;
 // 前置声明
@@ -421,6 +422,39 @@ protected:
     // 辅助函数：将枚举值转换为变量名字符串
     // Helper function: Convert enum value to variable name string
     FString GetVariableNameFromInputType(EUtilityInputType InputType) const;
+
+    // =========================================================
+    // Score Calculation Helpers (Refactored from monolithic CalculateScore)
+    // =========================================================
+    
+    // Check if action is on cooldown (returns 0 if blocked)
+    float CheckCooldown(float CurrentTime, bool bLogDebug) const;
+    
+    // Calculate base score from Consideration factors (Motivation + Context)
+    // Returns: { MotivationSum, ContextProduct }
+    void CalculateConsiderations(
+        UNPCMentalState* MentalState, 
+        AAIController* Controller, 
+        UPersonalityComponent* PersonalityComp,
+        float& OutMotivationSum, 
+        float& OutContextProduct, 
+        bool bLogDebug
+    );
+    
+    // Calculate LLM Intention bonus (additive)
+    float CalculateIntentionBonus(UNPCMentalState* MentalState, bool bLogDebug) const;
+    
+    // Calculate Schedule Activity bonus (additive)
+    float CalculateScheduleBonus(AAIController* Controller, bool bLogDebug) const;
+    
+    // Apply Personality Action Modifier (PAM) - multiplier
+    float ApplyPersonalityModifier(float Score, UPersonalityComponent* PersonalityComp, bool bLogDebug) const;
+    
+    // Apply Emotion Matrix multiplier
+    float ApplyEmotionMatrix(float Score, AAIController* Controller, bool bLogDebug) const;
+    
+    // Apply Directive bonus/restriction - multiplier (can return 0 to block)
+    float ApplyDirectiveModifier(float Score, AAIController* Controller, bool bLogDebug) const;
 
 
 public:

@@ -4,6 +4,36 @@ This file contains a log of commit messages for the AINPC project.
 
 ---
 
+## [2026-01-31] Refactor CalculateScore Function
+**Type**: refactor
+**Scope**: UtilityActionBase
+**Description**:
+- **Before**: Monolithic 516-line `CalculateScore` function with 8+ responsibilities mixed together.
+- **After**: Clean 90-line orchestrator function that calls 6 focused helper functions:
+  - `CheckCooldown()` - Cooldown validation
+  - `CalculateConsiderations()` - Motivation + Context calculation
+  - `CalculateIntentionBonus()` - LLM Intention integration
+  - `CalculateScheduleBonus()` - Schedule Activity integration
+  - `ApplyPersonalityModifier()` - PAM (Personality Action Modifier)
+  - `ApplyEmotionMatrix()` - Emotion-based multiplier
+  - `ApplyDirectiveModifier()` - Goal Directive filtering
+- **Benefit**: Each function handles one concern (SRP), making debugging much easier.
+
+## [2026-01-31] Fix TargetSelectionSubsystem Cache Bug
+**Type**: fix
+**Scope**: TargetSelectionSubsystem
+**Description**:
+- **Bug**: `FTargetCacheKey::Timestamp` was included in the struct but ignored by `operator==`. This caused cache entries to be overwritten incorrectly when new targets were cached.
+- **Fix**: Separated cache structure into `FTargetCacheKey` (lookup key: Controller + Context) and `FTargetCacheEntry` (cached data: Target + CachedTime).
+- **Result**: Cache expiration now works correctly based on the time the target was actually cached.
+
+## [2026-01-31] Fix Scene End Directive
+**Type**: fix
+**Scope**: NarrativeSquadSubsystem
+**Description**:
+- **Scene End Behavior**: Changed the post-scene directive from `Directive.Social` to `Directive.Idle`.
+- **Reason**: To prevent forced celebration logic and allow NPCs to naturally transition back to their daily routine or idle state.
+
 ## [2026-01-31] Fix AI Action Transition Stalling
 **Type**: fix
 **Scope**: UtilityAIComponent, Action_Attack, NarrativeSquadSubsystem
