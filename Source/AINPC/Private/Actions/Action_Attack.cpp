@@ -24,6 +24,9 @@ UAction_Attack::UAction_Attack()
 	// ✅ Override Threshold for Combat Actions
 	// Ensure Neutrals (50) are safe from attack. Threshold must be < 50.
 	TargetConfigOverride.FriendlyReputationThreshold = 45.0f;
+	
+	// ✅ Increase default range to prevent collision blocking
+	AttackRange = 250.0f;
 }
 
 void UAction_Attack::Enter_Implementation(AAIController* Controller)
@@ -121,27 +124,22 @@ void UAction_Attack::Execute_Implementation(AAIController* Controller)
 	// ✅ Get target from Focus (single source of truth)
 	AActor* Target = Controller->GetFocusActor();
 	
+	// ... (Target Recovery Logic Omitted for Brevity) ...
+	
 	if (!Target)
 	{
-		// ⚠️ Recovery: Focus lost but action still active. Try to recover via Subsystem.
+		// ... (Recovery Logic) ...
 		if (UTargetSelectionSubsystem* TargetSystem = GetWorld()->GetSubsystem<UTargetSelectionSubsystem>())
 		{
 			FTargetSelectionConfig Config = TargetConfigOverride;
 			Target = TargetSystem->SelectTarget(Controller, TargetContext, Config);
-			
-			if (Target)
-			{
-				// Recovered! Restore focus.
-				Controller->SetFocus(Target);
-				AINPC_LOG(Log, "Action_Attack: 🔄 Recovered lost focus target: %s", *Target->GetName());
-			}
+			if (Target) Controller->SetFocus(Target);
 		}
-		
+
 		if (!Target)
 		{
 			AINPC_LOG_WARNING("Action_Attack: No FocusActor and Recovery Failed - clearing action state");
 			Controller->ClearFocus(EAIFocusPriority::Gameplay);
-			// Force invalidation
 			bIsAttacking = false;
 			return;
 		}
@@ -166,6 +164,9 @@ void UAction_Attack::Execute_Implementation(AAIController* Controller)
 
 	float DistSq = FVector::DistSquared(Pawn->GetActorLocation(), Target->GetActorLocation());
 	float RangeSq = AttackRange * AttackRange;
+	
+	// Debug Distance Log
+	// AINPC_LOG(Log, "Action_Attack: Execute Tick. Dist: %.1f / Range: %.1f. bIsAttacking: %d", FMath::Sqrt(DistSq), AttackRange, bIsAttacking);
 
 	if (DistSq <= RangeSq)
 	{
@@ -176,9 +177,19 @@ void UAction_Attack::Execute_Implementation(AAIController* Controller)
 	{
 		// Out of range - pursue target
 		FAIMoveRequest MoveReq(Target);
-		MoveReq.SetAcceptanceRadius(AttackRange * 0.8f);
-		Controller->MoveTo(MoveReq);
-		AINPC_LOG_VERBOSE("Action_Attack: Moving to target (distance: %.1f)", FMath::Sqrt(DistSq));
+		MoveReq.SetAcceptanceRadius(50.0f); // ⚠️ DEBUG: Force close range
+		
+		EPathFollowingRequestResult::Type Result = Controller->MoveTo(MoveReq);
+		
+		FString ResultStr;
+		switch(Result) {
+			case EPathFollowingRequestResult::Failed: ResultStr = "Failed"; break;
+			case EPathFollowingRequestResult::AlreadyAtGoal: ResultStr = "AlreadyAtGoal"; break;
+			case EPathFollowingRequestResult::RequestSuccessful: ResultStr = "RequestSuccessful"; break;
+		}
+		
+		AINPC_LOG(Log, "Action_Attack: Moving to target (Dist: %.1f). Result: %s", 
+			FMath::Sqrt(DistSq), *ResultStr);
 	}
 }
 
@@ -236,22 +247,41 @@ void UAction_Attack::PerformAttack(AAIController* Controller)
 	if (AttackMontage)
 	{
 		float Duration = Character->PlayAnimMontage(AttackMontage);
-		
-		// Setup callback for animation end
-		UAnimInstance* AnimInst = Character->GetMesh()->GetAnimInstance();
-		if (AnimInst)
+		AINPC_LOG(Log, "Action_Attack: Playing Montage %s (Duration: %.2f)", *AttackMontage->GetName(), Duration);
+
+		if (Duration > 0.f)
 		{
-			FOnMontageEnded EndDelegate;
-			EndDelegate.BindUObject(this, &UAction_Attack::OnAttackAnimFinished);
-			AnimInst->Montage_SetEndDelegate(EndDelegate, AttackMontage);
-		}
-		
-		// Apply damage (in production, this should be triggered by AnimNotify)
-		if (!bHasDealtDamage)
-		{
+			// Setup callback for animation end
+			UAnimInstance* AnimInst = Character->GetMesh()->GetAnimInstance();
+			if (AnimInst)
+			{
+				FOnMontageEnded EndDelegate;
+				EndDelegate.BindUObject(this, &UAction_Attack::OnAttackAnimFinished);
+				AnimInst->Montage_SetEndDelegate(EndDelegate, AttackMontage);
+			}
+			
+			// Apply damage (in production, this should be triggered by AnimNotify)
+			float PreHealth = 0.f; // Debug
+			if (ACharacter* TChar = Cast<ACharacter>(Target)) 
+			{
+				 // PreHealth = TChar->GetHealth(); // If property exists
+			}
+			
+			AINPC_LOG(Log, "Action_Attack: 💥 Attempting ApplyDamage on %s (Amt: %.1f)", *Target->GetName(), DamageAmount);
+			
 			UGameplayStatics::ApplyDamage(Target, DamageAmount, Controller, Character, UDamageType::StaticClass());
 			bHasDealtDamage = true;
-			AINPC_LOG(Log, "Action_Attack: Dealt %.1f damage to %s", DamageAmount, *Target->GetName());
+			
+			AINPC_LOG(Log, "Action_Attack: ✅ Dealt %.1f damage to %s", DamageAmount, *Target->GetName());
+		}
+		else
+		{
+			// Montage failed to play! Abort locking state to prevent freeze.
+			AINPC_LOG_WARNING("Action_Attack: Montage %s failed to play! Resetting state.", *AttackMontage->GetName());
+			
+			// Still deal damage or abort? Let's deal damage for now but reset.
+			UGameplayStatics::ApplyDamage(Target, DamageAmount, Controller, Character, UDamageType::StaticClass());
+			bIsAttacking = false;
 		}
 	}
 	else

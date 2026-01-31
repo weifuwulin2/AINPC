@@ -775,6 +775,18 @@ FString USensoryComponent::FormatDescriptionWithContext(FString Verb, AActor* Ta
         Description += TEXT(" - Ally");
     }
     
+    // ✅ NEW: Add descriptive action state (e.g. "who is Mining")
+    if (Target)
+    {
+        if (UUtilityAIComponent* TargetAI = Target->FindComponentByClass<UUtilityAIComponent>())
+        {
+            if (TargetAI->CurrentAction)
+            {
+               Description += FString::Printf(TEXT(" [Current Action: %s]"), *TargetAI->CurrentAction->ActionName);
+            }
+        }
+    }
+    
     return Description;
 }
 

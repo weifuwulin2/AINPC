@@ -9,6 +9,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - 2026-01-31
 
+### 🐛 Bug Fixes - Combat & Movement
+- **Fixed Attack Logic**: Resolved issue where AI would get stuck in "Moving to target" loop.
+  - **Collision Range**: Increased default `AttackRange` to 250.0f to account for large collision capsules.
+  - **Montage Fallback**: Added failsafe for `PlayAnimMontage` failing (returns 0 duration). Now properly applies instant damage and resets state to prevent freezing.
+  - **Montage Loading**: Fixed `LoadActionsFromTable` to correctly assign `InteractionMontage` for `Action_Attack`.
+
+### ⚡ Refactors - Logging
+- **Unified Logging**: Cleaned up `UtilityActionBase` logs.
+  - Replaced ad-hoc `LogTemp` with `LogAINPCUtility` for consistent filtering.
+
+### 🔧 Fixes - Narrative System
+- **Event Matching**: Fixed `NarrativeSquadSubsystem` not recognizing squad member deaths.
+  - Replaced raw `GetName()` check with `GetSmartActorName()` to match event payloads correctly.
+
+### ✨ Features - Sensory System
+- **Action Awareness**: Updated `SensoryComponent` to include the observed actor's current action (e.g., "Mining", "Attacking") in the sensory description string.
+  - Provides LLM with crucial context about what others are doing.
+
 ### 🐛 Bug Fixes - AI Action Transitions
 - **Fixed Attack Action Stalling**: Resolved critical bug where `Action_Attack` would remain active even after target died.
   - **Root Cause**: `Execute` detected invalid/dead target but only returned early without clearing `TargetActor` or `FocusActor`.

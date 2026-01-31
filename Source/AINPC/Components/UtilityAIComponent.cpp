@@ -5,6 +5,7 @@
 #include "Components/CognitionComponent.h"
 #include "LLM/LLMCommunicator.h"
 #include "Actions/Action_SmartObject.h"
+#include "Actions/Action_Attack.h"
 #include "AINPC.h"
 
 UUtilityAIComponent::UUtilityAIComponent()
@@ -124,6 +125,11 @@ void UUtilityAIComponent::LoadActionsFromTable()
                 SmartObjectAction->bLoopAnimation = Row->bLoopAnimation;
                 SmartObjectAction->ActionDuration = Row->ActionDuration;
                 
+            }
+            // ✅ 如果是 Action_Attack，传递攻击动画
+            else if (UAction_Attack* AttackAction = Cast<UAction_Attack>(NewAction))
+            {
+                AttackAction->AttackMontage = Row->InteractionMontage;
             }
 
             AvailableActions.Add(NewAction);

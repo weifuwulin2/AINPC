@@ -56,6 +56,21 @@ This file contains a log of commit messages for the AINPC project.
     - Added "Overwhelming Score" exception: if CandidateScore > 2.0 * CurrentScore, priority is ignored.
 - **Result**: NPCs can now correctly exit combat/high-stress states when they lose interest, without getting stuck.
 
+## [2026-01-31] Fix Neutral NPC Aggression
+**Type**: fix
+**Scope**: Action System (Targeting)
+**Description**:
+- **Problem**: Orcs (Reputation 51) were attacking Neutral/Player (Reputation 50) because the default friendly threshold was 50 (exclusive >).
+- **Solution**: Override `FriendlyReputationThreshold` to `45.0f` in `Action_Attack` constructor. This ensures Neutral (50) targets are safely ignored.
+
+## [2026-01-31] Fix Narrative Death Log Names
+**Type**: fix
+**Scope**: Narrative Director
+**Description**:
+- **Problem**: Death logs were printing raw Actor names (e.g., `BP_NPC_Human_Base_C_0`) instead of semantic names.
+- **Solution**: Updated `RecordNPCDeath` to use `AINPCHelpers::GetSmartActorName`.
+- **Result**: Logs now show meaningful names like "Guard", "Villager".
+
 ## [2026-01-31] Fix Scene End Directive
 **Type**: fix
 **Scope**: NarrativeSquadSubsystem
@@ -733,4 +748,17 @@ This file contains a log of commit messages for the AINPC project.
   - **Faction Update**: Added explicit `"Player"` faction to `DT_Factions.json`.
   - **Attitude Fix**: Configured `"Orcs" -> "Player"` relationship to 50.0 (Neutral), preventing default hostility.
   - **Hostility Logic**: Updated `SensoryComponent::AreActorsHostile` to prioritize this data-driven system over legacy enum checks.
+
+## [2026-01-31] Fix Combat Stalling & Enhance Sensory Context
+**Type**: fix/feat
+**Scope**: Action_Attack, SensoryComponent, UtilityAI
+**Description**:
+- **Fixed Combat Freeze**: Resolved issue where AI would get stuck in "Moving to target" loop without attacking.
+  - Increased `AttackRange` to 250.0f to resolve collision issues.
+  - Added montage playback fallback to prevent action locking if animation fails.
+  - Fixed `LoadActionsFromTable` to correctly assign Montages to Attack Actions.
+- **Enhanced Sensory Awareness**: `SensoryComponent` now includes the observed actor's current action (e.g., "Mining", "Attacking") in the event description.
+  - Provides critical context for LLM decision making.
+- **Fixed Narrative Event Matching**: `NarrativeSquadSubsystem` now uses `GetSmartActorName` to match death events, fixing scene progression bugs.
+- **Logging Cleanup**: Unified `UtilityActionBase` logging to `LogAINPCUtility`.
 

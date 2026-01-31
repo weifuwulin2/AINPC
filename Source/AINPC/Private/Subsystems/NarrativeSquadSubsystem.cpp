@@ -164,7 +164,7 @@ void UNarrativeSquadSubsystem::AssignRolesToArea(int32 SquadID, FVector Origin, 
 
 void UNarrativeSquadSubsystem::OnNarrativeEventRecorded(const FNarrativeEvent& Event)
 {
-	NARRATIVE_LOG(Error, TEXT("🛑 [NarrativeSquad] RECEIVED EVENT: '%s'. Tags: %d"), *Event.Description, Event.Tags.Num());
+	NARRATIVE_LOG(Error, TEXT("🛑 [NarrativeSquad] w '%s'. Tags: %d"), *Event.Description, Event.Tags.Num());
 	
 	// Removed CleanupInvalidActors() here as it prevents processing Death events for PendingKill actors.
 	// CleanupInvalidActors();
@@ -197,11 +197,11 @@ void UNarrativeSquadSubsystem::OnNarrativeEventRecorded(const FNarrativeEvent& E
 				// Is this actor in our squad?
 				for (const auto& MemberPair : Squad.MemberRoles)
 				{
-					FString MemberName = MemberPair.Key ? MemberPair.Key->GetName() : TEXT("NULL");
-					NARRATIVE_LOG(Warning, TEXT("   - Inspecting Squad Member: '%s' (Role: %s) vs Event Actor: '%s'"), 
-						*MemberName, *MemberPair.Value.ToString(), *PossibleName);
+					FString MemberSmartName = AINPCHelpers::GetSmartActorName(MemberPair.Key);
+					NARRATIVE_LOG(Warning, TEXT("   - Inspecting Squad Member: '%s' (Smart: %s) (Role: %s) vs Event Actor: '%s'"), 
+						*MemberPair.Key->GetName(), *MemberSmartName, *MemberPair.Value.ToString(), *PossibleName);
 
-					if (MemberPair.Key && MemberPair.Key->GetName() == PossibleName)
+					if (MemberPair.Key && MemberSmartName == PossibleName)
 					{
 						DeadMemberActor = MemberPair.Key;
 						DeadMemberName = PossibleName;

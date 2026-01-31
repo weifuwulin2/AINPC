@@ -50,7 +50,7 @@ void UUtilityActionBase::InitFromConfig(const FUtilityActionConfig& Config)
     ExitConditions = Config.ExitConditions;
     
     // Debug Log (Simplified)
-    // UE_LOG(LogTemp, Warning, TEXT("[InitFromConfig] %s: Priority=%d, Commitment=%.1fs"), 
+    // UE_LOG(LogAINPCUtility, Warning, TEXT("[InitFromConfig] %s: Priority=%d, Commitment=%.1fs"), 
     //        *Config.ActionName, (int32)Priority, CommitmentTime);
 
     // Fix: Assign name from config if available
@@ -74,14 +74,14 @@ float UUtilityActionBase::CalculateScore(UNPCMentalState* MentalState, AAIContro
     APawn* ControlledPawn = Controller->GetPawn();
     if (!ControlledPawn || !IsValid(ControlledPawn) || ControlledPawn->IsPendingKillPending())
     {
-        if (bLogDebug) UE_LOG(LogTemp, Warning, TEXT("    [%s] ❌ Score=0: Pawn Invalid/Dead"), *ActionName);
+        if (bLogDebug) UE_LOG(LogAINPCUtility, Warning, TEXT("    [%s] ❌ Score=0: Pawn Invalid/Dead"), *ActionName);
         return 0.0f;
     }
 
     // No Considerations = Just return BaseReward (simple actions)
     if (Considerations.Num() == 0) 
     {
-        if (bLogDebug) UE_LOG(LogTemp, Warning, TEXT("    [%s] ⚠️ No Considerations, returning BaseReward=%.2f"), *ActionName, BaseReward);
+        if (bLogDebug) UE_LOG(LogAINPCUtility, Warning, TEXT("    [%s] ⚠️ No Considerations, returning BaseReward=%.2f"), *ActionName, BaseReward);
         return BaseReward;
     }
 
@@ -143,13 +143,13 @@ float UUtilityActionBase::CalculateScore(UNPCMentalState* MentalState, AAIContro
     // =========================================================
     if (bLogDebug)
     {
-        UE_LOG(LogTemp, Warning, TEXT("    [%s] 📊 Calculation Summary:"), *ActionName);
-        UE_LOG(LogTemp, Log, TEXT("      • Base Reward: %.2f"), BaseReward);
-        UE_LOG(LogTemp, Log, TEXT("      • Motivation Sum: %.2f"), MotivationSum);
-        UE_LOG(LogTemp, Log, TEXT("      • Intention Bonus: %.2f %s"), IntentionBonus, IntentionBonus > 0 ? TEXT("(✅ APPLIED)") : TEXT(""));
-        UE_LOG(LogTemp, Log, TEXT("      • Schedule Bonus: %.2f %s"), ScheduleBonus, ScheduleBonus > 0 ? TEXT("(✅ APPLIED)") : TEXT(""));
-        UE_LOG(LogTemp, Log, TEXT("      • Context Product: %.2f"), ContextProduct);
-        UE_LOG(LogTemp, Warning, TEXT("      👉 FINAL SCORE = %.3f"), FinalScore);
+        UE_LOG(LogAINPCUtility, Warning, TEXT("    [%s] 📊 Calculation Summary:"), *ActionName);
+        UE_LOG(LogAINPCUtility, Log, TEXT("      • Base Reward: %.2f"), BaseReward);
+        UE_LOG(LogAINPCUtility, Log, TEXT("      • Motivation Sum: %.2f"), MotivationSum);
+        UE_LOG(LogAINPCUtility, Log, TEXT("      • Intention Bonus: %.2f %s"), IntentionBonus, IntentionBonus > 0 ? TEXT("(✅ APPLIED)") : TEXT(""));
+        UE_LOG(LogAINPCUtility, Log, TEXT("      • Schedule Bonus: %.2f %s"), ScheduleBonus, ScheduleBonus > 0 ? TEXT("(✅ APPLIED)") : TEXT(""));
+        UE_LOG(LogAINPCUtility, Log, TEXT("      • Context Product: %.2f"), ContextProduct);
+        UE_LOG(LogAINPCUtility, Warning, TEXT("      👉 FINAL SCORE = %.3f"), FinalScore);
     }
 
     return FinalScore;
@@ -168,7 +168,7 @@ float UUtilityActionBase::CheckCooldown(float CurrentTime, bool bLogDebug) const
     {
         if (bLogDebug)
         {
-            UE_LOG(LogTemp, Warning, TEXT("    [%s] ❌ Score=0: Cooldown (%.1fs left)"), 
+            UE_LOG(LogAINPCUtility, Warning, TEXT("    [%s] ❌ Score=0: Cooldown (%.1fs left)"), 
                    *ActionName, CooldownTime - (CurrentTime - LastExecutedTime));
         }
         return 0.0f;
@@ -193,7 +193,7 @@ void UUtilityActionBase::CalculateConsiderations(
 
     if (bLogDebug)
     {
-        UE_LOG(LogTemp, Warning, TEXT("    [%s] Starting calculation: BaseReward=%.2f"), *ActionName, BaseReward);
+        UE_LOG(LogAINPCUtility, Warning, TEXT("    [%s] Starting calculation: BaseReward=%.2f"), *ActionName, BaseReward);
     }
 
     for (int32 i = 0; i < Considerations.Num(); ++i)
@@ -259,7 +259,7 @@ void UUtilityActionBase::CalculateConsiderations(
             
             if (bLogDebug)
             {
-                UE_LOG(LogTemp, Warning, TEXT("      [Motivation %d] %s: Raw=%.3f × Weight=%.3f = %.3f (Sum=%.3f)"), 
+                UE_LOG(LogAINPCUtility, Warning, TEXT("      [Motivation %d] %s: Raw=%.3f × Weight=%.3f = %.3f (Sum=%.3f)"), 
                        i, *GetVariableNameFromInputType(Factor.InputType), 
                        EffectiveValue, PersonalityWeight, MotivationScore, OutMotivationSum);
             }
@@ -272,7 +272,7 @@ void UUtilityActionBase::CalculateConsiderations(
             
             if (bLogDebug)
             {
-                UE_LOG(LogTemp, Warning, TEXT("      [Context %d] %s: %.3f × %.3f = %.3f"), 
+                UE_LOG(LogAINPCUtility, Warning, TEXT("      [Context %d] %s: %.3f × %.3f = %.3f"), 
                        i, *GetVariableNameFromInputType(Factor.InputType), 
                        OldProduct, EffectiveValue, OutContextProduct);
             }
@@ -282,7 +282,7 @@ void UUtilityActionBase::CalculateConsiderations(
             {
                 if (bLogDebug)
                 {
-                    UE_LOG(LogTemp, Error, TEXT("      ⛔ ABORTING: Context '%s' is 0!"), 
+                    UE_LOG(LogAINPCUtility, Error, TEXT("      ⛔ ABORTING: Context '%s' is 0!"), 
                            *GetVariableNameFromInputType(Factor.InputType));
                 }
                 return;
@@ -310,7 +310,7 @@ float UUtilityActionBase::CalculateIntentionBonus(UNPCMentalState* MentalState, 
         
         if (bLogDebug)
         {
-            UE_LOG(LogTemp, Warning, TEXT("      [Intention] 🧠 LLM MATCH! ActionTag:'%s' matches MentalState:'%s'. Bonus:+%.2f"), 
+            UE_LOG(LogAINPCUtility, Warning, TEXT("      [Intention] 🧠 LLM MATCH! ActionTag:'%s' matches MentalState:'%s'. Bonus:+%.2f"), 
                    *IntentionTag.ToString(), *MentalState->Intention, Bonus);
         }
         return Bonus;
@@ -340,7 +340,7 @@ float UUtilityActionBase::CalculateScheduleBonus(AAIController* Controller, bool
     {
         if (bLogDebug)
         {
-            UE_LOG(LogTemp, Warning, TEXT("      [Schedule] 📅 SCHEDULE MATCH! ActivityTag:'%s' matches Schedule:'%s'. Bonus:+1.0"), 
+            UE_LOG(LogAINPCUtility, Warning, TEXT("      [Schedule] 📅 SCHEDULE MATCH! ActivityTag:'%s' matches Schedule:'%s'. Bonus:+1.0"), 
                    *ActivityTag.ToString(), *ScheduledActivity.ToString());
         }
         return 1.0f;
@@ -409,7 +409,7 @@ float UUtilityActionBase::ApplyEmotionMatrix(float Score, AAIController* Control
         
         if (bLogDebug && FMath::Abs(EmotionMultiplier - 1.0f) > KINDA_SMALL_NUMBER)
         {
-            UE_LOG(LogTemp, Warning, TEXT("      [Emotion] 🎭 Multiplier Applied: %s->%s (x%.2f)"), 
+            UE_LOG(LogAINPCUtility, Warning, TEXT("      [Emotion] 🎭 Multiplier Applied: %s->%s (x%.2f)"), 
                    *CleanEmotionName, *ActivityTag.ToString(), EmotionMultiplier);
         }
         
@@ -437,7 +437,7 @@ float UUtilityActionBase::ApplyDirectiveModifier(float Score, AAIController* Con
     {
         if (bLogDebug)
         {
-            UE_LOG(LogTemp, Warning, TEXT("      [Directive] ⚠️ GoalComponent not found"));
+            UE_LOG(LogAINPCUtility, Warning, TEXT("      [Directive] ⚠️ GoalComponent not found"));
         }
         return Score;
     }
@@ -462,14 +462,14 @@ float UUtilityActionBase::ApplyDirectiveModifier(float Score, AAIController* Con
                 
                 if (bLogDebug)
                 {
-                    UE_LOG(LogTemp, Warning, TEXT("      [Scene] 🎬 IN SCENE: Directive Multiplier Boosted x%.1f"), NarrativeBoost);
+                    UE_LOG(LogAINPCUtility, Warning, TEXT("      [Scene] 🎬 IN SCENE: Directive Multiplier Boosted x%.1f"), NarrativeBoost);
                 }
             }
         }
         
         if (bLogDebug)
         {
-            UE_LOG(LogTemp, Log, TEXT("      [Directive] 🎯 Matches '%s' -> Multiplier x%.1f"), *CurrentDirective.ToString(), DirectiveMultiplier);
+            UE_LOG(LogAINPCUtility, Log, TEXT("      [Directive] 🎯 Matches '%s' -> Multiplier x%.1f"), *CurrentDirective.ToString(), DirectiveMultiplier);
         }
     }
     else
@@ -479,7 +479,7 @@ float UUtilityActionBase::ApplyDirectiveModifier(float Score, AAIController* Con
         
         if (bLogDebug)
         {
-            UE_LOG(LogTemp, Log, TEXT("      [Directive] ⛔ Mismatch '%s' (Action is '%s') -> Multiplier x%.1f"), 
+            UE_LOG(LogAINPCUtility, Log, TEXT("      [Directive] ⛔ Mismatch '%s' (Action is '%s') -> Multiplier x%.1f"), 
                    *CurrentDirective.ToString(), *DirectiveTag.ToString(), DirectiveMultiplier);
         }
     }
@@ -708,7 +708,7 @@ float UUtilityActionBase::GetConsiderationValue(EUtilityInputType InputType, UNP
                 // 暂时强制打印调试，确认为什么找不到床
                 if (State->Fatigue > 0.4f)
                 {
-                     // UE_LOG(LogTemp, Warning, TEXT("💤 [Debug] Checking Bed... Found: %s (Radius: 150m)"), Bed ? *Bed->GetName() : TEXT("NULL"));
+                     // UE_LOG(LogAINPCUtility, Warning, TEXT("💤 [Debug] Checking Bed... Found: %s (Radius: 150m)"), Bed ? *Bed->GetName() : TEXT("NULL"));
                 }
                 
                 if (Bed)
@@ -820,7 +820,7 @@ bool UUtilityActionBase::CheckExitConditions(UNPCMentalState* MentalState, AAICo
         
         if (bConditionMet)
         {
-            UE_LOG(LogTemp, Log, TEXT("[%s] Exit condition met: %s %s %.2f (Current: %.2f)"),
+            UE_LOG(LogAINPCUtility, Log, TEXT("[%s] Exit condition met: %s %s %.2f (Current: %.2f)"),
                    *ActionName,
                    *UEnum::GetValueAsString(Condition.Variable),
                    *UEnum::GetValueAsString(Condition.Operator),
