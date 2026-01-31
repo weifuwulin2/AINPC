@@ -15,6 +15,7 @@
 #include "World/NarrativeSceneAnchor.h"
 #include "Social/SocialGameplayTags.h"
 #include "Utilities/AINPCHelpers.h"
+#include "Components/EmotionDisplayComponent.h"
 
 
 void UNarrativeSquadSubsystem::Initialize(FSubsystemCollectionBase& Collection)
@@ -66,7 +67,7 @@ void UNarrativeSquadSubsystem::AssignMemberRole(int32 SquadID, AActor* NPC, FStr
 	if (!NPC) return;
 
 	FNarrativeSceneSquad& Squad = ActiveSquads[SquadID];
-	Squad.MemberRoles.Add(NPC, RoleDescription);
+	Squad.MemberRoles.Add(NPC, FName(*RoleDescription));
 	ActorSquadMap.Add(NPC, SquadID);
 
 	NARRATIVE_LOG(Error, TEXT("🛑 [NarrativeSquad] ASSIGNED ROLE: '%s' to Actor '%s' (Squad %d)"), 
@@ -126,9 +127,10 @@ FString UNarrativeSquadSubsystem::GetMemberContext(AActor* NPC) const
 	{
 		if (const FNarrativeSceneSquad* Squad = ActiveSquads.Find(*SquadIDPtr))
 		{
-			if (const FString* Role = Squad->MemberRoles.Find(NPC))
+			if (const FName* Role = Squad->MemberRoles.Find(NPC))
 			{
-				return FString::Printf(TEXT("Current Scene: %s. My Role: %s"), *Squad->PlotOutline, **Role);
+				return FString::Printf(TEXT("Plot: %s. Role: %s."), 
+					*Squad->PlotOutline, *Role->ToString());
 			}
 		}
 	}
@@ -197,13 +199,13 @@ void UNarrativeSquadSubsystem::OnNarrativeEventRecorded(const FNarrativeEvent& E
 				{
 					FString MemberName = MemberPair.Key ? MemberPair.Key->GetName() : TEXT("NULL");
 					NARRATIVE_LOG(Warning, TEXT("   - Inspecting Squad Member: '%s' (Role: %s) vs Event Actor: '%s'"), 
-						*MemberName, *MemberPair.Value, *PossibleName);
+						*MemberName, *MemberPair.Value.ToString(), *PossibleName);
 
 					if (MemberPair.Key && MemberPair.Key->GetName() == PossibleName)
 					{
 						DeadMemberActor = MemberPair.Key;
 						DeadMemberName = PossibleName;
-						DeadMemberRole = MemberPair.Value;
+						DeadMemberRole = MemberPair.Value.ToString();
 						
 						if (UNPCDefinitionComponent* Def = DeadMemberActor->FindComponentByClass<UNPCDefinitionComponent>())
 						{
@@ -339,6 +341,8 @@ int32 UNarrativeSquadSubsystem::SpawnSceneFromTemplate(UDataTable* SceneTable, F
 		Squad->SceneTimeline = SceneDef->Timeline;
 		Squad->bKeepPropsOnEnd = SceneDef->bKeepPropsOnEnd;
 		Squad->PostSceneStimulus = SceneDef->PostSceneStimulus;
+		Squad->PostSceneProfessionID = SceneDef->PostSceneProfessionID; // ✅ Copy Profession Transition ID
+		Squad->PostSceneProfessionPool = SceneDef->PostSceneProfessionPool; // ✅ Copy Profession Pool
 	}
 
 	// 3. Spawn Props FIRST (so SmartObjects are registered before NPCs start searching)
@@ -583,21 +587,73 @@ void UNarrativeSquadSubsystem::EndScene(int32 SquadID)
 			if (UGoalComponent* GoalComp = AINPCHelpers::GetGoalComponent(Member))
 			{
 				GoalComp->RemoveContextTag(AINPCTags::Status_InScene);
-				// Ensure they stop receiving combat overrides from the scene
-				GoalComp->RemoveContextTag(AINPCTags::Directive_Combat); 
+				GoalComp->RemoveContextTag(AINPCTags::Directive_Combat);
 			}
 			Member->Tags.Remove("Status.InScene"); // Legacy / Fallback
 
+			// ✅ Profession Transition (Job Promotion)
+			// Calculate New Profession ONCE per NPC to ensure consistency
+			FName TargetProfession = Squad.PostSceneProfessionID;
+			if (Squad.PostSceneProfessionPool.Num() > 0)
+			{
+				int32 RandIdx = FMath::RandRange(0, Squad.PostSceneProfessionPool.Num() - 1);
+				TargetProfession = Squad.PostSceneProfessionPool[RandIdx];
+			}
+
+			if (!TargetProfession.IsNone())
+			{
+				// Apply to Goal (Behavior/Schedule)
+				if (UGoalComponent* GoalComp = AINPCHelpers::GetGoalComponent(Member))
+				{
+					GoalComp->InitializeProfession(TargetProfession);
+					
+					// ✅ Force immediate behavior change
+					// Setting a new directive interrupts the current action (e.g., stop mining)
+					// Social directive fits the "celebrating freedom" narrative
+					GoalComp->SetDirective(AINPCTags::Directive_Social);
+					
+					NARRATIVE_LOG(Warning, TEXT("🎓 NPC %s: Profession updated to %s, Directive forced to Social"), 
+						*Member->GetName(), *TargetProfession.ToString());
+				}
+				else
+				{
+					NARRATIVE_LOG(Error, TEXT("❌ NPC %s: Could not find GoalComponent!"), *Member->GetName());
+				}
+
+				// Apply to Definition (Identity/Persistence)
+				if (UNPCDefinitionComponent* DefComp = AINPCHelpers::GetNPCDefinitionComponent(Member))
+				{
+					DefComp->ProfessionID = TargetProfession;
+					NARRATIVE_LOG(Warning, TEXT("🎓 NPC %s: Definition profession updated to %s"), *Member->GetName(), *TargetProfession.ToString());
+					
+					// ✅ Update Display (Nameplate)
+					// Refresh the visual nameplate to show the new profession
+					if (UEmotionDisplayComponent* DisplayComp = Member->FindComponentByClass<UEmotionDisplayComponent>())
+					{
+						DisplayComp->UpdateNameplate(
+							DefComp->PersonalityID.ToString(),
+							DefComp->PersonalityID.ToString(),
+							TargetProfession.ToString(),
+							DefComp->FactionID.ToString()
+						);
+						NARRATIVE_LOG(Warning, TEXT("🎓 NPC %s: Nameplate display refreshed"), *Member->GetName());
+					}
+				}
+				else
+				{
+					NARRATIVE_LOG(Error, TEXT("❌ NPC %s: Could not find NPCDefinitionComponent!"), *Member->GetName());
+				}
+			}
 
 			// Reset Cognition
 			if (UCognitionComponent* Cognition = AINPCHelpers::GetCognitionComponent(Member))
 			{
 				Cognition->RoleDescription = TEXT(""); 
-				
+			
 				FString FinalStimulus = Squad.PostSceneStimulus.IsEmpty() 
 					? TEXT("The scene has ended. I return to my daily routine.") 
 					: Squad.PostSceneStimulus;
-				
+			
 				Cognition->ProcessStimulus(FinalStimulus);
 			}
 		}
@@ -606,7 +662,6 @@ void UNarrativeSquadSubsystem::EndScene(int32 SquadID)
 	ActiveSquads.Remove(SquadID);
 	NARRATIVE_LOG(Log, TEXT("Scene Squad %d Ended and Disbanded."), SquadID);
 }
-
 // ============================================================================
 // AMBIENT DIALOGUE SYSTEM
 // ============================================================================
@@ -816,7 +871,7 @@ void UNarrativeSquadSubsystem::RequestAmbientDialogue(AActor* Speaker, const FNa
 			 "Instead, reveal your stance, your fears, or your determination regarding the events unfolding (e.g. the uprising, the specific danger). "
 			 "Your goal is to build tension and reinforce the narrative situation."),
 		*Squad->PlotOutline,
-		*Squad->MemberRoles.FindRef(Speaker),
+		*Squad->MemberRoles.FindRef(Speaker).ToString(),
 		*CurrentActivity
 	);
 
@@ -947,7 +1002,7 @@ void UNarrativeSquadSubsystem::TriggerTimelineNode(int32 SquadID, int32 NodeInde
 		Squad->PlotOutline = Node.PlotUpdate;
 		
 		// Refresh context for all squad members (same logic as AssignMemberRole)
-		for (const TPair<AActor*, FString>& MemberPair : Squad->MemberRoles)
+		for (const TPair<AActor*, FName>& MemberPair : Squad->MemberRoles)
 		{
 			// ✅ Safety: Ensure NPC is valid before accessing components
 			if (!IsValid(MemberPair.Key))
@@ -969,12 +1024,12 @@ void UNarrativeSquadSubsystem::TriggerTimelineNode(int32 SquadID, int32 NodeInde
 				if (!BaseRole.IsEmpty() && !BaseRole.Equals(TEXT("You are a neutral NPC")))
 				{
 					CombinedRole = FString::Printf(TEXT("%s\n\n[Scene Role: %s]\n[Scene Context: %s]"), 
-						*BaseRole, *MemberPair.Value, *Squad->PlotOutline);
+						*BaseRole, *MemberPair.Value.ToString(), *Squad->PlotOutline);
 				}
 				else
 				{
 					CombinedRole = FString::Printf(TEXT("Role: %s. Scene Context: %s"), 
-						*MemberPair.Value, *Squad->PlotOutline);
+						*MemberPair.Value.ToString(), *Squad->PlotOutline);
 				}
 
 				// ✅ Directly set RoleDescription field (no UpdateRoleDescription method exists)
@@ -987,7 +1042,7 @@ void UNarrativeSquadSubsystem::TriggerTimelineNode(int32 SquadID, int32 NodeInde
 	// Update Directive (behavior override)
 	if (Node.DirectiveOverride.IsValid())
 	{
-		for (const TPair<AActor*, FString>& MemberPair : Squad->MemberRoles)
+		for (const TPair<AActor*, FName>& MemberPair : Squad->MemberRoles)
 		{
 			AActor* NPC = MemberPair.Key;
 			
@@ -1056,7 +1111,7 @@ void UNarrativeSquadSubsystem::ApplyTagToRole(int32 SquadID, FString RoleID, FGa
 		for (auto& Pair : Squad->MemberRoles)
 		{
 			AActor* NPC = Pair.Key;
-			FString NPCRole = Pair.Value; 
+			FString NPCRole = Pair.Value.ToString(); 
 
 			// Check if Role matches (Case insensitive)
 			if (NPCRole.Equals(RoleID, ESearchCase::IgnoreCase))

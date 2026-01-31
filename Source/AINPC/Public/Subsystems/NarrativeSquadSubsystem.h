@@ -114,28 +114,62 @@ struct FNarrativeSceneDef : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Config")
 	bool bKeepPropsOnEnd = false;
 
+	// 场景结束后发送给所有成员的刺激信息（例如："你们自由了！"）
 	/** Message sent to NPC Cognition when scene ends (e.g. "The Tyrant is dead! We are free!"). Overrides default routine method. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Config")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Narrative")
 	FString PostSceneStimulus;
+
+	// 场景结束后强制转职的目标职业ID（例如："Slave" -> "Citizen"）
+	// Target ProfessionID to switch to after scene ends (e.g. "Slave" -> "Citizen")
+	// If set to None, profession remains unchanged.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Narrative")
+	FName PostSceneProfessionID;
+
+	// 随机转职池：如果有内容，将覆盖 PostSceneProfessionID，从中随机选择一个
+	// Random Profession Pool: If not empty, overrides PostSceneProfessionID with a random pick
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Narrative")
+	TArray<FName> PostSceneProfessionPool;
 };
 
+// 运行时的 Squad 实例状态
+// Runtime Squad Instance State
 USTRUCT(BlueprintType)
 struct FNarrativeSceneSquad
 {
 	GENERATED_BODY()
 
 	UPROPERTY(BlueprintReadOnly)
-	int32 SquadID;
+	int32 SquadID = -1;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-	FString PlotOutline;
-
-	// Actors assigned to this scene and their specific Role
 	UPROPERTY(BlueprintReadOnly)
-	TMap<AActor*, FString> MemberRoles;
-	
+	FName SquadName;
+
+	UPROPERTY(BlueprintReadOnly)
+	TArray<AActor*> SquadMembers;
+
+	UPROPERTY(BlueprintReadOnly)
+	TMap<AActor*, FName> MemberRoles; // Actor -> RoleID
+
+	UPROPERTY(BlueprintReadOnly)
+	FGameplayTag CurrentPhase;
+
 	UPROPERTY()
 	TArray<AActor*> SpawnedProps;
+
+	UPROPERTY()
+	bool bKeepPropsOnEnd = false; // Runtime copy
+
+	UPROPERTY()
+	FString PostSceneStimulus; // Runtime copy
+
+	UPROPERTY()
+	FName PostSceneProfessionID; // Runtime copy
+
+	UPROPERTY()
+	TArray<FName> PostSceneProfessionPool; // Runtime copy
+	
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FString PlotOutline;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	TArray<FNarrativeEventMatcher> CompletionConditions;
@@ -145,12 +179,6 @@ struct FNarrativeSceneSquad
 	
 	UPROPERTY()
 	class ANarrativeSceneAnchor* AssignedAnchor = nullptr;
-
-	UPROPERTY()
-	bool bKeepPropsOnEnd = false;
-
-	UPROPERTY()
-	FString PostSceneStimulus;
 
 	// --- Ambient Dialogue Configuration ---
 	

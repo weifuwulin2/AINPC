@@ -76,13 +76,14 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Goal | Context")
 	bool HasContextTag(FGameplayTag Tag) const;
 
+	void SetDirective(FGameplayTag NewDirective);
+	
 protected:
 	void UpdateArbitration();
 
 	// Checks schedule and updates CachedScheduleDirective
 	void CheckSchedule();
 
-	void SetDirective(FGameplayTag NewDirective);
 	void SetLOD(EContextLOD NewLOD);
 
 protected:

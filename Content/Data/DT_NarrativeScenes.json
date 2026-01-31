@@ -210,6 +210,12 @@
 		],
 		"bKeepPropsOnEnd": true,
 		"PostSceneStimulus": "The Tyrant Lord is dead! You are free from your slavery! You should celebrate your freedom or run away.",
+		"PostSceneProfessionID": "None",
+		"PostSceneProfessionPool": [
+			"Citizen",
+			"Farmer",
+			"Merchant"
+		],
 		"Timeline": [
 			{
 				"TimeOffset": 0,

@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - 2026-01-31
 
+### 🐛 Bug Fixes - AI Perception
+- **Fixed HasEnemyNearby with Dead Actors**: Resolved critical bug where `HasEnemyNearby` returned `1` for dead actors.
+  - **Issue**: `ACombatEnemy`/`ACombatCharacter` was effectively dead (HP=0, Ragdoll active) but lacked the explicit `Dead` and `Status.Dead` GameplayTags.
+  - **Resolution**: Updated `ACombatCharacter::HandleDeath` to explicitly append `Dead` and `Status.Dead` tags.
+  - **Impact**: AI subsystems (UtilityAI `HasEnemyNearby`, `SensoryComponent`, `TargetSelectionSubsystem`) now correctly identify and ignore dead actors, preventing AI from attacking corpses or getting stuck in combat states.
+
 ### 🔥 Feature - Narrative System Overhaul
 - **Scene Completion & Event Logic (Critical Fixes)**:
   - **Tag Mismatch**: Fixed `NarrativeDirector` broadcasting hardcoded `"Death"` string vs expected `Event.Death` GameplayTag.
@@ -23,6 +29,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Faction Logic Fix**: Refactored `AreActorsHostile` to use the Data-Driven `FactionSubsystem` before falling back to legacy checks.
     - **Issue**: Previously, Orcs attacked Players by default because Legacy Logic assumed `Human != Monster` is always Hostile.
     - **Fix**: Now queries the Global Faction Matrix. If no relationship is defined (e.g. Orcs <-> Player), it defaults to **Neutral**, respecting the intended reputation system.
+
+- **Lifecycle Management (Job Promotion)**:
+  - **Mechanic**: Added `PostSceneProfessionID` to `FNarrativeSceneDef`.
+  - **Feature**: Scenes can now fundamentally change an NPC's life path. Upon scene completion, NPCs can be "Promoted" to a new Profession (e.g., Slave -> Citizen).
+  - **Content**: Updated `Scene_OrcRescue` so freed Orcs become `Citizen` (Standard Schedule) instead of staying `Slave` (Mining Schedule).
 
 ### 🧠 Feature - Brain-Body Connection (Goal x Cognition)
 - **Intention Override**: `GoalComponent` was completely ignoring the Brain's decisions.
