@@ -589,7 +589,15 @@ void UNarrativeSquadSubsystem::EndScene(int32 SquadID)
 				GoalComp->RemoveContextTag(AINPCTags::Status_InScene);
 				GoalComp->RemoveContextTag(AINPCTags::Directive_Combat);
 			}
-			Member->Tags.Remove("Status.InScene"); // Legacy / Fallback
+			
+			// ✅ Robust Tag Removal
+			bool bHadTag = Member->ActorHasTag(FName("Status.InScene"));
+			Member->Tags.Remove(FName("Status.InScene")); 
+			
+			if (bHadTag)
+			{
+				NARRATIVE_LOG(Log, TEXT("🧹 [EndScene] Removed 'Status.InScene' tag from %s"), *Member->GetName());
+			}
 
 			// ✅ Profession Transition (Job Promotion)
 			// Calculate New Profession ONCE per NPC to ensure consistency

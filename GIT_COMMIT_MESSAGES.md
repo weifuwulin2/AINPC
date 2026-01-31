@@ -4,6 +4,17 @@ This file contains a log of commit messages for the AINPC project.
 
 ---
 
+## [2026-01-31] Fix AI Action Transition Stalling
+**Type**: fix
+**Scope**: UtilityAIComponent, Action_Attack, NarrativeSquadSubsystem
+**Description**:
+- **Attack Action Stalling**: Fixed `Action_Attack::Execute` not clearing `TargetActor`/`FocusActor` when target died, causing action to remain selected despite invalid target.
+- **Priority Lock Bug**: Added "Rule 0" (score ≤0.1 yields) and "Rule 1 Exception" (score <0.25 breaks priority shield) to `CanTransition`, preventing NPCs from getting locked in invalid high-priority states.
+- **Idle Navigation Retry**: Added `MoveToLocation` return value check with faster retry (0.5s) in `TestAction_Idle`.
+- **EndScene Cleanup**: Enhanced `Status.InScene` tag removal with explicit `FName` and confirmation logging.
+- **Log Cleanup**: Reduced `TargetSelectionSubsystem::GetTargetCandidates` verbosity from Warning to Verbose.
+
+
 ## [2026-01-27] Fix NPC Faction Identity Mismatch
 **Type**: fix
 **Scope**: CognitionComponent, FactionReputationComponent, Personality System

@@ -9,11 +9,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - 2026-01-31
 
+### 🐛 Bug Fixes - AI Action Transitions
+- **Fixed Attack Action Stalling**: Resolved critical bug where `Action_Attack` would remain active even after target died.
+  - **Root Cause**: `Execute` detected invalid/dead target but only returned early without clearing `TargetActor` or `FocusActor`.
+  - **Fix**: Now clears both `TargetActor` and `Controller->ClearFocus()` when target is invalid/dead.
+  - **Impact**: `HasAttackTarget` correctly returns 0, triggering action transition to Idle/Eat.
+
+- **Fixed Priority Lock Preventing Exit**: High-priority actions (Combat=50) blocked lower-priority actions (Idle=10) even when their score was near 0.
+  - **Rule 0 Added**: Actions with score ≤0.1 now immediately yield regardless of priority.
+  - **Rule 1 Exception**: Priority shield is broken if current action's score <0.25, allowing lower-priority actions to interrupt.
+  - **Impact**: NPCs no longer get "soft-locked" in invalid combat states.
+
+- **Fixed Idle Action Navigation Retries**: `TestAction_Idle` could stall if `MoveToLocation` failed.
+  - **Fix**: Added return value check and faster retry (0.5s) on navigation failure.
+
+### 🧹 Cleanup - Status.InScene Tags
+- **EndScene Tag Removal**: Enhanced `NarrativeSquadSubsystem::EndScene` to robustly remove `Status.InScene` tags using explicit `FName`.
+  - Added logging to confirm tag removal.
+  - Prevents NPC behavior anomalies after scene completion.
+
+### 🔇 Log Verbosity Adjustments
+- **TargetSelectionSubsystem**: Reduced `GetTargetCandidates` logs from Warning to Verbose.
+- **HandleDeath**: Added confirmation logs for Dead tag application.
+
 ### 🐛 Bug Fixes - AI Perception
 - **Fixed HasEnemyNearby with Dead Actors**: Resolved critical bug where `HasEnemyNearby` returned `1` for dead actors.
-  - **Issue**: `ACombatEnemy`/`ACombatCharacter` was effectively dead (HP=0, Ragdoll active) but lacked the explicit `Dead` and `Status.Dead` GameplayTags.
-  - **Resolution**: Updated `ACombatCharacter::HandleDeath` to explicitly append `Dead` and `Status.Dead` tags.
-  - **Impact**: AI subsystems (UtilityAI `HasEnemyNearby`, `SensoryComponent`, `TargetSelectionSubsystem`) now correctly identify and ignore dead actors, preventing AI from attacking corpses or getting stuck in combat states.
 
 ### 🔥 Feature - Narrative System Overhaul
 - **Scene Completion & Event Logic (Critical Fixes)**:

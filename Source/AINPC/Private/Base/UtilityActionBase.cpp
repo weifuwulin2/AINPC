@@ -1,4 +1,6 @@
 #include "Base/UtilityActionBase.h"
+
+#include "AINPC.h"
 #include "GameFramework/Pawn.h"
 #include "Kismet/GameplayStatics.h"
 #include "Components/PersonalityComponent.h"
@@ -700,58 +702,23 @@ float UUtilityActionBase::GetConsiderationValue(EUtilityInputType InputType, UNP
         {
             if (!BotPawn || !Controller->GetWorld()) return 0.0f;
             
-            // 获取 FactionReputationComponent 用于敌意判断
-            // Uses IsHostile() which respects Status.InScene tag
-            UFactionReputationComponent* FactionComp = Controller->FindComponentByClass<UFactionReputationComponent>();
-            
-            // ✅ Match Extended Combat Range (6000.0f)
-            // Was 1500.0f, which caused NPCs to ignore distant visible enemies
-            float CheckRadiusSq = FMath::Square(6000.0f);
-
-            // 扫描周围所有 Pawn
-            if (UWorld* World = Controller->GetWorld())
+            // ✅ Use TargetSelectionSubsystem to check strictly for perceived/squad-aware targets
+            // Adapting to align with Action_Attack's target availability
+            if (UTargetSelectionSubsystem* TargetSys = Controller->GetWorld()->GetSubsystem<UTargetSelectionSubsystem>())
             {
-                for (TActorIterator<APawn> It(World); It; ++It)
+                FTargetSelectionConfig Config;
+                Config.MaxDistance = 6000.0f; // Match the generous combat range
+                
+                // Optimized Candidate Check
+                UFactionReputationComponent* FactionComp = Controller->FindComponentByClass<UFactionReputationComponent>();
+                TArray<AActor*> Candidates = TargetSys->GetTargetCandidates(Controller, ETargetSelectionContext::Combat, Config, BotPawn, FactionComp);
+                
+
+
+                if (Candidates.Num() > 0)
                 {
-                    APawn* TestPawn = *It;
-                    if (!TestPawn || TestPawn == BotPawn) continue;
-                    
-                    // 1. 距离检查 (优化：先检查距离，再做昂贵的逻辑)
-                    if (FVector::DistSquared(BotPawn->GetActorLocation(), TestPawn->GetActorLocation()) > CheckRadiusSq)
-                    {
-                        continue;
-                    }
-
-                    if (!IsValid(TestPawn) || TestPawn->IsPendingKillPending()) continue;
-
-                    if (TestPawn->ActorHasTag("Dead")) continue;
-                    if (ACharacter* CharTest = Cast<ACharacter>(TestPawn))
-                    {
-                        if (CharTest->GetMesh() && CharTest->GetMesh()->IsSimulatingPhysics()) continue;
-                    }
-
-                    // ✅ 使用 FactionReputationComponent::IsHostile() 
-                    // 这会自动处理 Status.InScene 标签 (场景中不视为敌人)
-                    bool bIsHostile = false;
-                    if (FactionComp)
-                    {
-                        bIsHostile = FactionComp->IsHostile(TestPawn);
-                    }
-                    else
-                    {
-                        // Fallback: Simple faction check
-                        EFactionType MyFaction = USensoryComponent::GetFaction(BotPawn);
-                        EFactionType TargetFaction = USensoryComponent::GetFaction(TestPawn);
-                        if (MyFaction != EFactionType::Neutral && TargetFaction != EFactionType::Neutral)
-                        {
-                            bIsHostile = (MyFaction != TargetFaction);
-                        }
-                    }
-                    
-                    if (bIsHostile)
-                    {
-                        return 1.0f;
-                    }
+                     // Found at least one valid hostile target in range/perception
+                     return 1.0f;
                 }
             }
             

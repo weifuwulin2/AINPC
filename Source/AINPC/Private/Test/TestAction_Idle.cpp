@@ -6,6 +6,7 @@
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "NavigationSystem.h"
+#include "Navigation/PathFollowingComponent.h"
 
 UTestAction_Idle::UTestAction_Idle()
 {
@@ -72,47 +73,53 @@ void UTestAction_Idle::Execute_Implementation(AAIController* Controller)
 	// 检查是否需要改变方向
 	if (CurrentTime >= NextDirectionChangeTime)
 	{
-		// 生成随机目标位置
-		FVector PawnLocation = ControlledPawn->GetActorLocation();
-		
-		// 在当前位置周围生成随机点
-		FVector RandomDirection = FVector(
-			FMath::RandRange(-1.0f, 1.0f),
-			FMath::RandRange(-1.0f, 1.0f),
-			0.0f
-		).GetSafeNormal();
-		
-		float RandomDistance = FMath::RandRange(WanderRadius * 0.3f, WanderRadius);
-		FVector TargetLocation = PawnLocation + RandomDirection * RandomDistance;
-		
 		// 使用导航系统找到可到达的位置
 		UNavigationSystemV1* NavSys = UNavigationSystemV1::GetCurrent(World);
+		bool bFoundLocation = false;
+
 		if (NavSys)
 		{
 			FNavLocation NavLocation;
-			if (NavSys->ProjectPointToNavigation(TargetLocation, NavLocation, FVector(500.0f, 500.0f, 500.0f)))
+			// 使用 GetRandomReachablePointInRadius 代替手动计算 projection，确保点在 NavMesh 上且可达
+			if (NavSys->GetRandomReachablePointInRadius(ControlledPawn->GetActorLocation(), WanderRadius, NavLocation))
 			{
 				CurrentTargetLocation = NavLocation.Location;
-				Controller->MoveToLocation(CurrentTargetLocation, 50.0f);
+				bFoundLocation = true;
 				
-				UE_LOG(LogTemp, Log, TEXT("[Idle] Moving to random location: %s"), *CurrentTargetLocation.ToString());
+				EPathFollowingRequestResult::Type Result = Controller->MoveToLocation(CurrentTargetLocation, 50.0f);
+				if (Result == EPathFollowingRequestResult::Type::Failed)
+				{
+					UE_LOG(LogTemp, Warning, TEXT("[Idle] MoveToLocation Failed! Retrying soon..."));
+					// Retry quickly
+					NextDirectionChangeTime = CurrentTime + 0.5f;
+					CurrentTargetLocation = FVector::ZeroVector; 
+				}
+				else
+				{
+					UE_LOG(LogTemp, Verbose, TEXT("[Idle] Moving to random location: %s"), *CurrentTargetLocation.ToString());
+					// Set next change time normally
+					NextDirectionChangeTime = CurrentTime + DirectionChangeInterval;
+				}
 			}
-			else
-			{
-				// 如果找不到导航点，就停在原地
-				Controller->StopMovement();
-				UE_LOG(LogTemp, Log, TEXT("[Idle] No valid navigation point found, staying in place"));
-			}
-		}
-		else
-		{
-			// 没有导航系统，直接移动
-			CurrentTargetLocation = TargetLocation;
-			Controller->MoveToLocation(CurrentTargetLocation, 50.0f);
 		}
 		
-		// 设置下次改变方向的时间
-		NextDirectionChangeTime = CurrentTime + DirectionChangeInterval;
+		if (!bFoundLocation)
+		{
+			// 如果没有 NavSys 或者找不到点 (fallback)
+			Controller->StopMovement();
+			UE_LOG(LogTemp, Warning, TEXT("[Idle] No valid reachable point found within radius %.1f, staying in place. Retrying in 1s."), WanderRadius);
+			
+			// Try a manual fallback if NavSys is missing (though rare for AI)
+			if (!NavSys)
+			{
+				CurrentTargetLocation = ControlledPawn->GetActorLocation() + FMath::RandPointInBox(FBox(FVector(-WanderRadius), FVector(WanderRadius)));
+				CurrentTargetLocation.Z = ControlledPawn->GetActorLocation().Z;
+				Controller->MoveToLocation(CurrentTargetLocation, 50.0f);
+			}
+
+			// Retry faster if we failed to find a point
+			NextDirectionChangeTime = CurrentTime + 1.0f;
+		}
 	}
 	
 	// 检查是否到达目标位置
@@ -124,11 +131,13 @@ void UTestAction_Idle::Execute_Implementation(AAIController* Controller)
 		{
 			// 到达目标，停止移动
 			Controller->StopMovement();
+			CurrentTargetLocation = FVector::ZeroVector; // 清除当前目标
 			
-			if (FMath::Fmod(ElapsedTime, 2.0f) < World->GetDeltaSeconds())
-			{
-				UE_LOG(LogTemp, Verbose, TEXT("[Idle] Reached target, waiting..."));
-			}
+			// 随机停顿一下 (0.5 - 2.0s)，而不是等满3秒
+			float PauseTime = FMath::RandRange(0.5f, 2.0f);
+			NextDirectionChangeTime = CurrentTime + PauseTime;
+			
+			UE_LOG(LogTemp, Verbose, TEXT("[Idle] Reached target, pausing for %.1fs..."), PauseTime);
 		}
 	}
 	

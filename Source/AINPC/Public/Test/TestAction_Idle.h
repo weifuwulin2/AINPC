@@ -29,15 +29,15 @@ private:
 	
 	// 随机移动速度
 	UPROPERTY(EditAnywhere, Category = "Idle")
-	float WanderSpeed = 200.0f;
+	float WanderSpeed = 300.0f;
 	
 	// 移动范围
 	UPROPERTY(EditAnywhere, Category = "Idle")
-	float WanderRadius = 500.0f;
+	float WanderRadius = 1200.0f;
 	
 	// 改变方向的时间间隔
 	UPROPERTY(EditAnywhere, Category = "Idle")
-	float DirectionChangeInterval = 3.0f;
+	float DirectionChangeInterval = 4.0f;
 	
 	// 下次改变方向的时间
 	float NextDirectionChangeTime;

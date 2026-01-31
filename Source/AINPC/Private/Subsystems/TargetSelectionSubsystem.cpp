@@ -11,6 +11,7 @@
 #include "Components/FactionReputationComponent.h"
 #include "Components/SensoryComponent.h"
 #include "Components/MemoryComponent.h" // ✅ Added
+#include "GameFramework/Character.h"
 #include "Utilities/AINPCHelpers.h"
 
 // ========================================
@@ -39,8 +40,20 @@ AActor* UTargetSelectionSubsystem::SelectTarget(
 	AActor* CachedTarget = GetCachedTarget(Controller, Context, Config, MyPawn, FactionComp);
 	if (CachedTarget)
 	{
-		// Verify cached target is still valid (not dead, still in range, Combat Policy)
-		if (!CachedTarget->ActorHasTag("Dead"))
+		// Verify cached target is still valid (not dead/ragdoll, still in range, Combat Policy)
+		bool bIsDead = CachedTarget->ActorHasTag(FName("Dead")) || CachedTarget->ActorHasTag(FName("Status.Dead"));
+		if (!bIsDead)
+		{
+			if (ACharacter* CharTarget = Cast<ACharacter>(CachedTarget))
+			{
+				if (CharTarget->GetMesh() && CharTarget->GetMesh()->IsSimulatingPhysics())
+				{
+					bIsDead = true;
+				}
+			}
+		}
+
+		if (!bIsDead)
 		{
 			float Distance = FVector::Dist(MyPawn->GetActorLocation(), CachedTarget->GetActorLocation());
 			if (Distance <= Config.MaxDistance)
@@ -185,7 +198,7 @@ TArray<AActor*> UTargetSelectionSubsystem::GetTargetCandidates(
 		}
 	}
 	
-	TARGET_LOG(Warning, "🔍 [GetTargetCandidates] Total Candidates (Perception + Narrative): %d", PerceivedActors.Num());
+	TARGET_LOG(Verbose, "🔍 [GetTargetCandidates] Total Candidates (Perception + Narrative): %d", PerceivedActors.Num());
 
 	// Filter valid targets
 	for (AActor* Actor : PerceivedActors)
@@ -199,7 +212,7 @@ TArray<AActor*> UTargetSelectionSubsystem::GetTargetCandidates(
 		}
 	}
 
-	TARGET_LOG(Warning, "🎯 [GetTargetCandidates] Final Candidates: %d (from %d perceived)", 
+	TARGET_LOG(Verbose, "🎯 [GetTargetCandidates] Final Candidates: %d (from %d perceived)", 
 		Candidates.Num(), PerceivedActors.Num());
 
 	return Candidates;
@@ -465,11 +478,24 @@ bool UTargetSelectionSubsystem::IsValidTarget(
 	TARGET_LOG(Verbose, "🔍 [IsValidTarget] Checking %s for %s (Context: %d)", 
 		*Target->GetName(), *MyPawn->GetName(), (int32)Context);
 
-	// Check if dead
-	if (Target->ActorHasTag("Dead"))
+	// Check if dead or pending kill
+	if (!IsValid(Target) || Target->IsPendingKillPending()) return false;
+
+	// Check Tags (explicit FName)
+	if (Target->ActorHasTag(FName("Dead")) || Target->ActorHasTag(FName("Status.Dead")))
 	{
-		TARGET_LOG(Verbose, "   ❌ REJECTED: Dead");
+		TARGET_LOG(Verbose, "   ❌ REJECTED: Dead (Tag)");
 		return false;
+	}
+
+	// Check Physics (Ragdoll = Dead)
+	if (ACharacter* CharTarget = Cast<ACharacter>(Target))
+	{
+		if (CharTarget->GetMesh() && CharTarget->GetMesh()->IsSimulatingPhysics())
+		{
+			TARGET_LOG(Verbose, "   ❌ REJECTED: Dead (Ragdoll)");
+			return false;
+		}
 	}
 
 	// Check distance

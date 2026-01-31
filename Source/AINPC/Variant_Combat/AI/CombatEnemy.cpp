@@ -2,6 +2,8 @@
 
 
 #include "CombatEnemy.h"
+
+#include "AINPC.h"
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "CombatAIController.h"
@@ -236,9 +238,17 @@ void ACombatEnemy::ApplyDamage(float Damage, AActor* DamageCauser, const FVector
 
 void ACombatEnemy::HandleDeath()
 {
+	UE_LOG(LogAINPC, Warning, TEXT("☠️ [CombatEnemy::HandleDeath] %s is dying! Adding Dead tags..."), *GetName());
+	
 	// ✅ Mark as dead for AI logic & Narrative Linking
 	Tags.Add(FName("Dead"));       // For AI Perception (Legacy)
 	Tags.Add(FName("Status.Dead")); // For Narrative CompletionTags Matching
+	
+	// 🔍 Verify tags were added
+	UE_LOG(LogAINPC, Warning, TEXT("☠️ [CombatEnemy::HandleDeath] %s - Tags after add: Dead=%s, Status.Dead=%s"), 
+		*GetName(),
+		ActorHasTag(FName("Dead")) ? TEXT("YES") : TEXT("NO"),
+		ActorHasTag(FName("Status.Dead")) ? TEXT("YES") : TEXT("NO"));
 	
 	// ✅ REPORT TO NARRATIVE DIRECTOR
 	if (UWorld* World = GetWorld())

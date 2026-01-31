@@ -242,11 +242,19 @@ void UUtilityAIComponent::EvaluateAndDecide()
     }
 
     // --- 遍历打分 ---
+    float CurrentActionScore = 0.0f; // Track score of the currently active action
+
     for (UUtilityActionBase* Action : AvailableActions)
     {
         // 调用 Action 自身的算分逻辑
         // Pass bShouldLog (which is true if bPendingDebugLog is true) to enable detailed calculation logs
         float Score = Action->CalculateScore(State, OwnerController, bShouldLog);
+        
+        // Capture Current Action Score
+        if (Action == CurrentAction)
+        {
+            CurrentActionScore = Score;
+        }
 
         // 🔍 调试：只在触发时打印分数
         // Only log action scores when triggered
@@ -263,6 +271,9 @@ void UUtilityAIComponent::EvaluateAndDecide()
         {
             float OldScore = Score;
             Score *= (1.0f + Action->InertiaBonus * 0.2f); // 20% of InertiaBonus value
+            
+            // Update the tracked score to include inertia
+            CurrentActionScore = Score;
             
             if (bShouldLog)
             {
@@ -286,6 +297,9 @@ void UUtilityAIComponent::EvaluateAndDecide()
                 float OldScore = Score;
                 float IntentionBonus = 0.3f; // 可配置的加成值
                 Score += IntentionBonus;
+                
+                // Update tracked score if this is current action
+                if (Action == CurrentAction) CurrentActionScore = Score;
                 
                 if (bShouldLog)
                 {
@@ -343,7 +357,8 @@ void UUtilityAIComponent::EvaluateAndDecide()
     if (BestAction && BestAction != CurrentAction)
     {
         // ✅ Use centralized Transition System
-        if (!CanTransition(CurrentAction, BestAction, BestScore))
+        // Pass CurrentActionScore
+        if (!CanTransition(CurrentAction, BestAction, BestScore, CurrentActionScore))
         {
             // Transition denied - stay on current action
             return;
@@ -374,17 +389,38 @@ void UUtilityAIComponent::EvaluateAndDecide()
 // =========================================================
 // Transition System: CanTransition ("The Constitution")
 // =========================================================
-bool UUtilityAIComponent::CanTransition(UUtilityActionBase* Current, UUtilityActionBase* Candidate, float CandidateScore)
+bool UUtilityAIComponent::CanTransition(UUtilityActionBase* Current, UUtilityActionBase* Candidate, float CandidateScore, float CurrentScore)
 {
     if (!Candidate) return false;
     if (!Current) return true; // No current action = always allow
 
     float CurrentTime = GetWorld()->GetTimeSeconds();
 
+    // Rule 0: Current Action Invalid (Score 0)
+    // If current action computes to ~0 score, it implies it cannot run.
+    // Always yield regardless of priority.
+    if (CurrentScore <= 0.1f)
+    {
+        UE_LOG(LogTemp, Log, TEXT("[Transition] ⚠️ Current Action %s Score is low (%.3f) - Forcing Yield to %s"),
+            *Current->ActionName, CurrentScore, *Candidate->ActionName);
+        return true;
+    }
+
     // Rule 1: Priority Gate
     // Lower priority cannot interrupt higher priority
     if (Candidate->Priority < Current->Priority)
     {
+        // ✅ EXCEPTION: Performance-based Priority Decay
+        // If the High Priority action is performing poorly (Score < 0.25), 
+        // it loses its priority protection. This prevents "soft-lock" where 
+        // a Combat action keeps running with 0.1 score while Idle has 0.8 score.
+        if (CurrentScore < 0.25f)
+        {
+             UE_LOG(LogTemp, Warning, TEXT("[Transition] ⚠️ Priority Shield Broken: %s(%.2f) is performing poorly, yielding to %s"),
+                *Current->ActionName, CurrentScore, *Candidate->ActionName);
+             return true;
+        }
+
         UE_LOG(LogTemp, Verbose, TEXT("[Transition] Denied: %s(%d) < %s(%d) Priority"),
                *Candidate->ActionName, (int32)Candidate->Priority,
                *Current->ActionName, (int32)Current->Priority);

@@ -58,7 +58,7 @@ private:
     // Transition System: The Constitution
     // =========================================================
     // Centralized transition logic (replaces scattered if/else)
-    bool CanTransition(UUtilityActionBase* Current, UUtilityActionBase* Candidate, float CandidateScore);
+    bool CanTransition(UUtilityActionBase* Current, UUtilityActionBase* Candidate, float CandidateScore, float CurrentScore);
 
 public:
 	// 请求下一帧打印调试日志 (通常在感知到刺激后调用)

@@ -105,15 +105,27 @@ void UAction_Attack::Execute_Implementation(AAIController* Controller)
 	if (!Controller || !TargetActor)
 	{
 		AINPC_LOG_WARNING("Action_Attack: Invalid Controller or Target during Execute");
+		
+		// ✅ FIX: Clear state so HasAttackTarget returns 0, triggering action transition
+		TargetActor = nullptr;
+		if (Controller)
+		{
+			Controller->ClearFocus(EAIFocusPriority::Gameplay);
+		}
 		return;
 	}
 
 	OwningController = Controller;
 
 	// Check if target is still valid and alive
-	if (TargetActor->ActorHasTag("Dead") || TargetActor->ActorHasTag(FName("Dead")))
+	if (!IsValid(TargetActor) || TargetActor->IsPendingKillPending() ||
+		TargetActor->ActorHasTag(FName("Dead")) || TargetActor->ActorHasTag(FName("Status.Dead")))
 	{
-		AINPC_LOG(Log, "Action_Attack: Target is dead, exiting combat");
+		AINPC_LOG(Log, "Action_Attack: Target is dead or invalid, clearing focus...");
+		
+		// ✅ FIX: Clear target and focus to trigger action transition
+		TargetActor = nullptr;
+		Controller->ClearFocus(EAIFocusPriority::Gameplay);
 		return;
 	}
 

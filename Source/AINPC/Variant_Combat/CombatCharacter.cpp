@@ -377,6 +377,11 @@ void ACombatCharacter::HandleDeath()
 
 	// schedule respawning
 	GetWorld()->GetTimerManager().SetTimer(RespawnTimer, this, &ACombatCharacter::RespawnCharacter, RespawnTime, false);
+
+	// ✅ Mark as dead for AI queries (HasEnemyNearby, Perception, etc.)
+	Tags.Add(FName("Dead"));
+	// Also add specific status tag if system uses it
+	Tags.Add(FName("Status.Dead"));
 }
 
 void ACombatCharacter::ApplyHealing(float Healing, AActor* Healer)
