@@ -25,7 +25,7 @@ public:
 
 	/** The Faction this NPC belongs to (e.g., "Humans", "Zombies") */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Faction")
-	FName CurrentFactionID;
+	FName FactionID;
 
 	/** 
 	 * Personal overrides for specific actors.
@@ -47,6 +47,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Faction")
 	float GetAttitudeTowards(AActor* Target) const;
 
+	/**
+	 * Get global reputation towards another faction (0-100).
+	 * Queries the FactionSubsystem for cross-faction reputation.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Faction")
+	float GetReputationWith(FName TargetFactionID) const;
+
 	/** Returns true if Attitude is below Hostility Threshold (default 25) */
 	UFUNCTION(BlueprintCallable, Category = "Faction")
 	bool IsHostile(AActor* Target) const;
@@ -55,8 +62,12 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Faction")
 	void ModifyReputation(AActor* Target, float Delta);
 
-	/** Helper to find FactionID of any actor (tries Component -> Tag -> Default) */
-	UFUNCTION(BlueprintCallable, Category = "Faction")
+	/**
+	 * Helper to find FactionID of any actor (tries Component -> Tag -> Default)
+	 * @deprecated Use FactionHelpers::GetFactionID() instead
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Faction",
+	          meta=(DeprecatedFunction, DeprecationMessage="Use FactionHelpers::GetFactionID() instead"))
 	static FName GetFactionID(AActor* Actor);
 
 	/** 

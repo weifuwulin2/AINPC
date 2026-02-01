@@ -149,26 +149,31 @@ void UUtilityAIComponent::TickComponent(float DeltaTime, ELevelTick TickType, FA
     AAIController* AIController = Cast<AAIController>(GetOwner());
     if (AIController && AIController->GetPawn())
     {
-        APlayerController* PC = GetWorld()->GetFirstPlayerController();
-        if (PC && PC->GetPawn())
+        if (UWorld* World = GetWorld())
         {
-            float Distance = FVector::Dist(AIController->GetPawn()->GetActorLocation(), 
-                                          PC->GetPawn()->GetActorLocation());
-            
-            // 距离分级：
-            // > 5000单位：休眠（完全跳过更新）
-            if (Distance > 5000.0f)
+            if (APlayerController* PC = World->GetFirstPlayerController())
             {
-                return; // Save ~0.09ms per NPC
+                if (PC && PC->GetPawn())
+                {
+                    float Distance = FVector::Dist(AIController->GetPawn()->GetActorLocation(),
+                                                  PC->GetPawn()->GetActorLocation());
+
+                    // 距离分级：
+                    // > 5000单位：休眠（完全跳过更新）
+                    if (Distance > 5000.0f)
+                    {
+                        return; // Save ~0.09ms per NPC
+                    }
+
+                    // 2000-5000单位：降级（每2帧更新一次）
+                    if (Distance > 2000.0f)
+                    {
+                        if (GFrameCounter % 2 != 0) return; // 50% update rate
+                    }
+
+                    // < 2000单位：全速更新（正常逻辑）
+                }
             }
-            
-            // 2000-5000单位：降级（每2帧更新一次）
-            if (Distance > 2000.0f)
-            {
-                if (GFrameCounter % 2 != 0) return; // 50% update rate
-            }
-            
-            // < 2000单位：全速更新（正常逻辑）
         }
     }
 
@@ -248,53 +253,41 @@ void UUtilityAIComponent::EvaluateAndDecide()
     }
 
     // --- 遍历打分 ---
-    float CurrentActionScore = 0.0f; // Track score of the currently active action
+    float CurrentActionScore = 0.0f; // Track UNMODIFIED score of the currently active action
 
     for (UUtilityActionBase* Action : AvailableActions)
     {
         // 调用 Action 自身的算分逻辑
         // Pass bShouldLog (which is true if bPendingDebugLog is true) to enable detailed calculation logs
-        float Score = Action->CalculateScore(State, OwnerController, bShouldLog);
-        
-        // Capture Current Action Score
+        float BaseScore = Action->CalculateScore(State, OwnerController, bShouldLog);
+        float Score = BaseScore; // Score will be modified by bonuses
+
+        // Capture Current Action Score (UNMODIFIED for transition logic)
         if (Action == CurrentAction)
         {
-            CurrentActionScore = Score;
+            CurrentActionScore = BaseScore;
         }
 
         // 🔍 调试：只在触发时打印分数
         // Only log action scores when triggered
         if (bShouldLog)
         {
-            UTILITY_LOG(Log, "  [%s|%s] Score: %.3f (BaseReward: %.2f, Considerations: %d)", 
+            UTILITY_LOG(Log, "  [%s|%s] Score: %.3f (BaseReward: %.2f, Considerations: %d)",
                    *PersonalityID, *Action->ActionName, Score, Action->BaseReward, Action->Considerations.Num());
         }
 
-        // 惯性奖励 (Momentum) - 百分比加成而非固定值
-        // Percentage-based bonus instead of fixed value
-        // 这样可以避免在极端分数时的不均衡影响
-        if (Action == CurrentAction && Score > 0.0f)
-        {
-            float OldScore = Score;
-            Score *= (1.0f + Action->InertiaBonus * 0.2f); // 20% of InertiaBonus value
-            
-            // Update the tracked score to include inertia
-            CurrentActionScore = Score;
-            
-            if (bShouldLog)
-            {
-                UTILITY_LOG(Log, "    ↳ [%s] Inertia Bonus: +%.1f%% (%.3f -> %.3f)", 
-                       *PersonalityID, Action->InertiaBonus * 20.0f, OldScore, Score);
-            }
-        }
+        // 惯性奖励 (Momentum) - REMOVED double application
+        // Fix Bug #7: Inertia should only be handled in Transition logic, not here.
+        // Applying it here breaks Priority selection (Low priority + Inertia > High Priority).
 
         // 🧠 LLM 意图加成 (Intention Guidance)
         // LLM 提供"建议"，Utility AI 依然做最终决策
         // LLM provides "suggestion", Utility AI still makes final decision
+        // ✅ Fix: Same issue as Inertia - don't let bonus break priority rules
         if (State && !State->ToStruct().Intention.IsEmpty())
         {
             FString LLMIntention = State->ToStruct().Intention;
-            
+
             // 检查 Action 名称是否包含 Intention 关键词
             // Check if Action name contains the Intention keyword
             // 例如：Intention="Attack" 匹配 ActionName="Test_Attack"
@@ -303,13 +296,13 @@ void UUtilityAIComponent::EvaluateAndDecide()
                 float OldScore = Score;
                 float IntentionBonus = 0.3f; // 可配置的加成值
                 Score += IntentionBonus;
-                
-                // Update tracked score if this is current action
-                if (Action == CurrentAction) CurrentActionScore = Score;
-                
+
+                // NOTE: CurrentActionScore remains UNMODIFIED (BaseScore)
+                // This ensures Priority system isn't broken by LLM bonus
+
                 if (bShouldLog)
                 {
-                    UTILITY_LOG(Log, "    ↳ [%s] 🧠 LLM Intention Bonus: +%.2f (Intention: %s, %.3f -> %.3f)", 
+                    UTILITY_LOG(Log, "    ↳ [%s] 🧠 LLM Intention Bonus: +%.2f (Intention: %s, %.3f -> %.3f)",
                            *PersonalityID, IntentionBonus, *LLMIntention, OldScore, Score);
                 }
             }
@@ -370,6 +363,9 @@ void UUtilityAIComponent::EvaluateAndDecide()
             return;
         }
         
+        // Store old action for observation system
+        UUtilityActionBase* OldAction = CurrentAction;
+
         // 退出旧的
         if (CurrentAction)
         {
@@ -379,16 +375,23 @@ void UUtilityAIComponent::EvaluateAndDecide()
         // 进入新的
         CurrentAction = BestAction;
         CurrentAction->Enter(OwnerController);
-        
+
         // Store score for inertia comparison
         CurrentAction->LastScore = BestScore;
-        
+
         // 记录时间用于冷却计算
         CurrentAction->MarkExecutionTime(GetWorld()->GetTimeSeconds());
 
         // 打印切换日志
-        AINPC_LOG(Warning, "[%s] ✅ Switch Action: %s (Score: %.2f, Priority: %d)", 
+        AINPC_LOG(Warning, "[%s] ✅ Switch Action: %s (Score: %.2f, Priority: %d)",
                   *PersonalityID, *CurrentAction->ActionName, BestScore, (int32)CurrentAction->Priority);
+
+        // ✅ Broadcast Action Change (Observation System)
+        // Allow other NPCs to observe this action change
+        if (APawn* MyPawn = OwnerController->GetPawn())
+        {
+            OnActionChanged.Broadcast(MyPawn, OldAction, CurrentAction);
+        }
     }
 }
 
@@ -400,7 +403,10 @@ bool UUtilityAIComponent::CanTransition(UUtilityActionBase* Current, UUtilityAct
     if (!Candidate) return false;
     if (!Current) return true; // No current action = always allow
 
-    float CurrentTime = GetWorld()->GetTimeSeconds();
+    UWorld* World = GetWorld();
+    if (!World) return true; // Safe fallback during shutdown
+
+    float CurrentTime = World->GetTimeSeconds();
 
     // Rule 0: Current Action Invalid (Score 0)
     // If current action computes to ~0 score, it implies it cannot run.
@@ -459,12 +465,15 @@ bool UUtilityAIComponent::CanTransition(UUtilityActionBase* Current, UUtilityAct
     // Must beat current score by inertia margin
     if (Candidate->Priority == Current->Priority)
     {
-        float InertiaThreshold = Current->LastScore * (1.0f + Current->InertiaBonus);
+        // ✅ Fix: Use CurrentScore (Fresh) instead of LastScore (Stale)
+        // If CurrentAction utility has dropped (e.g. 0.8 -> 0.2), we should NOT use 0.8 to block transition.
+        float InertiaThreshold = CurrentScore * (1.0f + Current->InertiaBonus);
+        
         if (CandidateScore <= InertiaThreshold)
         {
             UE_LOG(LogTemp, Verbose, TEXT("[Transition] Denied: %s(%.2f) <= %s(%.2f + %.0f%% inertia)"),
                    *Candidate->ActionName, CandidateScore,
-                   *Current->ActionName, Current->LastScore, Current->InertiaBonus * 100.0f);
+                   *Current->ActionName, CurrentScore, Current->InertiaBonus * 100.0f);
             return false;
         }
     }

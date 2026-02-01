@@ -17,6 +17,7 @@
 #include "UtilityAI/MentalStateNames.h" // ✅ Use Constants
 #include "UtilityAI/EmotionMatrixConfig.h"
 #include "Components/FactionReputationComponent.h"
+#include "Utilities/FactionHelpers.h" // ✅ Faction utilities
 
 #include "Config/AINPCSettings.h"
 
@@ -636,7 +637,7 @@ float UUtilityActionBase::GetConsiderationValue(EUtilityInputType InputType, UNP
             if (!BotPawn || !Controller->GetWorld()) return 0.0f;
 
             // 获取自己的阵营
-            EFactionType MyFaction = USensoryComponent::GetFaction(BotPawn);
+            FName MyFactionID = UFactionReputationComponent::GetFactionID(BotPawn);
             float CheckRadiusSq = FMath::Square(1500.0f); // 15m 范围内
 
             // 这里我们简单起见，利用 UGameplayStatics::GetAllActorsOfClass 检查所有 Character
@@ -647,7 +648,7 @@ float UUtilityActionBase::GetConsiderationValue(EUtilityInputType InputType, UNP
             for (AActor* Actor : AllChars)
             {
                 if (Actor == BotPawn) continue;
-                
+
                 // 1. 距离检查
                 if (FVector::DistSquared(BotPawn->GetActorLocation(), Actor->GetActorLocation()) > CheckRadiusSq)
                 {
@@ -662,19 +663,9 @@ float UUtilityActionBase::GetConsiderationValue(EUtilityInputType InputType, UNP
                 {
                     if (CharActor->GetMesh() && CharActor->GetMesh()->IsSimulatingPhysics()) continue;
                 }
-                
-                // 阵营检查
-                EFactionType TargetFaction = USensoryComponent::GetFaction(Actor);
-                
-                // 友军定义：同阵营 OR (Neutral vs Neutral - not really friendly but safe)
-                // 严格友军：MyFaction == TargetFaction (且不是Neutral)
-                // 或者简单定义：Not Hostile
-                
-                bool bIsHostile = false;
-                if (MyFaction != EFactionType::Neutral && TargetFaction != EFactionType::Neutral)
-                {
-                    if (MyFaction != TargetFaction) bIsHostile = true;
-                }
+
+                // Check hostility using FactionHelpers
+                bool bIsHostile = FactionHelpers::AreActorsHostile(BotPawn, Actor);
 
                 if (!bIsHostile)
                 {

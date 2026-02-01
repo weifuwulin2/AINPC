@@ -11,8 +11,11 @@
 #include "Components/FactionReputationComponent.h"
 #include "Components/SensoryComponent.h"
 #include "Components/MemoryComponent.h" // ✅ Added
+#include "Components/GoalComponent.h"   // ✅ Added
+#include "Social/SocialGameplayTags.h"  // ✅ Added
 #include "GameFramework/Character.h"
 #include "Utilities/AINPCHelpers.h"
+#include "Utilities/FactionHelpers.h" // ✅ Faction utilities
 
 // ========================================
 // Main Entry Point
@@ -293,13 +296,16 @@ float UTargetSelectionSubsystem::CalculateTargetScore(
 			TArray<FMemoryItem> RelevantMemories = MemoryComp->RetrieveRelevantMemories(TargetName, 5);
 			for (const FMemoryItem& Memory : RelevantMemories)
 			{
-				if (Memory.Description.Contains("killed") && Memory.ImportanceScore > 7.0f)
+				// ✅ Refactored: Use Tags instead of fragile string matching
+				if ((Memory.Tags.HasTag(AINPCTags::Event_Death_Witnessed) || Memory.Description.Contains("killed")) && 
+					Memory.ImportanceScore > 7.0f)
 				{
 					Score += 1000.0f;  // Extreme priority - REVENGE
 					TARGET_LOG(Verbose, "Revenge bonus for %s (killed ally): +1000", *TargetName);
 					break;
 				}
-				else if (Memory.Description.Contains("attacked") && Memory.ImportanceScore > 5.0f)
+				else if ((Memory.Tags.HasTag(AINPCTags::Event_Combat_Damage) || Memory.Description.Contains("attacked")) && 
+						 Memory.ImportanceScore > 5.0f)
 				{
 					Score += 500.0f;  // High priority - retaliation
 					TARGET_LOG(Verbose, "Retaliation bonus for %s: +500", *TargetName);
@@ -316,9 +322,9 @@ float UTargetSelectionSubsystem::CalculateTargetScore(
 
 		if (Context == ETargetSelectionContext::Combat)
 		{
-			if (Attitude < 25.0f)  // Hostile (below hostility threshold)
+			if (FactionHelpers::IsAttitudeHostile(Attitude))  // Hostile (below hostility threshold)
 			{
-				Score += (25.0f - Attitude) * 4.0f;  // 0-25 → +0 to +100 score
+				Score += (FactionHelpers::DEFAULT_HOSTILITY_THRESHOLD - Attitude) * 4.0f;  // 0-25 → +0 to +100 score
 			}
 			else if (Attitude > 75.0f)  // Friendly
 			{
@@ -346,6 +352,43 @@ float UTargetSelectionSubsystem::CalculateTargetScore(
 	{
 		Score += 300.0f;  // Prioritize counter-attack
 		TARGET_LOG(Verbose, "Target %s is attacking me: +300", *TargetName);
+	}
+
+	// ✅ Match Goal/Directive State
+	// If I am in Combat/Work/Social, I prefer targets who are appropriate for that state.
+	UGoalComponent* MyGoal = MyPawn->FindComponentByClass<UGoalComponent>();
+	UGoalComponent* TargetGoal = Target->FindComponentByClass<UGoalComponent>();
+	
+	if (MyGoal && TargetGoal)
+	{
+		FGameplayTag MyDirective = MyGoal->GetCurrentDirective();
+		FGameplayTag TargetDirective = TargetGoal->GetCurrentDirective();
+
+		if (Context == ETargetSelectionContext::Combat)
+		{
+			// In combat, prioritize targets who are ALSO in combat (threats)
+			if (TargetDirective.MatchesTag(AINPCTags::Directive_Combat))
+			{
+				Score += 200.0f;
+				TARGET_LOG(Verbose, "Target %s is also in Combat: +200", *TargetName);
+			}
+		}
+		else if (Context == ETargetSelectionContext::Social)
+		{
+			// In social, avoid people who are in Combat or Panic
+			if (TargetDirective.MatchesTag(AINPCTags::Directive_Combat) || 
+				TargetDirective.MatchesTag(AINPCTags::Directive_Survival))
+			{
+				Score -= 500.0f; // Don't talk to fighting/panicking people
+				TARGET_LOG(Verbose, "Target %s is Busy/Fighting: -500", *TargetName);
+			}
+			// Prefer people who are Idle or Social
+			else if (TargetDirective.MatchesTag(AINPCTags::Directive_Idle) || 
+					 TargetDirective.MatchesTag(AINPCTags::Directive_Social))
+			{
+				Score += 100.0f;
+			}
+		}
 	}
 
 	return Score;
@@ -610,7 +653,15 @@ void UTargetSelectionSubsystem::CacheTarget(AAIController* Controller, ETargetSe
 
 	FTargetCacheEntry Entry;
 	Entry.Target = Target;
-	Entry.CachedTime = GetWorld()->GetTimeSeconds();
+
+	if (UWorld* World = GetWorld())
+	{
+		Entry.CachedTime = World->GetTimeSeconds();
+	}
+	else
+	{
+		Entry.CachedTime = 0.0f; // Fallback
+	}
 
 	TargetCache.Add(Key, Entry);
 	
@@ -625,7 +676,13 @@ bool UTargetSelectionSubsystem::IsCacheValid(const FTargetCacheEntry& Entry) con
 		return false;
 	}
 
-	float CurrentTime = GetWorld()->GetTimeSeconds();
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return false; // World invalid, cache invalid
+	}
+
+	float CurrentTime = World->GetTimeSeconds();
 	float Age = CurrentTime - Entry.CachedTime;
 
 	return Age < CacheDuration;
@@ -651,8 +708,122 @@ void UTargetSelectionSubsystem::InvalidateCache(AAIController* Controller)
 
 	if (KeysToRemove.Num() > 0)
 	{
-		TARGET_LOG(Verbose, "Invalidated %d cache entries for controller: %s", 
+		TARGET_LOG(Verbose, "Invalidated %d cache entries for controller: %s",
 			KeysToRemove.Num(), *Controller->GetName());
 	}
 }
 
+void UTargetSelectionSubsystem::NotifyTargetDied(AActor* DeadTarget)
+{
+	if (!DeadTarget)
+	{
+		return;
+	}
+
+	// Find all cache entries using this target
+	TArray<FTargetCacheKey> InvalidKeys;
+
+	for (auto It = TargetCache.CreateIterator(); It; ++It)
+	{
+		const FTargetCacheKey& Key = It.Key();
+		const FTargetCacheEntry& Entry = It.Value();
+
+		if (Entry.Target.Get() == DeadTarget)
+		{
+			// Broadcast invalidation BEFORE removing
+			// This alerts listeners (Action_Attack) to stop immediately
+			OnTargetInvalidated.Broadcast(Key.Controller, DeadTarget);
+
+			InvalidKeys.Add(Key);
+
+			TARGET_LOG(Verbose, "NotifyTargetDied: Target %s invalidated for controller %s",
+				*DeadTarget->GetName(),
+				Key.Controller ? *Key.Controller->GetName() : TEXT("Unknown"));
+		}
+	}
+
+	// Remove invalid entries
+	for (const FTargetCacheKey& Key : InvalidKeys)
+	{
+		TargetCache.Remove(Key);
+	}
+
+	if (InvalidKeys.Num() > 0)
+	{
+		TARGET_LOG(Log, "NotifyTargetDied: Invalidated %d cache entries for dead target: %s",
+			InvalidKeys.Num(), *DeadTarget->GetName());
+	}
+}
+
+// ⚠️ DEPRECATED: Tick-based polling replaced with event-driven NotifyTargetDied()
+// 已弃用：Tick 轮询已被事件驱动的 NotifyTargetDied() 取代
+//
+// Performance Analysis:
+// - Old approach: O(n) every frame (n = number of cached targets)
+// - New approach: O(1) only when death occurs
+//
+// Event-driven approach is triggered by SensoryComponent::HandleDeath()
+// which immediately calls NotifyTargetDied() when any actor dies.
+//
+// Kept here for reference only. Remove after testing confirms event-driven approach works.
+/*
+void UTargetSelectionSubsystem::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+	// Check validity of all cached targets
+	TArray<FTargetCacheKey> InvalidKeys;
+
+	for (auto It = TargetCache.CreateIterator(); It; ++It)
+	{
+		const FTargetCacheKey& Key = It.Key();
+		const FTargetCacheEntry& Entry = It.Value();
+		AActor* Target = Entry.Target.Get();
+
+		bool bIsInvalid = false;
+
+		// 1. Check Pointer Validity
+		if (!Entry.Target.IsValid())
+		{
+			bIsInvalid = true;
+		}
+		else
+		{
+			// 2. Check Tags (Dead/Status.Dead)
+			if (Target->ActorHasTag(FName("Dead")) || Target->ActorHasTag(FName("Status.Dead")))
+			{
+				bIsInvalid = true;
+			}
+			// 3. Check Physics (Ragdoll)
+			else if (ACharacter* CharTarget = Cast<ACharacter>(Target))
+			{
+				if (CharTarget->GetMesh() && CharTarget->GetMesh()->IsSimulatingPhysics())
+				{
+					bIsInvalid = true;
+				}
+			}
+		}
+
+		if (bIsInvalid)
+		{
+			// 🔥 Broadcast Event BEFORE removing
+			// This alerts listeners (Action_Attack) to stop immediately
+			OnTargetInvalidated.Broadcast(Key.Controller, Target);
+
+			InvalidKeys.Add(Key);
+			TARGET_LOG(Verbose, "Tick: Target invalidated for %s", Key.Controller ? *Key.Controller->GetName() : TEXT("Unknown"));
+		}
+	}
+
+	// Remove invalid entries
+	for (const FTargetCacheKey& Key : InvalidKeys)
+	{
+		TargetCache.Remove(Key);
+	}
+}
+*/
+
+TStatId UTargetSelectionSubsystem::GetStatId() const
+{
+	RETURN_QUICK_DECLARE_CYCLE_STAT(UTargetSelectionSubsystem, STATGROUP_Tickables);
+}

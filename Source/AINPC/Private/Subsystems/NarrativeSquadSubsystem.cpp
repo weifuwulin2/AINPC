@@ -187,7 +187,7 @@ void UNarrativeSquadSubsystem::OnNarrativeEventRecorded(const FNarrativeEvent& E
 		AActor* DeadMemberActor = nullptr;
 
 		// Check for Death Tags to extract context
-		for (const FName& RawTag : Event.Tags)
+		for (const FGameplayTag& RawTag : Event.Tags)
 		{
 			FString TagStr = RawTag.ToString();
 			if (TagStr.StartsWith("Death_"))
@@ -228,9 +228,9 @@ void UNarrativeSquadSubsystem::OnNarrativeEventRecorded(const FNarrativeEvent& E
 
 			// 1. Tag Match (Must contain the specific tag, e.g. Event.Death)
 			bool bTagFound = false;
-			for (const FName& T : Event.Tags)
+			for (const FGameplayTag& T : Event.Tags)
 			{
-				if (T == Matcher.Tag.GetTagName())
+				if (T.GetTagName() == Matcher.Tag.GetTagName())
 				{
 					bTagFound = true;
 					break;
@@ -328,21 +328,21 @@ int32 UNarrativeSquadSubsystem::SpawnSceneFromTemplate(UDataTable* SceneTable, F
 		return -1;
 	}
 
-	// 2. Create Squad
+	// 3. Create Squad
 	int32 SquadID = CreateSceneSquad(SceneDef->PlotOutline, SceneDef->CompletionConditions);
 	if (SquadID == -1) return -1;
 
-	// Set Initial Active State
+	// Copy Scene Definition Data to Squad
 	if (FNarrativeSceneSquad* Squad = ActiveSquads.Find(SquadID))
 	{
-		Squad->bIsActive = bAutoActivate;
-		
-		// ✅ Copy Timeline from SceneDef to runtime Squad
+		// ✅ Copy Timeline and Config from SceneDef to runtime Squad
 		Squad->SceneTimeline = SceneDef->Timeline;
 		Squad->bKeepPropsOnEnd = SceneDef->bKeepPropsOnEnd;
 		Squad->PostSceneStimulus = SceneDef->PostSceneStimulus;
-		Squad->PostSceneProfessionID = SceneDef->PostSceneProfessionID; // ✅ Copy Profession Transition ID
-		Squad->PostSceneProfessionPool = SceneDef->PostSceneProfessionPool; // ✅ Copy Profession Pool
+		Squad->PostSceneProfessionID = SceneDef->PostSceneProfessionID;
+		Squad->PostSceneProfessionPool = SceneDef->PostSceneProfessionPool;
+		
+		// Note: bIsActive is NOT set here. relying on ActivateScene() later.
 	}
 
 	// 3. Spawn Props FIRST (so SmartObjects are registered before NPCs start searching)
@@ -368,7 +368,7 @@ int32 UNarrativeSquadSubsystem::SpawnSceneFromTemplate(UDataTable* SceneTable, F
 
 	// 4. Spawn Cast AFTER Props (with small delay to ensure SmartObjects are registered)
 	FTimerHandle SpawnNPCsTimer;
-	GetWorld()->GetTimerManager().SetTimer(SpawnNPCsTimer, [this, SceneDef, NPCTable, Origin, SquadID]()
+	GetWorld()->GetTimerManager().SetTimer(SpawnNPCsTimer, [this, SceneDef, NPCTable, Origin, SquadID, bAutoActivate]()
 	{
 		static const FString NPCContext = TEXT("NarrativeSquad_SpawnNPCs");
 		
@@ -385,7 +385,7 @@ int32 UNarrativeSquadSubsystem::SpawnSceneFromTemplate(UDataTable* SceneTable, F
 			FActorSpawnParameters SpawnParams;
 			SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
 
-			APawn* NewPawn = GetWorld()->SpawnActor<APawn>(NPCDef->PawnClass, SpawnLoc, SpawnRot, SpawnParams);
+			APawn* NewPawn = GetWorld()->SpawnActorDeferred<APawn>(NPCDef->PawnClass, FTransform(SpawnRot, SpawnLoc), nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn);
 			if (NewPawn)
 			{
 				if (UNPCDefinitionComponent* DefComp = NewPawn->FindComponentByClass<UNPCDefinitionComponent>())
@@ -395,13 +395,21 @@ int32 UNarrativeSquadSubsystem::SpawnSceneFromTemplate(UDataTable* SceneTable, F
 					DefComp->LoadFromTemplate(); 
 				}
 
-
-				// ✅ With Lazy Fetch Pattern, we don't need to delay - CognitionComponent will query when needed
+				// ✅ Register in Squad BEFORE BeginPlay runs (prevents initial event leakage)
 				AssignMemberRole(SquadID, NewPawn, Role.RoleOverride);
+
+				// Now finish spawning (triggering BeginPlay -> AI Init)
+				UGameplayStatics::FinishSpawningActor(NewPawn, FTransform(SpawnRot, SpawnLoc));
 			}
 		}
 		
 		NARRATIVE_LOG(Log, TEXT("NarrativeSquad: Delayed NPC spawn completed for Squad %d"), SquadID);
+		
+		// ✅ Activate FULL SCENE logic if requested (ensures Timers & Suppression are set correctly)
+		if (bAutoActivate)
+		{
+			ActivateScene(SquadID);
+		}
 		
 	}, 0.1f, false); // 100ms delay
 
@@ -495,14 +503,41 @@ void UNarrativeSquadSubsystem::ActivateScene(int32 SquadID)
 		{
 			NARRATIVE_LOG(Warning, TEXT("🎬 Activating Squad %d..."), SquadID);
 			Squad->bIsActive = true;
-			
+
 			// ✅ Initialize Timeline System
 			Squad->CurrentTimelineIndex = 0;
 			Squad->AccumulatedSceneTime = 0.0f;
 			Squad->PendingEventTriggers.Empty();
-			
-			// Start Timeline Tick (1 second interval for checking nodes)
+
+			// ✅ DEFAULT: Suppress action observation until Timeline explicitly enables it
+			// 默认：禁止动作观察，直到 Timeline 明确启用
+			Squad->bCurrentlySuppressingActionObservation = true;
+			NARRATIVE_LOG(Warning, TEXT("   🔇 Action Observation SUPPRESSED by default (can be enabled by Timeline)"));
+
+			// ✅ CRITICAL: Process TimeOffset=0 nodes IMMEDIATELY before NPCs start observing
+			// 关键：在 NPC 开始互相观察之前，立即处理 TimeOffset=0 的节点
 			if (Squad->SceneTimeline.Num() > 0)
+			{
+				while (Squad->CurrentTimelineIndex < Squad->SceneTimeline.Num())
+				{
+					const FNarrativeTimelineEntry& Node = Squad->SceneTimeline[Squad->CurrentTimelineIndex];
+
+					// Only process nodes with TimeOffset=0 and no event trigger
+					if (Node.TimeOffset == 0.0f && !Node.Trigger.IsValid())
+					{
+						NARRATIVE_LOG(Warning, TEXT("📜 ⚡ Immediately triggering Timeline Node %d (T=0)"), Squad->CurrentTimelineIndex);
+						TriggerTimelineNode(SquadID, Squad->CurrentTimelineIndex);
+						Squad->CurrentTimelineIndex++;
+					}
+					else
+					{
+						break; // Stop when we hit a non-zero offset or event-triggered node
+					}
+				}
+			}
+
+			// Start Timeline Tick (1 second interval for checking nodes)
+			if (Squad->SceneTimeline.Num() > 0 && Squad->CurrentTimelineIndex < Squad->SceneTimeline.Num())
 			{
 				UWorld* World = GetWorld();
 				if (World)
@@ -513,7 +548,8 @@ void UNarrativeSquadSubsystem::ActivateScene(int32 SquadID)
 						1.0f, // Tick every 1 second
 						true  // Loop
 					);
-					NARRATIVE_LOG(Warning, TEXT("📜 Timeline System Started for Squad %d (%d nodes)"), SquadID, Squad->SceneTimeline.Num());
+					NARRATIVE_LOG(Warning, TEXT("📜 Timeline System Started for Squad %d (%d nodes, starting from index %d)"),
+						SquadID, Squad->SceneTimeline.Num(), Squad->CurrentTimelineIndex);
 				}
 			}
 			
@@ -1001,8 +1037,15 @@ void UNarrativeSquadSubsystem::TriggerTimelineNode(int32 SquadID, int32 NodeInde
 
 	const FNarrativeTimelineEntry& Node = Squad->SceneTimeline[NodeIndex];
 
-	NARRATIVE_LOG(Warning, TEXT("📜 ⚡ Timeline Node %d Triggered (T+%.1fs): %s"), 
+	NARRATIVE_LOG(Warning, TEXT("📜 ⚡ Timeline Node %d Triggered (T+%.1fs): %s"),
 		NodeIndex, Squad->AccumulatedSceneTime, *Node.PlotUpdate);
+
+	// ✅ Update Action Observation Suppression Flag
+	Squad->bCurrentlySuppressingActionObservation = Node.bSuppressActionObservation;
+	if (Node.bSuppressActionObservation)
+	{
+		NARRATIVE_LOG(Warning, TEXT("   🔇 Action Observation SUPPRESSED for this timeline node"));
+	}
 
 	// Update PlotOutline (context for LLM)
 	if (!Node.PlotUpdate.IsEmpty())
@@ -1102,6 +1145,24 @@ bool UNarrativeSquadSubsystem::GetSquadMembers(const AActor* ContextActor, TArra
 	OutMembers.Remove(const_cast<AActor*>(ContextActor));
 
 	return OutMembers.Num() > 0;
+}
+
+bool UNarrativeSquadSubsystem::ShouldSuppressActionObservation(const AActor* ObservedActor) const
+{
+	if (!ObservedActor) return false;
+
+	// 1. Find which squad this actor belongs to
+	const int32* SquadIDPtr = ActorSquadMap.Find(ObservedActor);
+	if (!SquadIDPtr) return false;
+
+	int32 SquadID = *SquadIDPtr;
+
+	// 2. Get the squad
+	const FNarrativeSceneSquad* Squad = ActiveSquads.Find(SquadID);
+	if (!Squad || !Squad->bIsActive) return false;
+
+	// 3. Return the current suppression state
+	return Squad->bCurrentlySuppressingActionObservation;
 }
 
 

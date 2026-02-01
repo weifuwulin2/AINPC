@@ -3,25 +3,11 @@
 
 #include "CoreMinimal.h"
 #include "Subsystems/WorldSubsystem.h"
+#include "Events/EventTypes.h"
 #include "NarrativeDirectorSubsystem.generated.h"
 
-USTRUCT(BlueprintType)
-struct FNarrativeEvent
-{
-	GENERATED_BODY()
-
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-	FString Description;
-
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-	TArray<FName> Tags;
-
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-	float Timestamp;
-
-	FNarrativeEvent() : Timestamp(0.f) {}
-	FNarrativeEvent(FString InDesc, float InTime) : Description(InDesc), Timestamp(InTime) {}
-};
+// FNarrativeEvent moved to Events/EventTypes.h for centralized management
+// FNarrativeEvent 已移至 Events/EventTypes.h 进行集中管理
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnNarrativeEventRecorded, const FNarrativeEvent&, NewEvent);
 
@@ -40,8 +26,12 @@ public:
 
 	// --- Core API ---
 
-	/** Record a significant event in the world. */
+	/** Record a significant event in the world. (Unified with Semantic Event System) */
 	UFUNCTION(BlueprintCallable, Category = "Narrative Director")
+	void RecordEvent(FString Description, FGameplayTagContainer Tags);
+
+	/** Legacy overload for FNames (Marked for deprecation but kept for compilation) */
+	// UFUNCTION(BlueprintCallable, Category = "Narrative Director", meta=(DeprecatedFunction, DeprecationMessage="Use GameplayTags version"))
 	void RecordEvent(FString Description, TArray<FName> Tags);
 
 	/** Helper to record a death event specifically */

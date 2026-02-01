@@ -18,6 +18,8 @@ namespace AINPCTags
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Social_Greet, "Social.Greet", "Greeting interaction");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Social_Conflict, "Social.Conflict", "Generic conflict");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Social_Conflict_Insult, "Social.Conflict.Insult", "Insult event");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Social_Relationship, "Social.Relationship", "Personal relationship change");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Social_Faction, "Social.Faction", "Faction reputation change");
 
 	// Event
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Event_Danger, "Event.Danger", "General danger event");

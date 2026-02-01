@@ -2,6 +2,7 @@
 #include "Social/SocialGameplayTags.h"
 #include "Components/SensoryComponent.h"
 #include "Components/CognitionComponent.h"
+#include "Components/FactionReputationComponent.h"
 #include "Subsystems/TimeManager.h"
 #include "Kismet/GameplayStatics.h"
 #include "EngineUtils.h"
@@ -175,10 +176,10 @@ void UGoalComponent::UpdateArbitration()
 	// Note: Sensory->HasActiveThreat() needs to be checked. SensoryComponent.h has no HasActiveThreat?
 	// It has OnSemanticEventSensed. We might need to query Cognition or check 'AreActorsHostile' state?
 	// For now, let's use a placeholder check or check if FocusActor is Hostile.
-	
-	// Assuming Sensory or Controller knows about threats. 
-	// Let's use Controller->GetFocusActor() and check hostility as a proxy if Sensory doesn't expose it directly.
-	if (USensoryComponent::GetFaction(GetOwner()) != EFactionType::Neutral) // Only if I have faction logic
+
+	// Check if owner has a faction (not neutral/empty means they can potentially have threats)
+	FName OwnerFactionID = UFactionReputationComponent::GetFactionID(GetOwner());
+	if (!OwnerFactionID.IsNone() && OwnerFactionID != "None")
 	{
 		// TODO: Real Threat Check
 	}
@@ -210,8 +211,12 @@ void UGoalComponent::UpdateArbitration()
     }
 
 	// 🧟 Monster Check
-	EFactionType OwnerFaction = USensoryComponent::GetFaction(GetOwner());
-	if (OwnerFaction == EFactionType::Monster)
+	// Monsters have simpler directives - always in Survival mode
+	FName CheckFactionID = UFactionReputationComponent::GetFactionID(GetOwner());
+	if (CheckFactionID == "Monster" || CheckFactionID == "Monsters" ||
+	    CheckFactionID == "Orc" || CheckFactionID == "Orcs" ||
+	    CheckFactionID == "Zombie" || CheckFactionID == "Zombies" ||
+	    CheckFactionID == "Bandit")
 	{
 		SetDirective(AINPCTags::Directive_Survival);
 		SetLOD(EContextLOD::Standard);

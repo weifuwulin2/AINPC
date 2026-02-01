@@ -75,4 +75,18 @@ namespace AINPCHelpers
 	 */
 	AINPC_API FString GetSmartActorName(AActor* Actor);
 
+	/**
+	 * Get the current action description for an actor.
+	 * Returns a formatted string describing the actor's current action,
+	 * or an empty string if the actor has no active action.
+	 *
+	 * @param Actor The actor to query
+	 * @return Formatted action description, e.g., "[Current Action: Mining]" or ""
+	 *
+	 * Example:
+	 *   GetActorActionDescription(Miner) -> "[Current Action: Mining]"
+	 *   GetActorActionDescription(IdleNPC) -> ""
+	 */
+	AINPC_API FString GetActorActionDescription(AActor* Actor);
+
 }

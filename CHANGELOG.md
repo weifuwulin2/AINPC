@@ -9,6 +9,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - 2026-01-31
 
+### 🏗️ Major Architecture - Unified Event Bus
+- **New Subsystem**: `EventBusSubsystem` (World Subsystem)
+  - **Single Source of Truth**: Centralized routing for all AI/Gameplay events.
+  - **Features**: Tag-based filtering, Priority Queues (Critical > Low), Auto-cleanup.
+  - **Performance**: Replaces multiple delegate chains with a single optimized subscription model.
+- **Documentation**: Added `docs/systems/UnifiedEventBus_Guide.md`.
+
+### ⚡ Refactors - Action Observation & Helpers
+- **Action Observation System**: Unified framework for NPCs observing each other.
+  - **Components**: Enhanced `AttentionBudgetComponent` to process observations.
+  - **Flow**: `SensoryComponent` -> `AttentionBudget` -> `Cognition`.
+  - **Documentation**: Added `docs/systems/ActionObservationSystem_Guide.md`.
+- **Faction Logic Unification**: Created `FactionHelpers` namespace.
+  - **Centralization**: Moved scattered faction logic from `SensoryComponent`/`NarrativeSquad` to `FactionHelpers`.
+  - **API**: `AreActorsHostile`, `GetFaction`, `GetReputation`.
+
+### 🐛 Bug Fixes - Narrative & Event System
+- **Initialization Race Condition**: Fixed `NarrativeSquadSubsystem` spawning NPCs and allowing them to broadcast events before being registered in the Squad.
+  - **Resolution**: Switched to `SpawnActorDeferred` + explicit `ActivateScene` call to ensure suppression flags are set before `BeginPlay`.
+- **Direct Sensory Suppression**: Added `bSuppressActionObservation` to `SensoryComponent` as a hard override.
+  - Bypasses subsystem dependency to guarantee suppression (e.g., for cutscenes).
+- **Event System Refactor**: Unified `FObservedActionEvent` into `FSemanticEvent`.
+  - `AttentionBudgetComponent` now processes `FSemanticEvent` natively.
+- **Regression Note**: Narrative progression is currently reported as unstable/broken. Cause under investigation (possibly related to `ActivateScene` changes).
+
 ### 🐛 Bug Fixes - Combat & Movement
 - **Fixed Attack Logic**: Resolved issue where AI would get stuck in "Moving to target" loop.
   - **Collision Range**: Increased default `AttackRange` to 250.0f to account for large collision capsules.

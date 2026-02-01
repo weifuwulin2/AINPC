@@ -14,7 +14,7 @@ void UNarrativeDirectorSubsystem::Initialize(FSubsystemCollectionBase& Collectio
 	RelationshipSnapshot.Empty();
 }
 
-void UNarrativeDirectorSubsystem::RecordEvent(FString Description, TArray<FName> Tags)
+void UNarrativeDirectorSubsystem::RecordEvent(FString Description, FGameplayTagContainer Tags)
 {
 	float Time = 0.f;
 	if (UWorld* World = GetWorld())
@@ -26,11 +26,26 @@ void UNarrativeDirectorSubsystem::RecordEvent(FString Description, TArray<FName>
 	NewEvent.Tags = Tags;
 	HistoryLog.Add(NewEvent);
 
-	UE_LOG(LogTemp, Log, TEXT("[NarrativeDirector] Recorded: %s"), *Description);
+	UE_LOG(LogTemp, Log, TEXT("[NarrativeDirector] Recorded: %s | Tags: %s"), *Description, *Tags.ToStringSimple());
 
 	// Broadcast to listeners (NarrativeSquadSubsystem)
-	UE_LOG(LogTemp, Warning, TEXT("📢 [NarrativeDirector] Broadcasting event with %d tags to %d listeners"), Tags.Num(), OnEventRecorded.IsBound() ? 1 : 0);
 	OnEventRecorded.Broadcast(NewEvent);
+}
+
+void UNarrativeDirectorSubsystem::RecordEvent(FString Description, TArray<FName> Tags)
+{
+	// Legacy adapter: Convert FNames to GameplayTags
+	FGameplayTagContainer TagContainer;
+	for (const FName& TagName : Tags)
+	{
+		// Try to find exact match first, else add as naive tag if possible (though RequestGameplayTag requires it to exist)
+		FGameplayTag Tag = FGameplayTag::RequestGameplayTag(TagName, false);
+		if (Tag.IsValid())
+		{
+			TagContainer.AddTag(Tag);
+		}
+	}
+	RecordEvent(Description, TagContainer);
 }
 
 void UNarrativeDirectorSubsystem::RecordNPCDeath(AActor* Victim, AActor* Killer)
@@ -42,14 +57,10 @@ void UNarrativeDirectorSubsystem::RecordNPCDeath(AActor* Victim, AActor* Killer)
 
 	FString Desc = FString::Printf(TEXT("%s was killed by %s"), *VictimName, *KillerName);
 	
-	TArray<FName> Tags;
-	Tags.Add(AINPCTags::Event_Death.GetTag().GetTagName());
-	Tags.Add(FName(*FString::Printf(TEXT("Death_%s"), *VictimName)));
-
+	FGameplayTagContainer Tags;
+	Tags.AddTag(AINPCTags::Event_Death);
+	
 	DeadVIPs.Add(FName(*VictimName));
-
-	// Also update faction population if the victim has a faction
-	// (This would need faction lookup - for now just record the event)
 
 	RecordEvent(Desc, Tags);
 }
@@ -59,10 +70,10 @@ void UNarrativeDirectorSubsystem::RecordPlayerAction(FString ActionDescription, 
 	// Prefix with Player marker
 	FString Desc = FString::Printf(TEXT("[PLAYER] %s"), *ActionDescription);
 	
-	// Ensure PlayerAction tag is present
-	Tags.AddUnique(FName("PlayerAction"));
+	FGameplayTagContainer TagContainer;
+	for (const FName& Name : Tags) TagContainer.AddTag(FGameplayTag::RequestGameplayTag(Name, false));
 	
-	RecordEvent(Desc, Tags);
+	RecordEvent(Desc, TagContainer);
 }
 
 void UNarrativeDirectorSubsystem::RecordRelationshipChange(FName SourceActor, FName TargetActor, float OldValue, float NewValue)
@@ -78,10 +89,8 @@ void UNarrativeDirectorSubsystem::RecordRelationshipChange(FName SourceActor, FN
 	FString Desc = FString::Printf(TEXT("%s's relationship with %s %s (%.0f -> %.0f)"), 
 		*SourceActor.ToString(), *TargetActor.ToString(), *ChangeType, OldValue, NewValue);
 	
-	TArray<FName> Tags;
-	Tags.Add(FName("Relationship"));
-	Tags.Add(SourceActor);
-	Tags.Add(TargetActor);
+	FGameplayTagContainer Tags;
+	Tags.AddTag(AINPCTags::Social_Relationship);
 	
 	RecordEvent(Desc, Tags);
 }
@@ -92,9 +101,8 @@ void UNarrativeDirectorSubsystem::RecordFactionReputationChange(FName FactionID,
 	FString Desc = FString::Printf(TEXT("Reputation with %s %s by %.0f: %s"), 
 		*FactionID.ToString(), *ChangeType, FMath::Abs(Delta), *Reason);
 	
-	TArray<FName> Tags;
-	Tags.Add(FName("FactionReputation"));
-	Tags.Add(FactionID);
+	FGameplayTagContainer Tags;
+	Tags.AddTag(AINPCTags::Social_Faction);
 	
 	RecordEvent(Desc, Tags);
 }
@@ -108,9 +116,8 @@ void UNarrativeDirectorSubsystem::UpdateFactionPopulation(FName FactionID, int32
 	FString Desc = FString::Printf(TEXT("%s population changed: %d -> %d"), 
 		*FactionID.ToString(), OldCount, Count);
 	
-	TArray<FName> Tags;
-	Tags.Add(FName("Population"));
-	Tags.Add(FactionID);
+	FGameplayTagContainer Tags;
+	Tags.AddTag(AINPCTags::Social_Faction);
 	
 	RecordEvent(Desc, Tags);
 }

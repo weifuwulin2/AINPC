@@ -5,6 +5,7 @@
 #include "Components/EmotionDisplayComponent.h"
 #include "Components/MemoryComponent.h"
 #include "Components/FactionReputationComponent.h"
+#include "Components/AttentionBudgetComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Social/SocialGameplayTags.h"
 #include "AINPC.h"
@@ -14,8 +15,12 @@
 #include "UtilityAI/UNPCMentalState.h"
 #include "Actions/Action_TalkTo.h"
 #include "Social/FactionSubsystem.h"
+#include "Subsystems/TargetSelectionSubsystem.h"
+#include "Subsystems/NarrativeSquadSubsystem.h" // ✅ Added for plot mode action observation suppression
 #include "Variant_Combat/AI/CombatEnemy.h"
 #include "Utilities/AINPCHelpers.h" // ✅ Added for unified name resolution
+#include "Utilities/FactionHelpers.h" // ✅ Added for faction utilities
+#include "Base/UtilityActionBase.h"
 
 USensoryComponent::USensoryComponent()
 {
@@ -31,6 +36,13 @@ void USensoryComponent::BeginPlay()
     if (AActor* Owner = GetOwner())
     {
         Owner->OnTakeAnyDamage.AddDynamic(this, &USensoryComponent::HandleDamageTaken);
+
+        // ✅ Action Observation System: Bind to AttentionBudgetComponent events
+        if (UAttentionBudgetComponent* AttentionBudget = Owner->FindComponentByClass<UAttentionBudgetComponent>())
+        {
+            AttentionBudget->OnImmediateEvent.AddDynamic(this, &USensoryComponent::HandleImmediateObservation);
+            AttentionBudget->OnBatchedEvents.AddDynamic(this, &USensoryComponent::HandleBatchedObservations);
+        }
     }
 }
 
@@ -232,6 +244,18 @@ void USensoryComponent::HandleTargetPerceived(AActor* Actor, FAIStimulus Stimulu
 
     if (Stimulus.WasSuccessfullySensed())
     {
+        // ✅ Action Observation System: Subscribe to NPC's action changes
+        // Only subscribe to AI-controlled NPCs (not player or simple objects)
+        if (APawn* Pawn = Cast<APawn>(Actor))
+        {
+            if (AController* Controller = Pawn->GetController())
+            {
+                if (UUtilityAIComponent* UtilityComp = Controller->FindComponentByClass<UUtilityAIComponent>())
+                {
+                    SubscribeToActionChanges(Actor);
+                }
+            }
+        }
         // ✅ 对话中抑制玩家视觉事件 - 但敌人事件正常通过
         // Suppress PLAYER vision events during conversation, but allow Enemy/Danger events
         if (AUtilityAIController* UAICon = Cast<AUtilityAIController>(GetOwner()))
@@ -420,6 +444,12 @@ void USensoryComponent::HandleTargetPerceived(AActor* Actor, FAIStimulus Stimulu
             OnSemanticEventSensed.Broadcast(Event);
         }
     }
+    else
+    {
+        // ✅ Action Observation System: Unsubscribe when target is lost
+        // Perception lost - stop observing this NPC's actions
+        UnsubscribeFromActionChanges(Actor);
+    }
 }
 
 // ✅ 注意力追踪辅助方法实现
@@ -602,6 +632,16 @@ void USensoryComponent::HandleDeath(AActor* DeadActor, AActor* Killer)
 {
     if (!DeadActor) return;
 
+    // ✅ Notify TargetSelectionSubsystem immediately (event-driven cache invalidation)
+    // 立即通知 TargetSelectionSubsystem（事件驱动的缓存失效）
+    if (UWorld* World = GetWorld())
+    {
+        if (UTargetSelectionSubsystem* TargetSubsystem = World->GetSubsystem<UTargetSelectionSubsystem>())
+        {
+            TargetSubsystem->NotifyTargetDied(DeadActor);
+        }
+    }
+
     AActor* Owner = GetOwner();
     bool bIsSelfDeath = (DeadActor == Owner);
 
@@ -774,19 +814,10 @@ FString USensoryComponent::FormatDescriptionWithContext(FString Verb, AActor* Ta
     {
         Description += TEXT(" - Ally");
     }
-    
-    // ✅ NEW: Add descriptive action state (e.g. "who is Mining")
-    if (Target)
-    {
-        if (UUtilityAIComponent* TargetAI = Target->FindComponentByClass<UUtilityAIComponent>())
-        {
-            if (TargetAI->CurrentAction)
-            {
-               Description += FString::Printf(TEXT(" [Current Action: %s]"), *TargetAI->CurrentAction->ActionName);
-            }
-        }
-    }
-    
+
+    // ✅ Add descriptive action state (e.g. "who is Mining")
+    Description += AINPCHelpers::GetActorActionDescription(Target);
+
     return Description;
 }
 
@@ -823,89 +854,20 @@ void USensoryComponent::ResetVisualAccumulation(AActor* Target)
 
 
 
-EFactionType USensoryComponent::GetFaction(AActor* Actor)
-{
-	if (!Actor) return EFactionType::Neutral;
-
-	// ✅ REFACTORED: Delegate to unified FactionReputationComponent logic
-	// This ensures centralized management of Faction IDs, including Narrative Overrides (InScene = Neutral)
-	
-	FName Faction = UFactionReputationComponent::GetFactionID(Actor);
-	
-	// Fallback/Traversal: If ID not found on Actor, check connected Controller/Pawn
-	if (Faction.IsNone() || Faction == "None")
-	{
-		if (APawn* CastPawn = Cast<APawn>(Actor)) 
-		{
-			if (AController* PawnController = CastPawn->GetController()) Faction = UFactionReputationComponent::GetFactionID(PawnController);
-		}
-		else if (AController* CastController = Cast<AController>(Actor))
-		{
-			if (APawn* ControllerPawn = CastController->GetPawn()) Faction = UFactionReputationComponent::GetFactionID(ControllerPawn);
-		}
-	}
-
-	// Map ID to Legacy Enum
-	if (Faction == "Human" || Faction == "Humans" || Faction == "Player" || Faction == "Guard" || Faction == "Villager" || Faction == "Merchant") return EFactionType::Human;
-	if (Faction == "Monster" || Faction == "Monsters" || Faction == "Orc" || Faction == "Orcs" || Faction == "Zombie" || Faction == "Bandit") return EFactionType::Monster;
-	if (Faction == "Elf" || Faction == "Elves") return EFactionType::Human;
-	
-	return EFactionType::Neutral;
-}
+// ============================================================================
+// REMOVED: GetFaction() - Legacy EFactionType enum
+// ============================================================================
+// Use UFactionReputationComponent::GetFactionID() directly instead.
+// Removed: 2026-02-01
+// ============================================================================
 
 
 
 bool USensoryComponent::AreActorsHostile(AActor* ActorA, AActor* ActorB) const
 {
-	if (!ActorA || !ActorB) return false;
-	if (ActorA == ActorB) return false;
-
-	// 1. Personal Reputation Check (Highest Priority)
-	// Check Local Components for Override (e.g. "I personally hate YOU")
-    if (UFactionReputationComponent* FacCompA = ActorA->FindComponentByClass<UFactionReputationComponent>())
-    {
-        return FacCompA->IsHostile(ActorB);
-    }
-    // Check fallback Controller/Pawn for A
-    if (APawn* PawnA = Cast<APawn>(ActorA))
-    {
-        if (AController* ConA = PawnA->GetController())
-        {
-             if (UFactionReputationComponent* FacCompCon = ConA->FindComponentByClass<UFactionReputationComponent>())
-             {
-                 return FacCompCon->IsHostile(ActorB);
-             }
-        }
-    }
-
-	// 2. Global Faction Relation Check (Data-Driven)
-	// Even if components are missing (e.g. Player), we can derive FactionID and check the Matrix.
-	UWorld* World = GetWorld(); // Assuming this component is in a world
-	if (!World && ActorA) World = ActorA->GetWorld();
-	
-	if (World)
-	{
-		if (UFactionSubsystem* Subsystem = World->GetSubsystem<UFactionSubsystem>())
-		{
-			FName FactionA = UFactionReputationComponent::GetFactionID(ActorA);
-			FName FactionB = UFactionReputationComponent::GetFactionID(ActorB);
-			
-			// This returns true ONLY if the Faction Matrix explicitly says < 25.0
-			// If not defined, it defaults to Neutral (50), which is NOT hostile.
-			return Subsystem->AreFactionsHostile(FactionA, FactionB);
-		}
-	}
-
-    // 3. Final Legacy Fallback (Enum Check - The "Old Way")
-	// Only run this if Subsystem failed (e.g. valid World not found?)
-    EFactionType TypeA = GetFaction(ActorA);
-    EFactionType TypeB = GetFaction(ActorB);
-
-    if (TypeA == EFactionType::Neutral || TypeB == EFactionType::Neutral)
-    {
-        return false; 
-    }
-    return TypeA != TypeB;
+	// DEPRECATED: Wrapper for backward compatibility
+	// Use FactionHelpers::AreActorsHostile() instead
+	return FactionHelpers::AreActorsHostile(ActorA, ActorB);
 }
 
 // Non-const implementations for compatibility
@@ -914,7 +876,7 @@ FName USensoryComponent::GetActorFaction(AActor* Actor) const
 	// Try new FactionReputationComponent
 	if (UFactionReputationComponent* FacComp = Actor->FindComponentByClass<UFactionReputationComponent>())
 	{
-		return FacComp->CurrentFactionID;
+		return FacComp->FactionID;
 	}
 
 	// Fallback: Check FactionReputationComponent static helper
@@ -989,34 +951,209 @@ void USensoryComponent::HandleCombatEnemyDeath(ACombatEnemy* DeadEnemy, AActor* 
     HandleDeath(DeadEnemy, Killer);
 }
 
-FString USensoryComponent::GetSmartActorName(AActor* Target)
-{
-    FString TargetName = "Unknown";
-    if (!Target) return TargetName;
+// ========================================
+// Action Observation System Implementation
+// ========================================
 
-    if (APawn* TargetPawn = Cast<APawn>(Target))
+void USensoryComponent::SubscribeToActionChanges(AActor* ObservedActor)
+{
+    if (!ObservedActor || ObservedNPCs.Contains(ObservedActor))
     {
-        if (AController* TargetController = TargetPawn->GetController())
+        return; // Already subscribed or invalid
+    }
+
+    // Get the UtilityAIComponent from the observed actor's controller
+    if (APawn* Pawn = Cast<APawn>(ObservedActor))
+    {
+        if (AController* Controller = Pawn->GetController())
         {
-            if (AUtilityAIController* UtilityController = Cast<AUtilityAIController>(TargetController))
+            if (UUtilityAIComponent* UtilityComp = Controller->FindComponentByClass<UUtilityAIComponent>())
             {
-                if (UtilityController->PersonalityComp && !UtilityController->PersonalityComp->PersonalityID.IsNone())
-                {
-                    TargetName = UtilityController->PersonalityComp->PersonalityID.ToString();
-                }
+                // Subscribe to action changes
+                UtilityComp->OnActionChanged.AddDynamic(this, &USensoryComponent::HandleObservedActionChange);
+                ObservedNPCs.Add(ObservedActor);
+
+                AINPC_LOG(Log, "[%s] 👁️ Subscribed to %s's action changes",
+                    *GetOwner()->GetName(), *AINPCHelpers::GetSmartActorName(ObservedActor));
             }
         }
     }
-    
-    if (TargetName == "Unknown" && Target->ActorHasTag("Player"))
+}
+
+void USensoryComponent::UnsubscribeFromActionChanges(AActor* ObservedActor)
+{
+    if (!ObservedActor || !ObservedNPCs.Contains(ObservedActor))
     {
-        TargetName = "Player";
+        return; // Not subscribed
     }
-    
-    if (TargetName == "Unknown")
+
+    // Get the UtilityAIComponent from the observed actor's controller
+    if (APawn* Pawn = Cast<APawn>(ObservedActor))
     {
-        TargetName = Target->GetName();
+        if (AController* Controller = Pawn->GetController())
+        {
+            if (UUtilityAIComponent* UtilityComp = Controller->FindComponentByClass<UUtilityAIComponent>())
+            {
+                // Unsubscribe from action changes
+                UtilityComp->OnActionChanged.RemoveDynamic(this, &USensoryComponent::HandleObservedActionChange);
+                ObservedNPCs.Remove(ObservedActor);
+
+                AINPC_LOG(Verbose, "[%s] Unsubscribed from %s's action changes",
+                    *GetOwner()->GetName(), *AINPCHelpers::GetSmartActorName(ObservedActor));
+            }
+        }
     }
-    
-    return TargetName;
+}
+
+void USensoryComponent::SetActionObservationSuppressed(bool bSuppressed)
+{
+	bSuppressActionObservation = bSuppressed;
+	AINPC_LOG(Log, TEXT("[%s] Action Observation Suppressed: %s"), *GetOwner()->GetName(), bSuppressed ? TEXT("TRUE") : TEXT("FALSE"));
+}
+
+void USensoryComponent::HandleObservedActionChange(AActor* NPC, UUtilityActionBase* OldAction, UUtilityActionBase* NewAction)
+{
+    if (!NPC || !NewAction) return;
+
+	// ✅ 1. Check Local Suppression Flag (Primary Override)
+	if (bSuppressActionObservation)
+	{
+		return;
+	}
+
+    // ✅ 2. Check if action observation is suppressed for this NPC (Plot Mode Logic via Native Subsystem)
+    // 检查是否应该禁止观察此 NPC（剧情模式）
+    UWorld* World = GetWorld();
+    if (World)
+    {
+        if (UNarrativeSquadSubsystem* NarrativeSquad = World->GetSubsystem<UNarrativeSquadSubsystem>())
+        {
+            if (NarrativeSquad->ShouldSuppressActionObservation(NPC))
+            {
+                // NPC is in a scene with suppressed action observation - ignore the change
+                // NPC 当前在禁止动作观察的场景中 - 忽略变化
+                return;
+            }
+        }
+    }
+
+    // Get AttentionBudgetComponent (required for observation system)
+    UAttentionBudgetComponent* AttentionBudget = GetOwner()->FindComponentByClass<UAttentionBudgetComponent>();
+    if (!AttentionBudget)
+    {
+        // No attention budget = direct processing (legacy behavior)
+        // Create and broadcast semantic event directly
+        FSemanticEvent Event;
+        Event.Instigator = GetOwner();
+        Event.Target = NPC;
+        Event.Verb = AINPCTags::Interaction_Investigate; // Observing = Investigating
+
+        FString ActionName = NewAction ? NewAction->ActionName : "None";
+        FString OldActionName = OldAction ? OldAction->ActionName : "None";
+
+        Event.Content = FString::Printf(TEXT("%s changed action from %s to %s"),
+            *AINPCHelpers::GetSmartActorName(NPC), *OldActionName, *ActionName);
+        Event.Magnitude = 0.3f; // Medium priority
+
+        OnSemanticEventSensed.Broadcast(Event);
+        return;
+    }
+
+	// ✅ Unified Event System Construction
+	FSemanticEvent ObservationEvent;
+	ObservationEvent.Instigator = NPC;
+	ObservationEvent.Verb = NewAction->ActivityTag;
+	ObservationEvent.Content = FString::Printf(TEXT("%s started %s"), *AINPCHelpers::GetSmartActorName(NPC), *NewAction->ActionName);
+	ObservationEvent.Timestamp = GetWorld()->GetTimeSeconds();
+	ObservationEvent.Location = NPC->GetActorLocation();
+
+	// Map Directive to ContextTags
+	if (NewAction->DirectiveTag.IsValid())
+	{
+		ObservationEvent.ContextTags.AddTag(NewAction->DirectiveTag);
+	}
+
+	// Check if action has a target
+	if (AAIController* NPCAI = Cast<AAIController>(Cast<APawn>(NPC)->GetController()))
+	{
+		if (AActor* Target = NPCAI->GetFocusActor())
+		{
+			ObservationEvent.Target = Target;
+		}
+	}
+
+	// Submit to Attention Budget
+	AttentionBudget->SubmitObservation(ObservationEvent);
+
+    AINPC_LOG(Verbose, "[%s] Observed: %s changed to %s",
+        *GetOwner()->GetName(),
+        *AINPCHelpers::GetSmartActorName(NPC),
+        *NewAction->ActionName);
+}
+
+void USensoryComponent::HandleImmediateObservation(const FSemanticEvent& Event)
+{
+    if (!Event.Instigator) return;
+
+    // Event is already a FSemanticEvent, broadcast directly
+    OnSemanticEventSensed.Broadcast(Event);
+
+    AINPC_LOG(Log, "[%s] 🔔 Immediate Observation: %s",
+        *GetOwner()->GetName(), *Event.Content);
+}
+
+void USensoryComponent::HandleBatchedObservations(const TArray<FSemanticEvent>& Events)
+{
+    if (Events.Num() == 0) return;
+
+    // Group events by Verb (action type) for merging
+    TMap<FGameplayTag, TArray<const FSemanticEvent*>> GroupedEvents;
+    for (const FSemanticEvent& Event : Events)
+    {
+        GroupedEvents.FindOrAdd(Event.Verb).Add(&Event);
+    }
+
+    // Process each group
+    for (const auto& Group : GroupedEvents)
+    {
+        const TArray<const FSemanticEvent*>& EventList = Group.Value;
+
+        if (EventList.Num() == 1)
+        {
+            // Single event - broadcast directly
+            OnSemanticEventSensed.Broadcast(*EventList[0]);
+        }
+        else
+        {
+            // Multiple similar events - create merged event
+            FSemanticEvent MergedEvent;
+            MergedEvent.Instigator = GetOwner(); // Observer is the instigator of the merged observation
+            MergedEvent.Target = EventList[0]->Instigator; // First actor as representative
+            MergedEvent.Verb = EventList[0]->Verb;
+            MergedEvent.Magnitude = 0.2f; // Low priority (batched)
+            MergedEvent.Timestamp = GetWorld()->GetTimeSeconds();
+
+            // Copy context tags from first event
+            MergedEvent.ContextTags = EventList[0]->ContextTags;
+
+            // Build merged description
+            TArray<FString> ActorNames;
+            for (const FSemanticEvent* Event : EventList)
+            {
+                if (Event->Instigator)
+                {
+                    ActorNames.Add(AINPCHelpers::GetSmartActorName(Event->Instigator));
+                }
+            }
+
+            MergedEvent.Content = FString::Printf(TEXT("%d NPCs (%s) doing similar actions"),
+                ActorNames.Num(),
+                *FString::Join(ActorNames, TEXT(", ")));
+
+            OnSemanticEventSensed.Broadcast(MergedEvent);
+
+            AINPC_LOG(Log, "[%s] 📦 Batched Observation: %s",
+                *GetOwner()->GetName(), *MergedEvent.Content);
+        }
+    }
 }

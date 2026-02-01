@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Select-String -Pattern \"\\\\.json|\\\\.csv|\\\\.uasset\")",
+      "Bash(Select-Object -First 10)"
+    ]
+  }
+}

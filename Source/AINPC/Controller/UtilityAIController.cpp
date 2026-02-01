@@ -139,7 +139,7 @@ void AUtilityAIController::OnPossess(APawn* InPawn)
         bool bFoundFactionComponent = false;
         if (UFactionReputationComponent* FacComp = InPawn->FindComponentByClass<UFactionReputationComponent>())
         {
-            FacComp->CurrentFactionID = MonsterComp->MonsterFactionID;
+            FacComp->FactionID = MonsterComp->MonsterFactionID;
             AINPC_LOG(Warning, "Set FactionReputationComponent: %s", *MonsterComp->MonsterFactionID.ToString());
             bFoundFactionComponent = true;
         }
@@ -325,33 +325,30 @@ void AUtilityAIController::BeginPlay()
     // =========================================================
     if (MetabolismComp)
     {
-        // ✅ REFACTORED: Use FactionReputationComponent instead of deprecated Personality.Faction
-        // 重构：使用 FactionReputationComponent 替代已弃用的 Personality.Faction
-        EFactionType Faction = EFactionType::Neutral;
-        
-        // Try to get faction from FactionReputationComponent
-        if (UFactionReputationComponent* FacComp = FindComponentByClass<UFactionReputationComponent>())
-        {
-            FName FactionID = FacComp->CurrentFactionID;
-            if (FactionID == "Monster") Faction = EFactionType::Monster;
-            else if (FactionID == "Human") Faction = EFactionType::Human;
-        }
-        
-        if (Faction == EFactionType::Monster)
+        // Check faction to determine if metabolism should be enabled
+        // Monsters don't need to eat or sleep
+        FName FactionID = UFactionReputationComponent::GetFactionID(GetPawn());
+
+        bool bIsMonster = (FactionID == "Monster" || FactionID == "Monsters" ||
+                          FactionID == "Orc" || FactionID == "Orcs" ||
+                          FactionID == "Zombie" || FactionID == "Zombies" ||
+                          FactionID == "Bandit");
+
+        if (bIsMonster)
         {
             // 怪物不需要吃饭睡觉
             // Monsters don't need to eat or sleep
             MetabolismComp->SetComponentTickEnabled(false);
-            UE_LOG(LogTemp, Log, TEXT("[%s] Metabolism DISABLED (Faction: Monster)"), *GetName());
+            UE_LOG(LogTemp, Log, TEXT("[%s] Metabolism DISABLED (Faction: %s)"), *GetName(), *FactionID.ToString());
         }
         else
         {
             // 人类和中立 NPC 需要新陈代谢
             // Human and Neutral NPCs need metabolism
             MetabolismComp->SetComponentTickEnabled(true);
-            UE_LOG(LogTemp, Log, TEXT("[%s] Metabolism ENABLED (Faction: %s)"), 
-                   *GetName(), 
-                   *UEnum::GetValueAsString(Faction));
+            UE_LOG(LogTemp, Log, TEXT("[%s] Metabolism ENABLED (Faction: %s)"),
+                   *GetName(),
+                   *FactionID.ToString());
         }
     }
 

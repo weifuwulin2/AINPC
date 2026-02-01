@@ -97,19 +97,36 @@ namespace AINPCHelpers
 				TargetName = PersonalityComp->PersonalityID.ToString();
 			}
 		}
-		
+
 		// 2. Try Player Tag
 		if (TargetName == "Unknown" && Actor->ActorHasTag("Player"))
 		{
 			TargetName = "Player";
 		}
-		
+
 		// 3. Fallback to Object Name
 		if (TargetName == "Unknown")
 		{
 			TargetName = Actor->GetName();
 		}
-		
+
 		return TargetName;
+	}
+
+	FString GetActorActionDescription(AActor* Actor)
+	{
+		if (!Actor) return TEXT("");
+
+		// Try to find UtilityAIComponent in the Actor hierarchy
+		if (UUtilityAIComponent* UtilityAI = GetUtilityAIComponent(Actor))
+		{
+			if (UtilityAI->CurrentAction)
+			{
+				return FString::Printf(TEXT(" [Current Action: %s]"), *UtilityAI->CurrentAction->ActionName);
+			}
+		}
+
+		// No active action
+		return TEXT("");
 	}
 }

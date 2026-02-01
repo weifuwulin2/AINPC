@@ -56,11 +56,13 @@ struct FTargetSelectionConfig
  * - Event-driven cache invalidation
  */
 UCLASS(Config=Game)
-class AINPC_API UTargetSelectionSubsystem : public UWorldSubsystem
+class AINPC_API UTargetSelectionSubsystem : public UTickableWorldSubsystem
 {
 	GENERATED_BODY()
 
 public:
+	
+	virtual TStatId GetStatId() const override;
 	// ========================================
 	// Events
 	// ========================================
@@ -105,6 +107,14 @@ public:
 	/** Clear cached results for a specific controller (e.g., when situation changes dramatically) */
 	UFUNCTION(BlueprintCallable, Category = "AI|Target Selection")
 	void InvalidateCache(AAIController* Controller);
+
+	/**
+	 * Notify subsystem that a target has died.
+	 * This triggers immediate cache invalidation and broadcasts OnTargetInvalidated.
+	 * Call this from death handlers (e.g., SensoryComponent::HandleDeath).
+	 */
+	UFUNCTION(BlueprintCallable, Category = "AI|Target Selection")
+	void NotifyTargetDied(AActor* DeadTarget);
 
 private:
 	/** Rule-based scoring for quick target selection */

@@ -62,10 +62,9 @@ void UAction_Attack::Enter_Implementation(AAIController* Controller)
 			SelectedTarget = TargetSystem->SelectTarget(Controller, TargetContext, Config);
 			
 			// ✅ Bind to invalidation event
-			if (!TargetSystem->OnTargetInvalidated.IsAlreadyBound(this, &UAction_Attack::OnTargetInvalidated))
-			{
-				TargetSystem->OnTargetInvalidated.AddDynamic(this, &UAction_Attack::OnTargetInvalidated);
-			}
+			// Explicitly remove first to ensure no stale bindings (Fix Bug #2)
+			TargetSystem->OnTargetInvalidated.RemoveDynamic(this, &UAction_Attack::OnTargetInvalidated);
+			TargetSystem->OnTargetInvalidated.AddDynamic(this, &UAction_Attack::OnTargetInvalidated);
 
 			if (SelectedTarget)
 			{

@@ -49,10 +49,71 @@ public:
 	// New: Handle Death Event
 	UFUNCTION(BlueprintCallable, Category = "AI Sensory")
 	void HandleDeath(AActor* DeadActor, AActor* Killer);
-	
+
 	// Wrapper callback for CombatEnemy delegate
 	UFUNCTION()
 	void HandleCombatEnemyDeath(ACombatEnemy* DeadEnemy, AActor* Killer);
+
+	// ========================================
+	// Action Observation System
+	// ========================================
+
+	/**
+	 * Subscribe to an NPC's action changes (when they enter vision).
+	 * Automatically managed by perception system.
+	 */
+	void SubscribeToActionChanges(AActor* ObservedActor);
+
+	/**
+	 * Unsubscribe from an NPC's action changes (when they leave vision).
+	 */
+	void UnsubscribeFromActionChanges(AActor* ObservedActor);
+
+	/**
+	 * Callback when an observed NPC changes their action.
+	 * Filters and submits to AttentionBudgetComponent.
+	 */
+	/**
+	 * Callback when an observed NPC changes their action.
+	 * Filters and submits to AttentionBudgetComponent.
+	 */
+	UFUNCTION()
+	void HandleObservedActionChange(AActor* NPC, UUtilityActionBase* OldAction, UUtilityActionBase* NewAction);
+
+	/**
+	 * Manually suppress/unsuppress action observation for this specific NPC.
+	 * Useful for specific plot moments or cutscenes where this NPC should be blind to action changes.
+	 * 
+	 * @param bSuppressed If true, action changes will be ignored.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "AI Sensory | Config")
+	void SetActionObservationSuppressed(bool bSuppressed);
+
+	/**
+	 * Check if action observation is currently suppressed.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "AI Sensory | Config")
+	bool IsActionObservationSuppressed() const { return bSuppressActionObservation; }
+protected:
+	/** If true, HandleObservedActionChange will not process events. Default is false. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI Sensory | Config")
+	bool bSuppressActionObservation = false;
+
+public:
+
+	/**
+	 * Handle immediate high-priority observations from AttentionBudget.
+	 * Converts to semantic event and broadcasts immediately.
+	 */
+	UFUNCTION()
+	void HandleImmediateObservation(const FSemanticEvent& Event);
+
+	/**
+	 * Handle batched low-priority observations from AttentionBudget.
+	 * Merges similar events and broadcasts as summary.
+	 */
+	UFUNCTION()
+	void HandleBatchedObservations(const TArray<FSemanticEvent>& Events);
 
 	// --- Processing Layer (The Spinal Cord) ---
 
@@ -70,11 +131,13 @@ public:
 	AActor* FindBestSmartObject(FGameplayTag ActivityTag);
 
 	/**
-	 * Helper: Get the faction of an actor (Safe to call on any actor).
-	 * Defaults to Neutral.
+	 * Check if two actors belong to hostile factions
+	 * 检查两个 Actor 是否属于敌对阵营
+	 * @deprecated Use FactionHelpers::AreActorsHostile() instead
 	 */
-	UFUNCTION(BlueprintCallable, Category = "AI Sensory")
-	static EFactionType GetFaction(AActor* Actor);
+	UFUNCTION(BlueprintCallable, Category = "AI Sensory",
+	          meta=(DeprecatedFunction, DeprecationMessage="Use FactionHelpers::AreActorsHostile() instead"))
+	bool AreActorsHostile(AActor* ActorA, AActor* ActorB) const;
 
 protected:
 	virtual void BeginPlay() override;
@@ -150,11 +213,7 @@ private:
 	// 清理过期的感知记录
 	// Clean up expired perception records
 	void CleanupPerceptionTracking();
-	
-	// 检查两个 Actor 是否属于敌对阵营
-	// Check if two actors belong to hostile factions
-	bool AreActorsHostile(AActor* ActorA, AActor* ActorB) const;
-	
+
 	// 获取 Actor 的阵营
 	// Get actor's faction
 	FName GetActorFaction(AActor* Actor) const;
@@ -166,8 +225,12 @@ private:
 	// 重置目标的累积计数（在触发认知事件后）
 	// Reset accumulation count for target (after triggering cognitive event)
 	void ResetVisualAccumulation(AActor* Target);
-	
-	// ✅ 获取用于记忆的 Actor 名称 (Smart Name)
-	// Get actor name for memory (e.g. PersonalityID or "Player")
-	FString GetSmartActorName(AActor* Actor);
+
+	// ========================================
+	// Action Observation Tracking
+	// ========================================
+
+	/** NPCs we're currently subscribed to (tracking their action changes) */
+	UPROPERTY()
+	TSet<AActor*> ObservedNPCs;
 };

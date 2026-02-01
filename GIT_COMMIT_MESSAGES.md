@@ -762,3 +762,19 @@ This file contains a log of commit messages for the AINPC project.
 - **Fixed Narrative Event Matching**: `NarrativeSquadSubsystem` now uses `GetSmartActorName` to match death events, fixing scene progression bugs.
 - **Logging Cleanup**: Unified `UtilityActionBase` logging to `LogAINPCUtility`.
 
+## [2026-02-01] Architecture V5 - Unified Event Bus & Action Observation
+**Type**: feat/refactor
+**Scope**: Architecture, EventSystem, AttentionBudget, Factions
+**Description**:
+- **Unified Event Bus**: Implemented `EventBusSubsystem` to centralize all AI/Gameplay event routing. 
+  - Replaces fragmented delegate chains with a tag-based subscription model.
+  - Features priority queues and auto-cleanup.
+- **Action Observation System**: Upgrade `AttentionBudgetComponent` to process `FSemanticEvent`.
+  - NPCs now intelligently observe and react to each other's actions.
+  - Implemented logic in `SensoryComponent` to pipe observations through the Budget system.
+- **Faction Helpers**: Unified scattered faction logic into `FactionHelpers` namespace.
+- **Initialization Race Condition**: Fixed `NarrativeSquadSubsystem` spawning NPCs and allowing them to broadcast events before being registered in the Squad.
+  - **Resolution**: Switched to `SpawnActorDeferred` + explicit `ActivateScene` call to ensure suppression flags are set before `BeginPlay`.
+- **Direct Sensory Suppression**: Added `bSuppressActionObservation` to `SensoryComponent` as a hard override.
+- **Docs**: Added `UnifiedEventBus_Guide.md` and `ActionObservationSystem_Guide.md`.
+- **Regression Note**: Narrative progression is currently reported as unstable/broken. Cause under investigation (possibly related to `ActivateScene` changes).

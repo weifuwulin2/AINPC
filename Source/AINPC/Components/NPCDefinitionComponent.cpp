@@ -199,7 +199,7 @@ void UNPCDefinitionComponent::ApplyFaction(AActor* Owner)
 
 	if (UFactionReputationComponent* FactionComp = Owner->FindComponentByClass<UFactionReputationComponent>())
 	{
-		FactionComp->CurrentFactionID = FactionID;
+		FactionComp->FactionID = FactionID;
 		AINPC_LOG(Log, "Applied FactionID: %s", *FactionID.ToString());
 	}
 	else

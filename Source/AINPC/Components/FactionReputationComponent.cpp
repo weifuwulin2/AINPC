@@ -6,20 +6,21 @@
 #include "Kismet/GameplayStatics.h"
 #include "AINPC.h"
 #include "NPCDefinitionComponent.h"
+#include "Utilities/FactionHelpers.h"
 
 UFactionReputationComponent::UFactionReputationComponent()
 {
 	PrimaryComponentTick.bCanEverTick = false;
-	CurrentFactionID = "Neutral";
+	FactionID = "Neutral";
 }
 
 void UFactionReputationComponent::BeginPlay()
 {
 	Super::BeginPlay();
 	
-	// ✅ Auto-sync FactionID from Pawn's NPCDefinitionComponent if CurrentFactionID is default
+	// ✅ Auto-sync FactionID from Pawn's NPCDefinitionComponent if FactionID is default
 	// 自动从 Pawn 的 NPCDefinitionComponent 同步 FactionID（如果当前是默认值）
-	if (CurrentFactionID == "Neutral" || CurrentFactionID.IsNone())
+	if (FactionID == "Neutral" || FactionID.IsNone())
 	{
 		// Try to get FactionID from Pawn's NPCDefinitionComponent
 		if (AAIController* AICon = Cast<AAIController>(GetOwner()))
@@ -30,8 +31,8 @@ void UFactionReputationComponent::BeginPlay()
 				{
 					if (!PawnDefComp->FactionID.IsNone() && PawnDefComp->FactionID != "None")
 					{
-						CurrentFactionID = PawnDefComp->FactionID;
-						AINPC_LOG(Log, "[FactionReputation] Auto-synced FactionID from Pawn's NPCDefinitionComponent: %s", *CurrentFactionID.ToString());
+						FactionID = PawnDefComp->FactionID;
+						AINPC_LOG(Log, "[FactionReputation] Auto-synced FactionID from Pawn's NPCDefinitionComponent: %s", *FactionID.ToString());
 					}
 				}
 			}
@@ -104,7 +105,7 @@ bool UFactionReputationComponent::EvaluateCombatPolicy(const AActor* Source, con
 float UFactionReputationComponent::GetAttitudeTowards(AActor* Target) const
 {
 	if (!Target) return 50.0f;
-	
+
 	// ✅ SEMANTIC POLICY CHECK
 	// Use centralized policy to determine if hostile interactions are permitted
 	if (!EvaluateCombatPolicy(GetOwner(), Target))
@@ -127,7 +128,22 @@ float UFactionReputationComponent::GetAttitudeTowards(AActor* Target) const
 		if (UFactionSubsystem* Subsystem = World->GetSubsystem<UFactionSubsystem>())
 		{
 			FName TargetFaction = GetFactionID(Target);
-			return Subsystem->GetBaseAttitude(CurrentFactionID, TargetFaction);
+			return Subsystem->GetBaseAttitude(FactionID, TargetFaction);
+		}
+	}
+
+	return 50.0f; // Default Neutral
+}
+
+float UFactionReputationComponent::GetReputationWith(FName TargetFactionID) const
+{
+	// Query global faction relations from FactionSubsystem
+	UWorld* World = GetWorld();
+	if (World)
+	{
+		if (UFactionSubsystem* Subsystem = World->GetSubsystem<UFactionSubsystem>())
+		{
+			return Subsystem->GetBaseAttitude(FactionID, TargetFactionID);
 		}
 	}
 
@@ -156,78 +172,7 @@ void UFactionReputationComponent::ModifyReputation(AActor* Target, float Delta)
 
 FName UFactionReputationComponent::GetFactionID(AActor* Actor)
 {
-	if (!Actor) return "None";
-
-	// 1. Narrative Override (Centralized Logic)
-	// Check for InScene Tag on Actor or Pawn/Controller
-	// ✅ EXCEPTION: If Directive.Combat is present, DO NOT force Neutral.
-	// This allows plot-driven combat (e.g. Uprisings) to use real Factions.
-	bool bHasCombatDirective = Actor->ActorHasTag("Directive.Combat");
-	
-	if (!bHasCombatDirective)
-	{
-		if (Actor->ActorHasTag("Status.InScene")) return "Neutral";
-		
-		if (APawn* P = Cast<APawn>(Actor)) 
-		{ 
-			if (P->GetController() && P->GetController()->ActorHasTag("Status.InScene")) return "Neutral"; 
-		}
-		
-		if (AController* C = Cast<AController>(Actor)) 
-		{ 
-			if (C->GetPawn() && C->GetPawn()->ActorHasTag("Status.InScene")) return "Neutral"; 
-		}
-	}
-
-	// 2. Try finding this component
-	if (UFactionReputationComponent* FacComp = Actor->FindComponentByClass<UFactionReputationComponent>())
-	{
-		return FacComp->CurrentFactionID;
-	}
-
-	// 2. Fallback: Parse from Tags (Legacy/Simple support)
-	// Expect tag: "Faction.Examples"
-	for (const FName& Tag : Actor->Tags)
-	{
-		FString TagStr = Tag.ToString();
-		if (TagStr.StartsWith("Faction."))
-		{
-			return FName(*TagStr.Mid(8)); // Remove "Faction." prefix
-		}
-	}
-	
-	// 3. Fallback: Check NPCDefinitionComponent (NEW - Proper Fallback)
-	// 回退：检查 NPCDefinitionComponent（新增 - 正确的回退逻辑）
-	if (UNPCDefinitionComponent* DefComp = Actor->FindComponentByClass<UNPCDefinitionComponent>())
-	{
-		if (!DefComp->FactionID.IsNone() && DefComp->FactionID != "None")
-		{
-			return DefComp->FactionID;
-		}
-	}
-	
-	// 3.5. CRITICAL: If Actor is Controller, also check Pawn's NPCDefinitionComponent
-	// 关键：如果 Actor 是 Controller，也检查 Pawn 的 NPCDefinitionComponent
-	if (AAIController* AICon = Cast<AAIController>(Actor))
-	{
-		if (APawn* ControlledPawn = AICon->GetPawn())
-		{
-			if (UNPCDefinitionComponent* PawnDefComp = ControlledPawn->FindComponentByClass<UNPCDefinitionComponent>())
-			{
-				if (!PawnDefComp->FactionID.IsNone() && PawnDefComp->FactionID != "None")
-				{
-					return PawnDefComp->FactionID;
-				}
-			}
-		}
-	}
-	
-	// 4. Fallback: "Player" tag
-	if (Actor->ActorHasTag("Player"))
-	{
-		return "Player"; // Special faction for player
-	}
-
-	// 5. Default
-	return "Neutral";
+	// DEPRECATED: Wrapper for backward compatibility
+	// Use FactionHelpers::GetFactionID() instead
+	return FactionHelpers::GetFactionID(Actor);
 }

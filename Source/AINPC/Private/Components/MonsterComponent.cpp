@@ -24,7 +24,7 @@ void UMonsterComponent::BeginPlay()
     }
     else if (UFactionReputationComponent* FacComp = Owner->FindComponentByClass<UFactionReputationComponent>())
     {
-        FacComp->CurrentFactionID = MonsterFactionID;
+        FacComp->FactionID = MonsterFactionID;
     }
 
     // 2. Force Personality to "Brainless Feral"

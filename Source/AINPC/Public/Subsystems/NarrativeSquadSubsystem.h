@@ -85,6 +85,12 @@ struct FNarrativeTimelineEntry
 	/** Optional bark ID for squad leader to speak. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Timeline")
 	FName BarkID;
+
+	/** If true, NPCs in this scene will NOT observe other NPCs' action changes during this timeline node.
+	 * 如果为 true，场景中的 NPC 在此 timeline 节点期间将不会观察其他 NPC 的动作变化。
+	 * Useful for preventing distraction during important plot moments. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Timeline")
+	bool bSuppressActionObservation = false;
 };
 
 /** Defines a static scene layout (The Cast & The Script) */
@@ -219,6 +225,14 @@ struct FNarrativeSceneSquad
 	UPROPERTY()
 	float AccumulatedSceneTime = 0.0f;
 
+	/** Runtime flag: if true, members should NOT observe action changes from other NPCs.
+	 * 运行时标志：如果为 true，成员不应观察其他 NPC 的动作变化。
+	 * DEFAULT: true (suppress by default, let Timeline enable observation when needed).
+	 * 默认：true（默认禁止，让 Timeline 在需要时启用观察）
+	 * Set by active timeline node's bSuppressActionObservation. */
+	UPROPERTY()
+	bool bCurrentlySuppressingActionObservation = true;
+
 	/** Set of timeline nodes waiting for event triggers (index -> tag) */
 	UPROPERTY()
 	TMap<int32, FGameplayTag> PendingEventTriggers;
@@ -325,6 +339,15 @@ public:
 	/** Returns all members of the squad the ContextActor belongs to. */
 	UFUNCTION(BlueprintCallable, Category = "Narrative Squad")
 	bool GetSquadMembers(const AActor* ContextActor, TArray<AActor*>& OutMembers) const;
+
+	/**
+	 * Check if action observation should be suppressed for a given actor.
+	 * Returns true if the actor is in a scene that currently has bSuppressActionObservation enabled.
+	 * 检查是否应该禁止观察指定 actor 的动作。
+	 * 如果 actor 当前在一个启用了 bSuppressActionObservation 的场景中，则返回 true。
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Narrative Squad")
+	bool ShouldSuppressActionObservation(const AActor* ObservedActor) const;
 
 protected:
 	UPROPERTY()

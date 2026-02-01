@@ -5,19 +5,23 @@
 		"Cast": [
 			{
 				"NPCTemplateID": "Narrative_Human_Leader",
-				"RelativeTransform": {
-					"Rotation": {
+				"RelativeTransform":
+				{
+					"Rotation":
+					{
 						"X": 0,
 						"Y": 0,
 						"Z": 0,
 						"W": 1
 					},
-					"Translation": {
+					"Translation":
+					{
 						"X": 0,
 						"Y": 0,
 						"Z": 500
 					},
-					"Scale3D": {
+					"Scale3D":
+					{
 						"X": 1,
 						"Y": 1,
 						"Z": 1
@@ -27,19 +31,23 @@
 			},
 			{
 				"NPCTemplateID": "Narrative_Human_Guard",
-				"RelativeTransform": {
-					"Rotation": {
+				"RelativeTransform":
+				{
+					"Rotation":
+					{
 						"X": 0,
 						"Y": 0,
 						"Z": 0,
 						"W": 1
 					},
-					"Translation": {
+					"Translation":
+					{
 						"X": 400,
 						"Y": 100,
 						"Z": 0
 					},
-					"Scale3D": {
+					"Scale3D":
+					{
 						"X": 1,
 						"Y": 1,
 						"Z": 1
@@ -49,19 +57,23 @@
 			},
 			{
 				"NPCTemplateID": "Narrative_Orc_Slave",
-				"RelativeTransform": {
-					"Rotation": {
+				"RelativeTransform":
+				{
+					"Rotation":
+					{
 						"X": 0,
 						"Y": 0,
 						"Z": 0,
 						"W": 1
 					},
-					"Translation": {
+					"Translation":
+					{
 						"X": 300,
 						"Y": -200,
 						"Z": 0
 					},
-					"Scale3D": {
+					"Scale3D":
+					{
 						"X": 1,
 						"Y": 1,
 						"Z": 1
@@ -71,19 +83,23 @@
 			},
 			{
 				"NPCTemplateID": "Narrative_Orc_Slave",
-				"RelativeTransform": {
-					"Rotation": {
+				"RelativeTransform":
+				{
+					"Rotation":
+					{
 						"X": 0,
 						"Y": 0,
 						"Z": 0,
 						"W": 1
 					},
-					"Translation": {
+					"Translation":
+					{
 						"X": 400,
 						"Y": -250,
 						"Z": 0
 					},
-					"Scale3D": {
+					"Scale3D":
+					{
 						"X": 1,
 						"Y": 1,
 						"Z": 1
@@ -93,19 +109,23 @@
 			},
 			{
 				"NPCTemplateID": "Narrative_Orc_Slave",
-				"RelativeTransform": {
-					"Rotation": {
+				"RelativeTransform":
+				{
+					"Rotation":
+					{
 						"X": 0,
 						"Y": 0,
 						"Z": 0,
 						"W": 1
 					},
-					"Translation": {
+					"Translation":
+					{
 						"X": 350,
 						"Y": -150,
 						"Z": 0
 					},
-					"Scale3D": {
+					"Scale3D":
+					{
 						"X": 1,
 						"Y": 1,
 						"Z": 1
@@ -117,19 +137,23 @@
 		"Props": [
 			{
 				"PropClass": "/Script/Engine.BlueprintGeneratedClass'/Game/Blueprint/BP_Mine.BP_Mine_C'",
-				"RelativeTransform": {
-					"Rotation": {
+				"RelativeTransform":
+				{
+					"Rotation":
+					{
 						"X": 0,
 						"Y": 0,
 						"Z": 0,
 						"W": 1
 					},
-					"Translation": {
+					"Translation":
+					{
 						"X": -1050,
 						"Y": -300,
 						"Z": 0
 					},
-					"Scale3D": {
+					"Scale3D":
+					{
 						"X": 1,
 						"Y": 1,
 						"Z": 1
@@ -138,19 +162,23 @@
 			},
 			{
 				"PropClass": "/Script/Engine.BlueprintGeneratedClass'/Game/Blueprint/BP_Mine.BP_Mine_C'",
-				"RelativeTransform": {
-					"Rotation": {
+				"RelativeTransform":
+				{
+					"Rotation":
+					{
 						"X": 0,
 						"Y": 0,
 						"Z": 0,
 						"W": 1
 					},
-					"Translation": {
+					"Translation":
+					{
 						"X": 3000,
 						"Y": -150,
 						"Z": 0
 					},
-					"Scale3D": {
+					"Scale3D":
+					{
 						"X": 1,
 						"Y": 1,
 						"Z": 1
@@ -159,19 +187,23 @@
 			},
 			{
 				"PropClass": "/Script/Engine.BlueprintGeneratedClass'/Game/Blueprint/BP_Mine.BP_Mine_C'",
-				"RelativeTransform": {
-					"Rotation": {
+				"RelativeTransform":
+				{
+					"Rotation":
+					{
 						"X": 0,
-						"Y": 0,
+						"Y": -0,
 						"Z": 0,
 						"W": 1
 					},
-					"Translation": {
-						"X": 800,
+					"Translation":
+					{
+						"X": 2000,
 						"Y": -450,
 						"Z": 0
 					},
-					"Scale3D": {
+					"Scale3D":
+					{
 						"X": 1,
 						"Y": 1,
 						"Z": 1
@@ -180,19 +212,23 @@
 			},
 			{
 				"PropClass": "/Script/Engine.BlueprintGeneratedClass'/Game/Blueprint/BP_SmartObject_Guard.BP_SmartObject_Guard_C'",
-				"RelativeTransform": {
-					"Rotation": {
+				"RelativeTransform":
+				{
+					"Rotation":
+					{
 						"X": 0,
-						"Y": 0,
+						"Y": -0,
 						"Z": 0,
 						"W": 1
 					},
-					"Translation": {
-						"X": 2000,
+					"Translation":
+					{
+						"X": 1000,
 						"Y": 0,
 						"Z": 0
 					},
-					"Scale3D": {
+					"Scale3D":
+					{
 						"X": 1,
 						"Y": 1,
 						"Z": 1
@@ -202,77 +238,95 @@
 		],
 		"CompletionConditions": [
 			{
-				"Tag": {
+				"Tag":
+				{
 					"TagName": "Event.Death"
 				},
 				"Payload": "Tyrant Lord"
 			}
 		],
-		"bKeepPropsOnEnd": true,
-		"PostSceneStimulus": "The Tyrant Lord is dead! You are free from your slavery! You should celebrate your freedom or run away.",
-		"PostSceneProfessionID": "None",
-		"PostSceneProfessionPool": [
-			"Citizen",
-			"Farmer",
-			"Merchant"
-		],
 		"Timeline": [
 			{
 				"TimeOffset": 0,
-				"Trigger": {
-					"Tag": {
+				"Trigger":
+				{
+					"Tag":
+					{
 						"TagName": "None"
 					},
 					"Payload": ""
 				},
 				"PlotUpdate": "The mining camp is in full operation. The Orc slaves toil endlessly under the watchful eyes of the Guards. The Lord oversees the brutal work with cold satisfaction.",
-				"DirectiveOverride": {
+				"DirectiveOverride":
+				{
 					"TagName": "None"
 				},
-				"BarkID": "None"
+				"BarkID": "None",
+				"bSuppressActionObservation": true
 			},
 			{
 				"TimeOffset": 15,
-				"Trigger": {
-					"Tag": {
+				"Trigger":
+				{
+					"Tag":
+					{
 						"TagName": "None"
 					},
 					"Payload": ""
 				},
 				"PlotUpdate": "The slaves grow more restless. Whispers of rebellion start to circulate. The Guards tighten their patrols, sensing the tension.",
-				"DirectiveOverride": {
+				"DirectiveOverride":
+				{
 					"TagName": "Directive.Combat"
 				},
-				"BarkID": "None"
+				"BarkID": "None",
+				"bSuppressActionObservation": false
 			},
 			{
 				"TimeOffset": 10,
-				"Trigger": {
-					"Tag": {
+				"Trigger":
+				{
+					"Tag":
+					{
 						"TagName": "Event.PlayerDetected"
 					},
 					"Payload": ""
 				},
 				"PlotUpdate": "The stranger's presence emboldens the slaves! They rise up against their oppressors, attacking the Guards and the Lord!",
-				"DirectiveOverride": {
+				"DirectiveOverride":
+				{
 					"TagName": "Directive.Combat"
 				},
-				"BarkID": "None"
+				"BarkID": "None",
+				"bSuppressActionObservation": false
 			},
 			{
 				"TimeOffset": 5,
-				"Trigger": {
-					"Tag": {
+				"Trigger":
+				{
+					"Tag":
+					{
 						"TagName": "Event.State.Hostile"
 					},
 					"Payload": ""
 				},
 				"PlotUpdate": "The intruder has been deemed a threat! All Guards are ordered to eliminate the trespasser immediately. The slaves watch in terror as violence erupts.",
-				"DirectiveOverride": {
+				"DirectiveOverride":
+				{
 					"TagName": "Directive.Combat"
 				},
-				"BarkID": "None"
+				"BarkID": "None",
+				"bSuppressActionObservation": true
 			}
+		],
+		"bKeepPropsOnEnd": true,
+		"PostSceneStimulus": "The whole event is ended, you don't need to follow plot anymore, have a new life!!!",
+		"PostSceneProfessionID": "None",
+		"PostSceneProfessionPool": [
+			"Merchant",
+			"Farmer",
+			"Leader",
+			"Guard"
 		]
 	}
 ]

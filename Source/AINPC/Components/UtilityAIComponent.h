@@ -13,8 +13,18 @@ class AINPC_API UUtilityAIComponent : public UActorComponent
 {
 	GENERATED_BODY()
 
-public:	
+public:
 	UUtilityAIComponent();
+
+	// ========================================
+	// Action Change Events (Observation System)
+	// ========================================
+
+	/** Fired when this NPC's action changes (allows other NPCs to observe) */
+	DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnActionChanged, AActor*, NPC, UUtilityActionBase*, OldAction, UUtilityActionBase*, NewAction);
+
+	UPROPERTY(BlueprintAssignable, Category = "AI|Observation")
+	FOnActionChanged OnActionChanged;
 
 	// --- 配置 ---
 	// 在蓝图中指定 DataTable
