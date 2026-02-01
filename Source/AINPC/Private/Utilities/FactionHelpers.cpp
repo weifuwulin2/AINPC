@@ -89,6 +89,17 @@ namespace FactionHelpers
 		return "Neutral";
 	}
 
+	FString GetAttitudeDescription(float Attitude)
+	{
+		if (Attitude <= 10.0f) return TEXT("Sworn Enemy");
+		if (Attitude <= 25.0f) return TEXT("Hostile");
+		if (Attitude <= 40.0f) return TEXT("Distrustful");
+		if (Attitude <= 60.0f) return TEXT("Neutral");
+		if (Attitude <= 75.0f) return TEXT("Friendly");
+		if (Attitude <= 90.0f) return TEXT("Trusted Ally");
+		return TEXT("Sworn Ally");
+	}
+
 	bool AreActorsHostile(AActor* ActorA, AActor* ActorB)
 	{
 		if (!ActorA || !ActorB) return false;

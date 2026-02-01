@@ -30,16 +30,19 @@ void UAction_Flee::Enter_Implementation(AAIController* Controller)
 	// Save original movement speed
 	if (APawn* Pawn = Controller->GetPawn())
 	{
+		// Tag as fleeing (so TargetSelectionSubsystem can prioritize this target)
+		Pawn->Tags.AddUnique(FName("Status.Fleeing"));
+
 		if (ACharacter* Character = Cast<ACharacter>(Pawn))
 		{
 			if (UCharacterMovementComponent* MovementComp = Character->GetCharacterMovement())
 			{
 				OriginalMovementSpeed = MovementComp->MaxWalkSpeed;
-				
+
 				// Increase speed for fleeing
 				MovementComp->MaxWalkSpeed = OriginalMovementSpeed * FleeSpeedMultiplier;
-				
-				AINPC_LOG(Warning, "[Flee] Increased speed to %.0f (multiplier: %.1fx)", 
+
+				AINPC_LOG(Warning, "[Flee] Increased speed to %.0f (multiplier: %.1fx)",
 					MovementComp->MaxWalkSpeed, FleeSpeedMultiplier);
 			}
 		}
@@ -142,17 +145,22 @@ void UAction_Flee::Exit_Implementation(AAIController* Controller)
 		Controller->StopMovement();
 	}
 	
-	// Restore original movement speed
-	if (Controller && OriginalMovementSpeed > 0.0f)
+	// Restore original movement speed and remove fleeing tag
+	if (Controller)
 	{
 		if (APawn* Pawn = Controller->GetPawn())
 		{
-			if (ACharacter* Character = Cast<ACharacter>(Pawn))
+			Pawn->Tags.Remove(FName("Status.Fleeing"));
+
+			if (OriginalMovementSpeed > 0.0f)
 			{
-				if (UCharacterMovementComponent* MovementComp = Character->GetCharacterMovement())
+				if (ACharacter* Character = Cast<ACharacter>(Pawn))
 				{
-					MovementComp->MaxWalkSpeed = OriginalMovementSpeed;
-					AINPC_LOG(Log, "[Flee] Restored movement speed to %.0f", OriginalMovementSpeed);
+					if (UCharacterMovementComponent* MovementComp = Character->GetCharacterMovement())
+					{
+						MovementComp->MaxWalkSpeed = OriginalMovementSpeed;
+						AINPC_LOG(Log, "[Flee] Restored movement speed to %.0f", OriginalMovementSpeed);
+					}
 				}
 			}
 		}

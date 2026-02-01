@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [Unreleased] - 2026-01-31
+## [0.6.6] - 2026-02-01
 
 ### 🏗️ Major Architecture - Unified Event Bus
 - **New Subsystem**: `EventBusSubsystem` (World Subsystem)
@@ -23,7 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Documentation**: Added `docs/systems/ActionObservationSystem_Guide.md`.
 - **Faction Logic Unification**: Created `FactionHelpers` namespace.
   - **Centralization**: Moved scattered faction logic from `SensoryComponent`/`NarrativeSquad` to `FactionHelpers`.
-  - **API**: `AreActorsHostile`, `GetFaction`, `GetReputation`.
+  - **API**: `AreActorsHostile`, `GetFaction`, `GetReputation`, `GetAttitudeDescription` (String Helper).
 
 ### 🐛 Bug Fixes - Narrative & Event System
 - **Initialization Race Condition**: Fixed `NarrativeSquadSubsystem` spawning NPCs and allowing them to broadcast events before being registered in the Squad.

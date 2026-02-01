@@ -354,6 +354,13 @@ float UTargetSelectionSubsystem::CalculateTargetScore(
 		TARGET_LOG(Verbose, "Target %s is attacking me: +300", *TargetName);
 	}
 
+	// ✅ Fleeing Target Priority (chase the runner, not the worker)
+	if (Context == ETargetSelectionContext::Combat && Target->ActorHasTag(FName("Status.Fleeing")))
+	{
+		Score += 400.0f;  // Prioritize fleeing targets over passive ones
+		TARGET_LOG(Verbose, "Target %s is FLEEING: +400", *TargetName);
+	}
+
 	// ✅ Match Goal/Directive State
 	// If I am in Combat/Work/Social, I prefer targets who are appropriate for that state.
 	UGoalComponent* MyGoal = MyPawn->FindComponentByClass<UGoalComponent>();

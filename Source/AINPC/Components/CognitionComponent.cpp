@@ -18,6 +18,7 @@
 #include "UtilityAI/MentalStateInterpolation.h"
 #include "Components/MemoryComponent.h" // ✅ Added
 #include "Social/SocialTypes.h"         // ✅ Added
+#include "Utilities/FactionHelpers.h"   // ✅ Added for GetAttitudeDescription
 
 // ✅ Performance Tracking
 
@@ -650,15 +651,15 @@ FString UCognitionComponent::BuildWorldviewBlock(const FString& FactionStr)
 				if (Relations.Num() > 0)
 				{
 					WorldviewSection = "\n[WORLDVIEW / FACTIONS]\n";
+					// List own faction first so LLM knows who its allies are
+					WorldviewSection += FString::Printf(TEXT("%s: Your Faction (members are your allies)\n"), *FactionStr);
 					for (const auto& Pair : Relations)
 					{
-						FString RelDesc = "Neutral";
-						if (Pair.Value >= 75.0f) RelDesc = "Ally";
-						else if (Pair.Value <= 25.0f) RelDesc = "Enemy";
-						if (Pair.Key.ToString() == FactionStr) continue;
-						
-						WorldviewSection += FString::Printf(TEXT("%s: %s (%.0f/100)\n"), 
-							*Pair.Key.ToString(), *RelDesc, Pair.Value);
+						if (Pair.Key.ToString() == FactionStr) continue; // Already listed above
+						FString RelDesc = FactionHelpers::GetAttitudeDescription(Pair.Value);
+
+						WorldviewSection += FString::Printf(TEXT("%s: %s\n"),
+							*Pair.Key.ToString(), *RelDesc);
 					}
 				}
 			}

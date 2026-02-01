@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(Select-String -Pattern \"\\\\.json|\\\\.csv|\\\\.uasset\")",
-      "Bash(Select-Object -First 10)"
+      "Bash(Select-Object -First 10)",
+      "Bash(python -c:*)"
     ]
   }
 }

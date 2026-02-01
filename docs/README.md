@@ -17,6 +17,8 @@ Welcome to the AINPC Knowledge Base. This index serves as the central hub for al
 *   [**Jurisdiction System**](design/Maslow_Variables_Jurisdiction.md) - Rules defining whether the Engine, Utility AI, or LLM controls specific state variables.
 *   [**Utility AI Algorithm**](design/UtilityAI_TwoPhase_Algorithm.md) - Explanation of the specific scoring algorithm used.
 *   [**Narrative Evolution**](design/NarrativeEvolution_Design.md) - Design for Story Timeline, Directors, and Scenes.
+*   [**Unified Event Bus**](systems/UnifiedEventBus_Guide.md) - Guide to the new centralized event system.
+*   [**Action Observation**](systems/ActionObservationSystem_Guide.md) - Guide to the NPC observation and attention budget system.
 *   [**Universal Target Selection**](design/Universal_Target_Selection.md) - Design for Hybrid Rule-Based + LLM target acquisition.
 
 ### 🛠️ Configuration Guides

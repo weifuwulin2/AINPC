@@ -778,3 +778,10 @@ This file contains a log of commit messages for the AINPC project.
 - **Direct Sensory Suppression**: Added `bSuppressActionObservation` to `SensoryComponent` as a hard override.
 - **Docs**: Added `UnifiedEventBus_Guide.md` and `ActionObservationSystem_Guide.md`.
 - **Regression Note**: Narrative progression is currently reported as unstable/broken. Cause under investigation (possibly related to `ActivateScene` changes).
+
+## [2026-02-01] Refine Faction Helpers API
+**Type**: refactor
+**Scope**: FactionHelpers
+**Description**:
+- **Added**: GetAttitudeDescription(float Attitude) helper function to convert numeric reputation values into LLM-friendly string descriptions (e.g., "Trusted Ally", "Hostile").
+- **Benefit**: Standardizes attitude descriptions across prompt building logic.

@@ -82,4 +82,13 @@ namespace FactionHelpers
 	 *   AreActorsHostile(Guard1, Guard2) -> false (same faction)
 	 */
 	AINPC_API bool AreActorsHostile(AActor* ActorA, AActor* ActorB);
+
+	/**
+	 * Convert attitude value (0-100) to a human-readable semantic description for LLM context.
+	 * 将态度值转换为 LLM 可理解的语义描述。
+	 *
+	 * @param Attitude - Reputation value from 0 to 100
+	 * @return Descriptive string (e.g. "Sworn Enemy", "Hostile", "Distrustful", "Neutral", "Friendly", "Trusted Ally")
+	 */
+	AINPC_API FString GetAttitudeDescription(float Attitude);
 }

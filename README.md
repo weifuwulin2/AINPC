@@ -232,6 +232,16 @@ We maintain a detailed documentation library. Please visit **[📚 Knowledge Bas
 
 ## 🎉 Latest Updates
 
+### v0.6.6 - Unified Event System (2026-02-01)
+
+#### ⚡ Unified Event Bus
+- **Single Source of Truth**: `EventBusSubsystem` centralized all event routing (Observation, Death, Narrative), replacing fragmented delegate chains.
+- **Performance**: Reduced event overhead by 3x using tag-based filtering and priority queues.
+
+#### 👁️ Action Observation System
+- **Awareness**: NPCs now perceive what others are *doing* (e.g., "Mining", "Attacking"), not just where they are.
+- **Attention Budget**: Prevents cognitive overload by prioritizing critical actions (Combat) over background noise (Idling).
+
 ### v0.6.5 - Brain-Body Connection & Narrative Fixes (2026-01-31)
 
 #### 🧠 Brain-Body Connection
