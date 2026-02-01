@@ -380,6 +380,12 @@ protected:
 	/** Execute a timeline node (update plot/directive) */
 	void TriggerTimelineNode(int32 SquadID, int32 NodeIndex);
 
+	/** 
+	 * Checks if a timeline trigger condition is ALREADY met by the current world state.
+	 * Returns true if the condition is met (e.g., Player is already inside the trigger zone).
+	 */
+	bool CheckStateCondition(int32 SquadID, int32 NodeIndex, const FNarrativeEventMatcher& Matcher);
+
 	/** Clean up destroyed/invalid actors from all squads */
 	void CleanupInvalidActors();
 

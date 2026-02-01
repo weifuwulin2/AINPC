@@ -16,6 +16,7 @@
 #include "Social/SocialGameplayTags.h"
 #include "Utilities/AINPCHelpers.h"
 #include "Components/EmotionDisplayComponent.h"
+#include "Components/SphereComponent.h"
 
 
 void UNarrativeSquadSubsystem::Initialize(FSubsystemCollectionBase& Collection)
@@ -55,9 +56,16 @@ int32 UNarrativeSquadSubsystem::CreateSceneSquad(FString PlotOutline, TArray<FNa
 	Squad.CompletionConditions = CompletionConditions;
 	Squad.bIsActive = false;  // Scene waits for player to activate
 
+	// ✅ CRITICAL: Suppress action observation by default (even before activation)
+	// 关键：默认禁止动作观察（即使在激活之前）
+	// This prevents NPCs from observing each other during the spawn sequence
+	// 这可以防止 NPC 在 spawn 过程中互相观察
+	Squad.bCurrentlySuppressingActionObservation = true;
+
 	ActiveSquads.Add(NewID, Squad);
-	
-	NARRATIVE_LOG(Log, TEXT("[NarrativeSquad] Created Squad %d: %s"), NewID, *PlotOutline);
+
+	NARRATIVE_LOG(Log, TEXT("[NarrativeSquad] Created Squad %d (Action Observation SUPPRESSED by default): %s"),
+		NewID, *PlotOutline);
 	return NewID;
 }
 
@@ -1002,6 +1010,16 @@ void UNarrativeSquadSubsystem::TickTimeline(int32 SquadID)
 		// Check if this node has an event trigger
 		if (Node.Trigger.IsValid())
 		{
+			// ✅ STATE CHECK: Don't wait for event if the state is ALREADY true
+			// This prevents race conditions where the player is already inside the trigger when the node activates
+			if (CheckStateCondition(SquadID, Squad->CurrentTimelineIndex, Node.Trigger))
+			{
+				NARRATIVE_LOG(Warning, TEXT("📜 ⚡ State Condition Met Immediately: %s"), *Node.Trigger.Tag.ToString());
+				TriggerTimelineNode(SquadID, Squad->CurrentTimelineIndex);
+				Squad->CurrentTimelineIndex++;
+				continue; // Continue to next node immediately
+			}
+
 			// Add to pending triggers (wait for event)
 			if (!Squad->PendingEventTriggers.Contains(Squad->CurrentTimelineIndex))
 			{
@@ -1028,6 +1046,38 @@ void UNarrativeSquadSubsystem::TickTimeline(int32 SquadID)
 			NARRATIVE_LOG(Warning, TEXT("📜 Timeline Completed for Squad %d"), SquadID);
 		}
 	}
+}
+
+bool UNarrativeSquadSubsystem::CheckStateCondition(int32 SquadID, int32 NodeIndex, const FNarrativeEventMatcher& Matcher)
+{
+	FNarrativeSceneSquad* Squad = ActiveSquads.Find(SquadID);
+	if (!Squad) return false;
+
+	// Case 1: Player Detected (Overlap Check)
+	if (Matcher.Tag.MatchesTag(FGameplayTag::RequestGameplayTag("Event.PlayerDetected")))
+	{
+		// If we have an anchor with an EventTrigger, check if player is currently overlapping it
+		if (Squad->AssignedAnchor && Squad->AssignedAnchor->EventTrigger)
+		{
+			if (UWorld* World = GetWorld())
+			{
+				if (APlayerController* PC = World->GetFirstPlayerController())
+				{
+					if (APawn* PlayerPawn = PC->GetPawn())
+					{
+						bool bOverlapping = Squad->AssignedAnchor->EventTrigger->IsOverlappingActor(PlayerPawn);
+						if (bOverlapping)
+						{
+							NARRATIVE_LOG(Log, TEXT("   ✅ CheckStateCondition: Player is inside EventTrigger (Squad %d)"), SquadID);
+							return true;
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return false;
 }
 
 void UNarrativeSquadSubsystem::TriggerTimelineNode(int32 SquadID, int32 NodeIndex)
@@ -1159,7 +1209,12 @@ bool UNarrativeSquadSubsystem::ShouldSuppressActionObservation(const AActor* Obs
 
 	// 2. Get the squad
 	const FNarrativeSceneSquad* Squad = ActiveSquads.Find(SquadID);
-	if (!Squad || !Squad->bIsActive) return false;
+	if (!Squad) return false;
+
+	// ✅ CRITICAL FIX: Check suppression EVEN DURING SPAWN (bIsActive=false)
+	// 关键修复：即使在 spawn 阶段（bIsActive=false）也检查 suppression
+	// This prevents NPCs from observing each other during the spawn sequence
+	// 这可以防止 NPC 在 spawn 过程中互相观察
 
 	// 3. Return the current suppression state
 	return Squad->bCurrentlySuppressingActionObservation;
