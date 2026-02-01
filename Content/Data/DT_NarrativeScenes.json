@@ -265,6 +265,24 @@
 				"bSuppressActionObservation": true
 			},
 			{
+				"TimeOffset": 8,
+				"Trigger":
+				{
+					"Tag":
+					{
+						"TagName": "None"
+					},
+					"Payload": ""
+				},
+				"PlotUpdate": "The camp settles into its routine. The Guards watch the slaves closely, ready to punish any disobedience. If a slave stops working or tries to flee, the Guards will beat them back into line. The Lord demands absolute obedience.",
+				"DirectiveOverride":
+				{
+					"TagName": "Directive.Combat"
+				},
+				"BarkID": "None",
+				"bSuppressActionObservation": false
+			},
+			{
 				"TimeOffset": 15,
 				"Trigger":
 				{
@@ -274,7 +292,7 @@
 					},
 					"Payload": ""
 				},
-				"PlotUpdate": "The slaves grow more restless. Whispers of rebellion start to circulate. The Guards tighten their patrols, sensing the tension.",
+				"PlotUpdate": "The slaves grow more restless. Whispers of rebellion start to circulate. The Guards tighten their patrols, sensing the tension. Guards and Lord: if any slave tries to flee or rebel, attack them immediately!",
 				"DirectiveOverride":
 				{
 					"TagName": "Directive.Combat"
@@ -310,13 +328,13 @@
 					},
 					"Payload": ""
 				},
-				"PlotUpdate": "The intruder has been deemed a threat! All Guards are ordered to eliminate the trespasser immediately. The slaves watch in terror as violence erupts.",
+				"PlotUpdate": "The intruder has been deemed a threat! All Guards are ordered to eliminate the trespasser immediately. Any slaves attempting to flee must be stopped and punished. The slaves watch in terror as violence erupts.",
 				"DirectiveOverride":
 				{
 					"TagName": "Directive.Combat"
 				},
 				"BarkID": "None",
-				"bSuppressActionObservation": true
+				"bSuppressActionObservation": false
 			}
 		],
 		"bKeepPropsOnEnd": true,
