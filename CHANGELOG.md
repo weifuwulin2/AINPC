@@ -145,7 +145,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Fixed Death Event Logging**: NPCs now report death events using their Narrative Name (e.g., "Grommash") instead of internal Personality IDs (e.g., "Paranoid").
   - Updated `AINPCHelpers::GetSmartActorName` to prioritize `NPCDefinitionComponent::GetDisplayName()`.
 - **Fixed Timeline Configuration**: Corrected `DT_NarrativeScenes` Node 2 using `Directive.Social` instead of `Directive.Combat`.
-- **Fixed Tag Confusion**: Clarified combat logic priority: `Directive.Combat` (Unlock) > `Status.InScene` (Lock).
+## [Unreleased] - 2026-02-02
+
+### 📖 Documentation - Neural Utility
+- **Design Clarification**: Added `Neural_Utility_Architecture.md` to the documentation index.
+- **Implementation Strategy**: Clarified "Stage 1" approach: use Manual Vector Definition (Explicit Dimensions) for MVP before moving to full Embedding models.
 
 ## [Unreleased] - 2026-01-29
 

@@ -584,12 +584,11 @@ void USensoryComponent::ReceiveSpeech(AActor* Speaker, FString Message)
     Event.Target = GetOwner();
     Event.Verb = AINPCTags::Social_Chat;
     Event.Content = FString::Printf(TEXT("%s said to you: \"%s\". Listen and respond naturally to what they just said."), *SpeakerName, *Message);
-    Event.Magnitude = 0.8f; 
+    Event.Magnitude = 0.8f;
 
-    if (ProcessEventFilter(Event))
-    {
-        OnSemanticEventSensed.Broadcast(Event);
-    }
+    // Speech events bypass ProcessEventFilter entirely - player explicitly sent a message
+    AINPC_LOG(Warning, "🗣️ Direct speech - bypassing filter, broadcasting event");
+    OnSemanticEventSensed.Broadcast(Event);
 
     // ✅ 5. Player Speech Interruption Logic (打断机制)
     // When PLAYER speaks to this NPC, boost Loneliness to trigger Social directive

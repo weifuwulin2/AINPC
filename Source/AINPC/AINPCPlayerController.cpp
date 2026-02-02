@@ -120,14 +120,14 @@ void AAINPCPlayerController::HandleChatMessage(const FString& Message)
     APawn* MyPawn = GetPawn();
     if (!MyPawn) return;
 
-    float SpeakRangeSq = 1200.0f * 1200.0f; // 12 meters
-    
+    float SpeakRangeSq = 1500.0f * 1500.0f; // 15 meters
+
     APawn* BestTarget = nullptr;
-    float MinDistSq = FLT_MAX;
-    
+    float BestScore = -FLT_MAX;
+    float BestDistSq = FLT_MAX;
+
     FVector PlayerLoc = MyPawn->GetActorLocation();
-    // Use Camera rotation (ControlRotation) to determine where player is LOOKING
-    FVector PlayerLookDir = GetControlRotation().Vector(); 
+    FVector PlayerLookDir = GetControlRotation().Vector();
 
     for (TActorIterator<APawn> It(GetWorld()); It; ++It)
     {
@@ -136,33 +136,32 @@ void AAINPCPlayerController::HandleChatMessage(const FString& Message)
         if (!IsValid(NPC) || NPC->IsPendingKillPending()) continue;
         if (NPC->ActorHasTag("Dead")) continue;
 
-        // Filter: Must have Controller and SensoryComponent
         AController* NPCCon = NPC->GetController();
         if (!NPCCon) continue;
         if (!NPCCon->FindComponentByClass<USensoryComponent>()) continue;
 
         FVector NPCLoc = NPC->GetActorLocation();
         float DistSq = FVector::DistSquared(PlayerLoc, NPCLoc);
-        
+
         if (DistSq < SpeakRangeSq)
         {
-            // Direction Check: Must be roughly in front
+            // Score: prefer NPCs the player is looking at, but don't require it
             FVector ToNPC = (NPCLoc - PlayerLoc).GetSafeNormal();
             float Dot = FVector::DotProduct(PlayerLookDir, ToNPC);
-            
-            // Dot > 0.5 means within 60 degrees of center (120 degree cone)
-            if (Dot > 0.5f)
+
+            // Score = direction bonus (0~1) - distance penalty (0~1)
+            float NormDist = FMath::Sqrt(DistSq) / 1500.0f;
+            float Score = Dot * 0.6f + (1.0f - NormDist) * 0.4f;
+
+            if (Score > BestScore)
             {
-                // Pick closest one in the cone
-                if (DistSq < MinDistSq)
-                {
-                    MinDistSq = DistSq;
-                    BestTarget = NPC;
-                }
+                BestScore = Score;
+                BestDistSq = DistSq;
+                BestTarget = NPC;
             }
         }
     }
-    
+
     if (BestTarget)
     {
          if (AController* NPCController = BestTarget->GetController())
@@ -170,13 +169,13 @@ void AAINPCPlayerController::HandleChatMessage(const FString& Message)
              if (USensoryComponent* Sensory = NPCController->FindComponentByClass<USensoryComponent>())
              {
                  Sensory->ReceiveSpeech(MyPawn, Message);
-                 UE_LOG(LogTemp, Log, TEXT("[Chat] 🗣️ Sent message to: %s (Dist: %.1fm)"), 
-                     *BestTarget->GetName(), FMath::Sqrt(MinDistSq)/100.0f);
+                 UE_LOG(LogTemp, Warning, TEXT("[Chat] 🗣️ Sent message to: %s (Dist: %.1fm, Score: %.2f)"),
+                     *BestTarget->GetName(), FMath::Sqrt(BestDistSq)/100.0f, BestScore);
              }
          }
     }
     else
     {
-        UE_LOG(LogTemp, Warning, TEXT("[Chat] ❌ No valid NPC found in front of player (Range 12m)."));
+        UE_LOG(LogTemp, Warning, TEXT("[Chat] ❌ No valid NPC found near player (Range 15m)."));
     }
 }

@@ -266,11 +266,17 @@ void UCognitionComponent::ProcessStimulus(FString SituationDescription)
 	// 7. Rate Limiting & Send
 	float CurrentTime = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f;
 	bool bIsHighPriority = SituationDescription.Contains(TEXT("HOSTILE")) || SituationDescription.Contains(TEXT("DANGER"));
+	bool bIsPlayerSpeech = SituationDescription.Contains(TEXT("said to you"));
 	float Cooldown = bIsHighPriority ? 1.5f : 4.0f;
-	
-	if (CurrentTime - LastLLMRequestTime < Cooldown) {
-		 UE_LOG(LogTemp, Error, TEXT("[Cognition] ❌ Exiting: Rate Limited. Time: %.2f, Last: %.2f, Cd: %.2f"), CurrentTime, LastLLMRequestTime, Cooldown);
-		 return; 
+
+	if (bIsPlayerSpeech)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Cognition] ✅ Player Speech detected - bypassing rate limit"));
+	}
+	else if (CurrentTime - LastLLMRequestTime < Cooldown)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[Cognition] ❌ Exiting: Rate Limited. Time: %.2f, Last: %.2f, Cd: %.2f"), CurrentTime, LastLLMRequestTime, Cooldown);
+		return;
 	}
 	LastLLMRequestTime = CurrentTime;
 	

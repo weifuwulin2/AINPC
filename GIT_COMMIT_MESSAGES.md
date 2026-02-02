@@ -4,6 +4,23 @@ This file contains a log of commit messages for the AINPC project.
 
 ---
 
+## [2026-02-02] Targeted Chat & Narrative Context
+**Type**: feat
+**Scope**: Cognition/Sensory
+**Description**:
+- **Chat**: Implemented 12m/120° cone targeting for player chat in `AINPCPlayerController`.
+- **Sensory**: Added player speech interruption logic (boosts Loneliness).
+- **Cognition**: Injected Narrative Plot Context into LLM prompts.
+- **Fix**: Allowed "Neutral" faction to bypass data readiness checks.
+
+## [2026-02-02] Neural Utility Architecture Docs
+**Type**: docs
+**Scope**: Documentation
+**Description**:
+- **Design**: Detailed the "Neural Utility" architecture (System 1/System 2).
+- **Index**: Added `Neural_Utility_Architecture.md` to `docs/README.md`.
+- **Strategy**: Established Stage 1 (Explicit Vector Dimensions) as the immediate implementation path.
+
 ## [2026-01-31] Refactor CalculateScore Function
 **Type**: refactor
 **Scope**: UtilityActionBase

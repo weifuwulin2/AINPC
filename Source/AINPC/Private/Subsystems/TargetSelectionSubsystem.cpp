@@ -58,8 +58,19 @@ AActor* UTargetSelectionSubsystem::SelectTarget(
 
 		if (!bIsDead)
 		{
+			// Squad members bypass distance check for cache validation
+			bool bCachedIsSquadMember = false;
+			if (UNarrativeSquadSubsystem* NarrativeSys = Controller->GetWorld()->GetSubsystem<UNarrativeSquadSubsystem>())
+			{
+				TArray<AActor*> SquadMembers;
+				if (NarrativeSys->GetSquadMembers(MyPawn, SquadMembers))
+				{
+					bCachedIsSquadMember = SquadMembers.Contains(CachedTarget);
+				}
+			}
+
 			float Distance = FVector::Dist(MyPawn->GetActorLocation(), CachedTarget->GetActorLocation());
-			if (Distance <= Config.MaxDistance)
+			if (bCachedIsSquadMember || Distance <= Config.MaxDistance)
 			{
 				// ✅ FIX: Validate Combat Policy for cached targets
 				// 修复：为缓存目标验证战斗策略
@@ -550,21 +561,39 @@ bool UTargetSelectionSubsystem::IsValidTarget(
 
 	// Check distance
 	float Distance = FVector::Dist(MyPawn->GetActorLocation(), Target->GetActorLocation());
-	
-	// ✅ Combat Context Range Boost
-	// Allow selecting targets further away in combat to prevent "freezing" when enemy is visible but out of standard range.
-	// We can select them, then MoveTo will handle closing the distance.
-	float EffectiveMaxDist = Config.MaxDistance;
-	if (Context == ETargetSelectionContext::Combat)
+
+	// ✅ Squad members bypass distance check entirely (narrative omniscience)
+	bool bIsSquadMember = false;
+	if (UNarrativeSquadSubsystem* NarrativeSys = MyPawn->GetWorld()->GetSubsystem<UNarrativeSquadSubsystem>())
 	{
-		EffectiveMaxDist = FMath::Max(Config.MaxDistance * 2.0f, 6000.0f); 
+		TArray<AActor*> SquadMembers;
+		if (NarrativeSys->GetSquadMembers(MyPawn, SquadMembers))
+		{
+			bIsSquadMember = SquadMembers.Contains(Target);
+		}
 	}
 
-	if (Distance > EffectiveMaxDist)
+	if (!bIsSquadMember)
 	{
-		TARGET_LOG(Verbose, "   ❌ REJECTED: Distance %.0f > MaxDistance %.0f (Effective: %.0f)", 
-			Distance, Config.MaxDistance, EffectiveMaxDist);
-		return false;
+		// ✅ Combat Context Range Boost
+		// Allow selecting targets further away in combat to prevent "freezing" when enemy is visible but out of standard range.
+		// We can select them, then MoveTo will handle closing the distance.
+		float EffectiveMaxDist = Config.MaxDistance;
+		if (Context == ETargetSelectionContext::Combat)
+		{
+			EffectiveMaxDist = FMath::Max(Config.MaxDistance * 2.0f, 6000.0f);
+		}
+
+		if (Distance > EffectiveMaxDist)
+		{
+			TARGET_LOG(Verbose, "   ❌ REJECTED: Distance %.0f > MaxDistance %.0f (Effective: %.0f)",
+				Distance, Config.MaxDistance, EffectiveMaxDist);
+			return false;
+		}
+	}
+	else
+	{
+		TARGET_LOG(Verbose, "   🌐 Squad member %s - bypassing distance check (Dist: %.0f)", *Target->GetName(), Distance);
 	}
 
 	// Context-specific validation
