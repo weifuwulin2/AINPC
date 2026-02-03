@@ -51,6 +51,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "AI | Memory")
 	FString GetAllRecentMemoriesAsString();
 
+	// Get top N memories by importance score (for token-efficient Dreaming)
+	UFUNCTION(BlueprintCallable, Category = "AI | Memory")
+	FString GetTopMemoriesAsString(int32 Limit = 15);
+
 	// Receive insights from LLM and consolidate them as long-term memory
 	UFUNCTION(BlueprintCallable, Category = "AI | Memory")
 	void ConsolidateMemories(const TArray<FString>& NewInsights);

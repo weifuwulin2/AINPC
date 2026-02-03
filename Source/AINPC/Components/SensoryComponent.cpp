@@ -1172,7 +1172,7 @@ void USensoryComponent::HandleObservedActionChange(AActor* NPC, UUtilityActionBa
         FString NPCDesc = DescribeActorWithRelationship(NPC);
         Event.Content = FString::Printf(TEXT("I see %s changed action from %s to %s"),
             *NPCDesc, *OldActionName, *ActionName);
-        Event.Magnitude = 0.3f; // Medium priority
+        Event.Magnitude = FactionHelpers::AreActorsHostile(GetOwner(), NPC) ? 0.6f : 0.3f;
 
         OnSemanticEventSensed.Broadcast(Event);
         return;

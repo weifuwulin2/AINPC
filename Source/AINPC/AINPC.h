@@ -14,6 +14,7 @@ DECLARE_LOG_CATEGORY_EXTERN(LogAINPCSocial, Log, All);     // Social interaction
 DECLARE_LOG_CATEGORY_EXTERN(LogAINPCUtility, Log, All);    // Utility AI (Scoring, Actions)
 DECLARE_LOG_CATEGORY_EXTERN(LogAINPCNarrative, Log, All);  // Narrative Timeline (Squad, Scene, Events)
 DECLARE_LOG_CATEGORY_EXTERN(LogAINPCTargetSelection, Log, All);  // Target Selection (Combat, Social, etc.)
+DECLARE_LOG_CATEGORY_EXTERN(LogAINPCLLM, Log, All);             // LLM Communication (Roleplay, Functional, HTTP)
 
 /**
  * Logging macros with automatic class name prefix.
@@ -62,3 +63,7 @@ DECLARE_LOG_CATEGORY_EXTERN(LogAINPCTargetSelection, Log, All);  // Target Selec
 /** Target Selection Log: Target selection process, scoring, caching. */
 #define TARGET_LOG(Verbosity, Format, ...) \
     UE_LOG(LogAINPCTargetSelection, Verbosity, TEXT("[%s] " Format), *FString(__FUNCTION__).Left(FString(__FUNCTION__).Find(TEXT("::"))), ##__VA_ARGS__)
+
+/** LLM Log: API requests, responses, prompt building, token usage. */
+#define LLM_LOG(Verbosity, Format, ...) \
+    UE_LOG(LogAINPCLLM, Verbosity, TEXT("[%s] " Format), *FString(__FUNCTION__).Left(FString(__FUNCTION__).Find(TEXT("::"))), ##__VA_ARGS__)

@@ -92,6 +92,14 @@ public:
 	UPROPERTY(VisibleAnywhere, Category = "AI | Cognition")
 	FString CurrentDecisionContext;
 
+	// ✅ Last Speaker Tracking (for target selection priority)
+	UPROPERTY(VisibleAnywhere, Category = "AI | Cognition")
+	TWeakObjectPtr<AActor> LastSpeaker;
+
+	UPROPERTY(VisibleAnywhere, Category = "AI | Cognition")
+	float LastSpeakerTime = -999.0f;
+
+
 protected:
 	UPROPERTY(VisibleAnywhere, Category = "AI | Cognition")
 	EContextLOD CurrentLOD = EContextLOD::Standard;
@@ -128,8 +136,8 @@ private:
 	bool CheckAmygdalaHijack(const FString& SituationDescription);
 	bool IsDataReady(const FString& PersonalityID, const FString& FactionStr, const FString& SituationDescription);
 	
-	FString BuildIdentityBlock(const FString& RoleDesc, const FString& PersonalityID, const FString& FactionStr);
-	FString BuildWorldviewBlock(const FString& FactionStr);
+	FString BuildIdentityBlock(const FString& RoleDesc, const FString& PersonalityID, const FString& FactionStr, bool bFullDetail);
+	FString BuildWorldviewBlock(const FString& FactionStr, const FString& SituationDescription);
 	FString BuildContextBlock(const FString& ProfessionName, const FString& ProfessionDesc);
 	FString BuildVolatileBlock(const FString& Situation, const FString& Memories, const FString& GlobalHistory);
 

@@ -208,64 +208,7 @@ void UCognitionComponent::ProcessStimulus(FString SituationDescription)
 		return;
 	}
 
-	// 5. Build Prompt Blocks...
-	FString IdentityBlock = BuildIdentityBlock(RoleDesc, PersonalityIDStr, FactionStr);
-	FString WorldviewBlock = BuildWorldviewBlock(FactionStr);
-	
-	FString ProfessionName = "", ProfessionDesc = "";
-	if (AAIController* AICon = Cast<AAIController>(GetOwner()))
-		if (UGoalComponent* Goal = AICon->FindComponentByClass<UGoalComponent>()) {
-			ProfessionName = Goal->ProfessionConfig.ProfessionName.ToString();
-			ProfessionDesc = Goal->ProfessionConfig.Description;
-		}
-	FString ContextBlock = BuildContextBlock(ProfessionName, ProfessionDesc);
-	
-	FString GlobalHistory = "";
-	if (UWorld* World = GetWorld())
-		if (UNarrativeDirectorSubsystem* Dir = World->GetSubsystem<UNarrativeDirectorSubsystem>())
-			GlobalHistory = Dir->GetWorldStateDescription(3);
-			
-	// Pass empty memories for now if checking logic
-	FString ContextMemory = "None"; 
-    // Wait, need to fix Memory Logic above or just grab it?
-    // Re-inserting Memory Logic here to be safe and complete...
-	if (MemoryComp) {
-		float CurrentGameTime = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.f;
-		TArray<FMemoryItem> Memories = MemoryComp->RetrieveRelevantMemories(SituationDescription, 5);
-        ContextMemory = "";
-		for (const FMemoryItem& Item : Memories) ContextMemory += FString::Printf(TEXT("- %s\n"), *MemoryComp->GetFormattedDescription(Item, CurrentGameTime));
-	}
-    
-	FString VolatileBlock = BuildVolatileBlock(SituationDescription, ContextMemory, GlobalHistory);
-
-	// 6. Assemble Final Prompt
-		// 0. Static Instructions (Rules) - MOVED TO TOP FOR CACHING
-	// If this is at the bottom, the Volatile Stimuli block (which changes every frame)
-	// would break the prefix cache for these 500+ tokens.
-	FString InstructionsBlock = TEXT(
-		"IMPORTANT Instructions:\n"
-		"1. [DEFICIT MODEL] 'Boredom' and 'Loneliness' reflect unmet needs (GROW over time). 'Indignity' and 'Threat' are reactions (DECAY over time).\n"
-		"2. [STRATEGY] You MUST output an 'Intention' that overrides your fear if necessary, OR respects it.\n"
-		"3. [COWARDICE RULE] If you are a COWARD and Threat is 'Strong'/'Extreme', Intention MUST be 'Flee' or 'Beg', unless you are cornered.\n"
-		"4. [JURISDICTION] Do NOT output Hunger/Fatigue (Engine manages them).\n"
-		"5. [EMOTION STRICT] 'Emotion' MUST be EXACTLY one of: Neutral, Angry, Scared, Sad, Happy, Curious, Disgust. ABSOLUTELY NO OTHER VALUES (e.g., 'Suspicious', 'Confused', 'Anxious'). If you feel 'suspicious', use 'Curious'. If uncertain, use 'Neutral'.\n"
-		"6. [MEMORY TIME] React ONLY to [JUST NOW] memories. [X MIN AGO] and [HISTORY] are context only. [RESOLVED] events are already handled - do NOT react again.\n"
-		"7. [FACTION RULE] Your [WORLDVIEW / FACTIONS] section defines who is friend and foe. "
-			"When you see 'YOUR ENEMY' or 'HOSTILE ENEMY', raise Perceived_Threat and set Intention to 'Attack'. "
-			"When you see 'YOUR ALLY' being killed by an ENEMY, feel Angry and set Intention to 'Attack' the killer. "
-			"When YOUR ALLY kills an ENEMY, this is EXPECTED - do NOT condemn your ally. React with relief or approval. "
-			"NEVER attack or condemn members of your own faction. Enemies of your faction deserve hostility.\n"
-	);
-
-	FString Prompt = FString::Printf(TEXT(
-		"%s\n" // 0. Instructions (Static)
-		"%s"   // 1. Identity (Static)
-		"%s\n" // 2. Worldview (Semi-Static)
-		"%s\n" // 3. Context (Semi-Static)
-		"%s\n" // 4. Volatile (Timestamps/Stimuli)
-	), *InstructionsBlock, *IdentityBlock, *WorldviewBlock, *ContextBlock, *VolatileBlock);
-
-	// 7. Rate Limiting & Send
+	// 5. Rate Limiting (check BEFORE building prompt to avoid wasted work)
 	float CurrentTime = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f;
 	bool bIsHighPriority = SituationDescription.Contains(TEXT("HOSTILE")) || SituationDescription.Contains(TEXT("DANGER"));
 	bool bIsPlayerSpeech = SituationDescription.Contains(TEXT("said to you"));
@@ -273,20 +216,63 @@ void UCognitionComponent::ProcessStimulus(FString SituationDescription)
 
 	if (bIsPlayerSpeech)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[Cognition] ✅ Player Speech detected - bypassing rate limit"));
+		UE_LOG(LogTemp, Warning, TEXT("[Cognition] Player Speech detected - bypassing rate limit"));
 	}
 	else if (CurrentTime - LastLLMRequestTime < Cooldown)
 	{
-		UE_LOG(LogTemp, Error, TEXT("[Cognition] ❌ Exiting: Rate Limited. Time: %.2f, Last: %.2f, Cd: %.2f"), CurrentTime, LastLLMRequestTime, Cooldown);
+		UE_LOG(LogTemp, Verbose, TEXT("[Cognition] Rate Limited. Time: %.2f, Last: %.2f, Cd: %.2f"), CurrentTime, LastLLMRequestTime, Cooldown);
 		return;
 	}
 	LastLLMRequestTime = CurrentTime;
-	
-	AINPC_LOG(Warning, TEXT("━━━━━━━━━━ [Cognition] 📤 LLM REQUEST ━━━━━━━━━━"));
+
+	// 6. Build Prompt Blocks (token-optimized)
+	// Full detail only for high-priority or player speech; simplified for routine stimuli
+	bool bFullDetail = bIsHighPriority || bIsPlayerSpeech || (CurrentLOD == EContextLOD::Standard);
+
+	FString IdentityBlock = BuildIdentityBlock(RoleDesc, PersonalityIDStr, FactionStr, bFullDetail);
+	FString WorldviewBlock = BuildWorldviewBlock(FactionStr, SituationDescription);
+
+	FString ProfessionName = "", ProfessionDesc = "";
+	if (AAIController* AICon = Cast<AAIController>(GetOwner()))
+		if (UGoalComponent* Goal = AICon->FindComponentByClass<UGoalComponent>()) {
+			ProfessionName = Goal->ProfessionConfig.ProfessionName.ToString();
+			ProfessionDesc = Goal->ProfessionConfig.Description;
+		}
+	FString ContextBlock = BuildContextBlock(ProfessionName, ProfessionDesc);
+
+	// Conditional World State: only include for high-priority/player speech
+	FString GlobalHistory = "";
+	if (bFullDetail)
+	{
+		if (UWorld* World = GetWorld())
+			if (UNarrativeDirectorSubsystem* Dir = World->GetSubsystem<UNarrativeDirectorSubsystem>())
+				GlobalHistory = Dir->GetWorldStateDescription(3);
+	}
+
+	// Memory retrieval
+	FString ContextMemory = "None";
+	if (MemoryComp) {
+		float CurrentGameTime = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.f;
+		TArray<FMemoryItem> Memories = MemoryComp->RetrieveRelevantMemories(SituationDescription, 5);
+		ContextMemory = "";
+		for (const FMemoryItem& Item : Memories) ContextMemory += FString::Printf(TEXT("- %s\n"), *MemoryComp->GetFormattedDescription(Item, CurrentGameTime));
+	}
+
+	FString VolatileBlock = BuildVolatileBlock(SituationDescription, ContextMemory, GlobalHistory);
+
+	// 7. Assemble Final Prompt (Instructions moved to LLMCommunicator system prompt)
+	FString Prompt = FString::Printf(TEXT(
+		"%s"   // 1. Identity
+		"%s\n" // 2. Worldview (filtered)
+		"%s\n" // 3. Context
+		"%s\n" // 4. Volatile
+	), *IdentityBlock, *WorldviewBlock, *ContextBlock, *VolatileBlock);
+
+	AINPC_LOG(Warning, TEXT("━━━━━━━━━━ [Cognition] LLM REQUEST ━━━━━━━━━━"));
 	AINPC_LOG(Warning, TEXT("%s"), *Prompt);
 	AINPC_LOG(Warning, TEXT("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"));
-	
-	LLMService->SendRequest(Prompt, FOnLLMResponse::CreateUObject(this, &UCognitionComponent::OnLLMReply));
+
+	LLMService->SendRoleplayRequest(Prompt, FOnLLMResponse::CreateUObject(this, &UCognitionComponent::OnLLMReply));
 }
 
 void UCognitionComponent::OnLLMReply(bool bSuccess, const FMentalState& NewState)
@@ -348,23 +334,29 @@ void UCognitionComponent::StartDreaming()
 {
 	if (!MemoryComp || !LLMService) return;
 
-	// 1. 获取流水账
-	FString DailyLogs = MemoryComp->GetAllRecentMemoriesAsString();
+	// 1. Get top memories by importance (token-efficient, skip low-value noise)
+	FString DailyLogs = MemoryComp->GetTopMemoriesAsString(15);
 	if (DailyLogs.IsEmpty()) return;
 
-	// 2. 构造 Prompt (强制让 LLM 输出 JSON 数组，方便代码解析)
-	FString Prompt = FString::Printf(TEXT(
-		"Here are my recent memories:\n%s\n"
-		"Task: Summarize these events into 3 concise, high-level insights about the world or the player.\n"
-		"Output Format: A pure JSON array of strings. Example: [\"Player is hostile\", \"Food is scarce\"]\n"
-		"Do NOT output markdown."
-	), *DailyLogs);
+	// 2. Functional request: deterministic analysis, capped output
+	FString SystemPrompt = TEXT(
+		"You are a memory consolidation AI. Analyze NPC memories and extract key insights.\n"
+		"Output Format: A pure JSON array of 3 strings. Example: [\"Player is hostile\", \"Food is scarce\"]\n"
+		"Do NOT output markdown. Do NOT explain."
+	);
 
-	AINPC_LOG(Log, "[Dreaming] Sending logs to LLM...");
+	FString UserPrompt = FString::Printf(TEXT("Here are my recent memories:\n%s"), *DailyLogs);
 
-	// 3. 发送请求 (注意：这里我们复用 LLMService，但需要 LLMCommunicator 支持返回原始 String 的回调)
-	// 假设你的 LLMCommunicator 有一个 SendRequestRaw 或者你重载了回调，这里展示逻辑核心
-	LLMService->SendRequestRaw(Prompt, FOnLLMResponseRaw::CreateUObject(this, &UCognitionComponent::OnDreamingAnalysisComplete));
+	AINPC_LOG(Log, "[Dreaming] Sending %d top memories to LLM...", 15);
+
+	LLMService->SendFunctionalRequest(
+		SystemPrompt,
+		UserPrompt,
+		FOnLLMResponseRaw::CreateUObject(this, &UCognitionComponent::OnDreamingAnalysisComplete),
+		0.3f,   // Low temperature for deterministic analysis
+		false,  // No JSON mode (output is JSON array, not object)
+		256     // Cap output tokens
+	);
 }
 
 void UCognitionComponent::OnDreamingAnalysisComplete(bool bSuccess, const FString& RawResponse)
@@ -541,14 +533,14 @@ bool UCognitionComponent::IsDataReady(const FString& PersonalityID, const FStrin
 	return true;
 }
 
-FString UCognitionComponent::BuildIdentityBlock(const FString& RoleDesc, const FString& PersonalityID, const FString& FactionStr)
+FString UCognitionComponent::BuildIdentityBlock(const FString& RoleDesc, const FString& PersonalityID, const FString& FactionStr, bool bFullDetail)
 {
-	// 1. Basic Role Info
+	// 1. Basic Role Info (always included)
 	FString RoleSection = FString::Printf(TEXT(
 		"You are: %s (Faction: %s)\n"
 		"Role: %s\n"), *PersonalityID, *FactionStr, *RoleDesc);
 
-	// 2. Behavioral Guidelines (Static)
+	// 2. Behavioral Guidelines (always included - affects decision making)
 	FString ActualBehavioralGuidelines = BehavioralGuidelines;
 	if (AAIController* AIController = Cast<AAIController>(GetOwner()))
 	{
@@ -568,7 +560,36 @@ FString UCognitionComponent::BuildIdentityBlock(const FString& RoleDesc, const F
 		RoleSection += FString::Printf(TEXT("Rules: %s\n"), *ActualBehavioralGuidelines);
 	}
 
-	// 3. Faction Description (Static)
+	// 3. Zombie Override (always included - fundamental identity)
+	if (PersonalityID.Contains(TEXT("Zombie")) || FactionStr.Contains(TEXT("Zombie")))
+	{
+		RoleSection += TEXT("\n[INSTINCTS] Driven purely by insatiable hunger for living flesh. No fear, no pain, no higher logic.\n[LIMITATION] Brain rot preventing complex speech.\n");
+	}
+
+	// --- Simplified Mode: Return early with minimal identity ---
+	if (!bFullDetail)
+	{
+		// Still include name for dialogue
+		FString CharName = "Unknown";
+		if (AAIController* AICon = Cast<AAIController>(GetOwner()))
+		{
+			APawn* ControlledPawn = AICon->GetPawn();
+			UNPCDefinitionComponent* DefComp = nullptr;
+			if (ControlledPawn) DefComp = ControlledPawn->FindComponentByClass<UNPCDefinitionComponent>();
+			if (!DefComp) DefComp = AICon->FindComponentByClass<UNPCDefinitionComponent>();
+			if (DefComp)
+			{
+				FNPCNameDef NameDef;
+				if (DefComp->GetNameDef(NameDef)) CharName = FString::Printf(TEXT("%s %s"), *NameDef.FirstName, *NameDef.Surname);
+			}
+		}
+		RoleSection += FString::Printf(TEXT("Name: %s\n"), *CharName);
+		return RoleSection;
+	}
+
+	// --- Full Detail Mode: Include complete backstory ---
+
+	// 4. Faction Description
 	FString FactionDescription = "";
 	if (UNPCDefinitionComponent* DefComp = GetOwner()->FindComponentByClass<UNPCDefinitionComponent>())
 	{
@@ -584,13 +605,7 @@ FString UCognitionComponent::BuildIdentityBlock(const FString& RoleDesc, const F
 		RoleSection += FString::Printf(TEXT("Faction Identity: %s\n"), *FactionDescription);
 	}
 
-	// 4. Zombie Override (Static)
-	if (PersonalityID.Contains(TEXT("Zombie")) || FactionStr.Contains(TEXT("Zombie")))
-	{
-		RoleSection += TEXT("\n[INSTINCTS] Driven purely by insatiable hunger for living flesh. No fear, no pain, no higher logic.\n[LIMITATION] Brain rot preventing complex speech.\n");
-	}
-
-	// 5. Backstory Assembly
+	// 5. Full Backstory Assembly — prescriptive, not a fact sheet
 	FString BackstorySection = "";
 	if (AAIController* AICon = Cast<AAIController>(GetOwner()))
 	{
@@ -603,18 +618,16 @@ FString UCognitionComponent::BuildIdentityBlock(const FString& RoleDesc, const F
 		{
 			 FString CharName = "Unknown";
 			 FString OceanTraits = "Balanced";
-			 FString HistoryDesc = "None";
-			 FString PhobiaStr = "None";
+			 FString HistoryDesc = "";
+			 FString PhobiaStr = "";
 			 FString MentalScar = "";
-			 FString ValuesStr = "None";
-			 FString StatusStr = "Unknown";
+			 FString ValuesStr = "";
+			 FString StatusStr = "";
 
-			 // Fetch details...
 			 FNPCNameDef NameDef;
 			 if (DefComp->GetNameDef(NameDef)) CharName = FString::Printf(TEXT("%s %s"), *NameDef.FirstName, *NameDef.Surname);
 
-             // --- Quick Re-implementation of Backstory Logic ---
-             if (AUtilityAIController* UtilCon = Cast<AUtilityAIController>(AICon)) 
+             if (AUtilityAIController* UtilCon = Cast<AUtilityAIController>(AICon))
                 if (UtilCon->PersonalityComp) OceanTraits = UtilCon->PersonalityComp->Personality.GetOCEANDescription();
 
              FPastEventDef EventDef;
@@ -623,30 +636,60 @@ FString UCognitionComponent::BuildIdentityBlock(const FString& RoleDesc, const F
                  MentalScar = EventDef.MentalScar;
                  if (EventDef.ResultingPhobias.Num() > 0) PhobiaStr = FGameplayTagContainer::CreateFromArray(EventDef.ResultingPhobias).ToStringSimple();
              }
-             
+
              FSocialProfileDef SocialProfile;
              if (DefComp->GetSocialProfileDef(SocialProfile)) {
                  if (SocialProfile.KeyValues.Num() > 0) ValuesStr = FString::Join(SocialProfile.KeyValues, TEXT(", "));
                  StatusStr = UEnum::GetValueAsString(SocialProfile.SocialStatus);
              }
 
+			 // --- Core Identity ---
 			 BackstorySection = FString::Printf(TEXT(
 				 "\n[IDENTITY]\n"
 				 "Name: %s\n"
 				 "Personality Traits (OCEAN): %s\n"
-				 "Past Event: %s\n"
-				 "Mental Scar: %s\n"
-				 "Phobias/Traumas: %s\n"
-				 "Core Values: %s\n"
 				 "Social Class: %s\n"
-			 ), *CharName, *OceanTraits, *HistoryDesc, *MentalScar, *PhobiaStr, *ValuesStr, *StatusStr);
+			 ), *CharName, *OceanTraits, *StatusStr);
+
+			 // --- Speech Triggers: trauma/phobia as behavioral directives ---
+			 bool bHasTriggers = false;
+			 FString TriggersBlock = TEXT("\n[SPEECH TRIGGERS] (involuntary reactions that override normal behavior)\n");
+
+			 if (!MentalScar.IsEmpty())
+			 {
+				 TriggersBlock += FString::Printf(TEXT("- SCAR: \"%s\" — When the situation reminds you of this, your voice betrays fear/pain. Mention it or react to it.\n"), *MentalScar);
+				 bHasTriggers = true;
+			 }
+
+			 if (!PhobiaStr.IsEmpty())
+			 {
+				 TriggersBlock += FString::Printf(TEXT("- PHOBIA: [%s] — When you encounter anything related, panic overrides logic. Raise Threat, Speech reflects irrational fear.\n"), *PhobiaStr);
+				 bHasTriggers = true;
+			 }
+
+			 if (!HistoryDesc.IsEmpty())
+			 {
+				 TriggersBlock += FString::Printf(TEXT("- PAST: \"%s\" — This defines your worldview. Reference it when explaining your motives or judging others.\n"), *HistoryDesc);
+				 bHasTriggers = true;
+			 }
+
+			 if (bHasTriggers)
+			 {
+				 BackstorySection += TriggersBlock;
+			 }
+
+			 // --- Values as speech motivators ---
+			 if (!ValuesStr.IsEmpty())
+			 {
+				 BackstorySection += FString::Printf(TEXT("\n[CORE VALUES] %s — These are what you fight for, argue about, and judge others by. Work them into your Speech when taking a stance.\n"), *ValuesStr);
+			 }
 		}
 	}
 
 	return FString::Printf(TEXT("%s\n%s\n"), *RoleSection, *BackstorySection);
 }
 
-FString UCognitionComponent::BuildWorldviewBlock(const FString& FactionStr)
+FString UCognitionComponent::BuildWorldviewBlock(const FString& FactionStr, const FString& SituationDescription)
 {
 	FString WorldviewSection = "";
 	if (!FactionStr.IsEmpty() && !FactionStr.Equals("Neutral"))
@@ -658,16 +701,44 @@ FString UCognitionComponent::BuildWorldviewBlock(const FString& FactionStr)
 				TMap<FName, float> Relations = FacSys->RuntimeFactionMatrix.FindRef(FName(*FactionStr));
 				if (Relations.Num() > 0)
 				{
+					// Extract mentioned factions from stimulus text (format: "Faction: X")
+					TSet<FString> MentionedFactions;
+					int32 SearchIdx = 0;
+					while (true)
+					{
+						int32 FoundIdx = SituationDescription.Find(TEXT("Faction: "), ESearchCase::IgnoreCase, ESearchDir::FromStart, SearchIdx);
+						if (FoundIdx == INDEX_NONE) break;
+
+						int32 ValueStart = FoundIdx + 9; // len("Faction: ")
+						int32 EndIdx = SituationDescription.Find(TEXT(","), ESearchCase::IgnoreCase, ESearchDir::FromStart, ValueStart);
+						int32 ParenIdx = SituationDescription.Find(TEXT(")"), ESearchCase::IgnoreCase, ESearchDir::FromStart, ValueStart);
+
+						// Take whichever delimiter comes first
+						if (EndIdx == INDEX_NONE || (ParenIdx != INDEX_NONE && ParenIdx < EndIdx))
+							EndIdx = ParenIdx;
+
+						if (EndIdx != INDEX_NONE && EndIdx > ValueStart)
+						{
+							FString FactionName = SituationDescription.Mid(ValueStart, EndIdx - ValueStart).TrimStartAndEnd();
+							MentionedFactions.Add(FactionName);
+						}
+						SearchIdx = ValueStart + 1;
+					}
+
 					WorldviewSection = "\n[WORLDVIEW / FACTIONS]\n";
-					// List own faction first so LLM knows who its allies are
 					WorldviewSection += FString::Printf(TEXT("%s: Your Faction (members are your allies)\n"), *FactionStr);
+
 					for (const auto& Pair : Relations)
 					{
-						if (Pair.Key.ToString() == FactionStr) continue; // Already listed above
-						FString RelDesc = FactionHelpers::GetAttitudeDescription(Pair.Value);
+						FString KeyStr = Pair.Key.ToString();
+						if (KeyStr == FactionStr) continue;
 
-						WorldviewSection += FString::Printf(TEXT("%s: %s\n"),
-							*Pair.Key.ToString(), *RelDesc);
+						// Only include factions mentioned in the stimulus, OR all if none extracted (safety)
+						if (MentionedFactions.Num() > 0 && !MentionedFactions.Contains(KeyStr))
+							continue;
+
+						FString RelDesc = FactionHelpers::GetAttitudeDescription(Pair.Value);
+						WorldviewSection += FString::Printf(TEXT("%s: %s\n"), *KeyStr, *RelDesc);
 					}
 				}
 			}
@@ -728,14 +799,16 @@ FString UCognitionComponent::SuggestTarget(const TArray<FString>& CandidateNames
 	// Initiate new request
 	PendingTargetRequests.Add(SelectionContext);
 
-	// --- Build Prompt ---
-	FString Prompt = FString::Printf(
+	// --- Build Prompts ---
+	FString SystemPrompt = TEXT("You are a target selection AI. Return ONLY a name from the candidate list. No explanation.");
+
+	FString UserPrompt = FString::Printf(
 		TEXT("You are %s. You need to choose a target for: %s.\n\n"),
 		*RoleDescription,
 		*SelectionContext
 	);
 
-	// ✅ Inject Narrative Plot Context (CRITICAL for plot-driven target selection)
+	// Inject Narrative Plot Context
 	if (UWorld* World = GetWorld())
 	{
 		if (UNarrativeSquadSubsystem* SquadSys = World->GetSubsystem<UNarrativeSquadSubsystem>())
@@ -750,44 +823,47 @@ FString UCognitionComponent::SuggestTarget(const TArray<FString>& CandidateNames
 
 			if (!PlotContext.IsEmpty())
 			{
-				Prompt += FString::Printf(TEXT("[CURRENT PLOT EVENT]\n%s\n\n"), *PlotContext);
+				UserPrompt += FString::Printf(TEXT("[CURRENT PLOT EVENT]\n%s\n\n"), *PlotContext);
 			}
 		}
 	}
 
-	// Add Memories
+	// Add Memories (only high-importance)
 	if (MemoryComp)
 	{
-		Prompt += TEXT("Your recent memories:\n");
-		// Use a broad query for memories related to interaction
 		TArray<FMemoryItem> Memories = MemoryComp->RetrieveRelevantMemories("combat attack kill friend enemy interaction", 5);
+		bool bHasMemories = false;
 		for (const FMemoryItem& Memory : Memories)
 		{
 			if (Memory.ImportanceScore > 5.0f)
 			{
-				Prompt += FString::Printf(TEXT("- %s (Importance: %.1f)\n"), *Memory.Description, Memory.ImportanceScore);
+				if (!bHasMemories) { UserPrompt += TEXT("Recent memories:\n"); bHasMemories = true; }
+				UserPrompt += FString::Printf(TEXT("- %s\n"), *Memory.Description);
 			}
 		}
 	}
 
 	// Add Candidates
-	Prompt += TEXT("\nAvailable candidates:\n");
+	UserPrompt += TEXT("\nCandidates:\n");
 	for (const FString& Name : CandidateNames)
 	{
-		Prompt += FString::Printf(TEXT("- %s\n"), *Name);
+		UserPrompt += FString::Printf(TEXT("- %s\n"), *Name);
 	}
 
-	Prompt += FString::Printf(
-		TEXT("\nWho should you choose? Reply with ONLY the name from the candidate list. No explanation.")
+	// --- Send Functional Request (deterministic, capped) ---
+	LLMService->SendFunctionalRequest(
+		SystemPrompt,
+		UserPrompt,
+		FOnLLMResponseRaw::CreateLambda(
+			[this, SelectionContext](bool bSuccess, const FString& Response)
+			{
+				this->OnTargetSuggestionReceived(bSuccess, Response, SelectionContext);
+			}
+		),
+		0.1f,  // Near-deterministic
+		false, // No JSON mode
+		32     // Only need a name
 	);
-
-	// --- Send Request ---
-	LLMService->SendRequestRaw(Prompt, FOnLLMResponseRaw::CreateLambda(
-		[this, SelectionContext](bool bSuccess, const FString& Response)
-		{
-			this->OnTargetSuggestionReceived(bSuccess, Response, SelectionContext);
-		}
-	));
 
 	return CachedResult ? *CachedResult : TEXT("");
 }
@@ -804,12 +880,12 @@ void UCognitionComponent::OnTargetSuggestionReceived(bool bSuccess, const FStrin
 		
 		CachedTargetSuggestions.Add(Context, CleanResponse);
 		
-		UE_LOG(LogAINPCBrain, Log, TEXT("[%s] LLM Suggests Target for %s: %s"), 
+		TARGET_LOG(Warning, "[%s] LLM Suggests Target for '%s': '%s'",
 			*GetOwner()->GetName(), *Context, *CleanResponse);
 	}
 	else
 	{
-		UE_LOG(LogAINPCBrain, Warning, TEXT("[%s] LLM Target Selection Failed for %s"), 
+		TARGET_LOG(Warning, "[%s] LLM Target Selection FAILED for '%s'",
 			*GetOwner()->GetName(), *Context);
 	}
 }

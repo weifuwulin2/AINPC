@@ -7,6 +7,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.6.7] - 2026-02-03
+
+### 🏗️ Refactor - LLMCommunicator Dual-Mode API & Token Optimization
+- **Dual-Mode API**: Split `LLMCommunicator` into purpose-built request modes:
+  - `SendRoleplayRequest()`: CognitionComponent ProcessStimulus (Temp 0.7, JSON mode, static system prompt with Instructions + MentalState schema).
+  - `SendFunctionalRequest()`: Dreaming, Target Selection, Social Reflection (caller-provided system prompt, configurable Temp/MaxTokens).
+  - Shared `SendHTTPRequest()` + `ExtractContentFromResponse()` internal layer.
+  - Old `SendRequest`/`SendRequestRaw` kept as deprecated wrappers.
+- **Token Optimization** (~550-700 tokens saved on routine calls):
+  - **Instructions → System Prompt**: Moved 8-rule InstructionsBlock from user message to static system prompt (cacheable by prefix caching providers).
+  - **Identity LOD**: `BuildIdentityBlock(bFullDetail)` — simplified mode (name+faction+role) for routine stimuli; full backstory only for high-priority/player speech.
+  - **Filtered Worldview**: `BuildWorldviewBlock` now parses `(Faction: X)` patterns from stimulus text, only includes own faction + mentioned factions.
+  - **Conditional World State**: `GetWorldStateDescription(3)` only fetched for high-priority/player speech.
+  - **Dreaming Capped**: `GetTopMemoriesAsString(15)` replaces `GetAllRecentMemoriesAsString()`, MaxTokens=256.
+  - **Target Selection Capped**: MaxTokens=32, Temp=0.1 (near-deterministic).
+- **Rate Limiting Moved Earlier**: Check happens before any prompt construction.
+- **Documentation**: Added `docs/design/Token_Optimization_Changelog.md`.
+
+### 🧠 Feature - Character Voice Depth
+- **Rule 8 [CHARACTER VOICE]**: Added new system prompt rule requiring LLM to filter Speech through NPC identity.
+  - Speech Triggers: Involuntary reactions from trauma/phobias override normal behavior.
+  - Personality Traits shape HOW NPCs speak (blunt, anxious, dramatic).
+  - Core Values shape WHAT NPCs care about.
+  - Social Class shapes vocabulary and tone.
+- **Identity Block Restructured**: Changed from passive fact sheet to prescriptive behavioral directives:
+  - `[SPEECH TRIGGERS]`: SCAR, PHOBIA, PAST — with behavioral instructions.
+  - `[CORE VALUES]`: What the NPC fights for, argues about, judges others by.
+
+### 🔧 Fix - SentimentMapping in System Prompt
+- **Schema Fix**: MentalState JSON schema now uses `"<intensity tag>"` instead of `float`.
+- **Tag Instructions**: `SentimentMapper->GeneratePromptInstructions()` injected into system prompt.
+- **Instruction Added**: "Use INTENSITY TAGS (None/Slight/Moderate/Strong/Extreme), Do NOT use numerical values."
+
+### 🔧 Fix - Target Selection Component Lookup Bug
+- **Critical Bug**: `TargetSelectionSubsystem` was searching for `CognitionComponent`, `MemoryComponent`, and `GoalComponent` on the **Pawn** — but all three live on the **Controller**.
+  - `Cognition=NO` in logs meant memory-driven scoring (+1000 revenge, +500 retaliation) was silently disabled.
+  - `GoalComponent` lookup also failed, disabling directive state matching (+200/-500).
+  - **Fix**: Changed all three lookups to use `Controller->FindComponentByClass` or `GetController()->FindComponentByClass`.
+
+### ✨ Feature - Target Selection: Player Significance & Last Speaker Priority
+- **Player Significance (+150)**: Player-controlled pawns get a flat score bonus in all contexts. Reflects game design where Player is a Hero figure.
+- **Last Speaker Priority (+600, 15s window)**: When someone speaks to an NPC, that actor gets +600 score for 15 seconds. Ensures NPCs respond to who addressed them.
+  - Added `LastSpeaker` (TWeakObjectPtr) + `LastSpeakerTime` to `CognitionComponent`.
+  - `UtilityAIController::OnSemanticEventReceived` sets these on speech events.
+
+### 🔍 Feature - LLM Logging & Target Selection Visibility
+- **LogAINPCLLM Category**: Added dedicated log category for LLM communication.
+  - `LLM_LOG` macro in `AINPC.h`, `DEFINE_LOG_CATEGORY(LogAINPCLLM)` in `AINPC.cpp`.
+  - Replaced all `UE_LOG(LogTemp,...)` in `LLMCommunicator.cpp`.
+- **Full Prompt Logging**: `SendHTTPRequest` logs exact system prompt + user prompt at Warning level.
+- **Full Response Logging**: `ExtractContentFromResponse` logs raw LLM output.
+- **Target Selection Pipeline Logging**: `SelectTargetByLLM` now logs full numbered candidate list, context, and match result (Exact/Fuzzy/No Match) with clear visual markers.
+- **Upgraded Match Logs**: Target selection results promoted from `Log` to `Warning` level.
+
 ## [0.6.6] - 2026-02-01
 
 ### 🏗️ Major Architecture - Unified Event Bus

@@ -21,6 +21,7 @@ Welcome to the AINPC Knowledge Base. This index serves as the central hub for al
 *   [**Action Observation**](systems/ActionObservationSystem_Guide.md) - Guide to the NPC observation and attention budget system.
 *   [**Universal Target Selection**](design/Universal_Target_Selection.md) - Design for Hybrid Rule-Based + LLM target acquisition.
 *   [**Neural Utility Architecture**](design/Neural_Utility_Architecture.md) - **(North Star)** "System 1" (Vector) & "System 2" (LLM) hybrid architecture design.
+*   [**Token Optimization Changelog**](design/Token_Optimization_Changelog.md) - Detailed breakdown of LLM token savings and dual-mode API refactor.
 
 ### 🛠️ Configuration Guides
 *   [**Single Point Config**](guides/Single_Point_Configuration_Guide.md) - How to add new mental states using the `MentalStateFields.h` macro system.
@@ -50,4 +51,4 @@ Welcome to the AINPC Knowledge Base. This index serves as the central hub for al
 *   [**Concurrent Request Fix**](reports/Bug4_Fix_Report.md)
 
 ---
-*Last Updated: 2026-02-02*
+*Last Updated: 2026-02-03*

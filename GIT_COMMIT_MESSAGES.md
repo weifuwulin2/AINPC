@@ -803,6 +803,26 @@ This file contains a log of commit messages for the AINPC project.
 - **API Consolidation**: Fully migrated all faction logic to new `FactionHelpers` namespace.
 - **Deprecation**: Removed legacy `GetFactionID` methods from `SensoryComponent`.
 
+## [2026-02-03] LLMCommunicator Dual-Mode API & Token Optimization
+**Type**: refactor
+**Scope**: LLMCommunicator, CognitionComponent, MemoryComponent
+**Description**:
+- **Dual-Mode API**: Split LLMCommunicator into `SendRoleplayRequest` (personality-driven, JSON mode, Temp 0.7) and `SendFunctionalRequest` (analytical, caller-provided system prompt, configurable params). Shared `SendHTTPRequest` + `ExtractContentFromResponse` layer.
+- **Token Savings (~550-700/routine call)**: Moved InstructionsBlock to static system prompt; added Identity LOD (simplified vs full); filtered Worldview to relevant factions; conditional World State; capped Dreaming (top 15 memories, MaxTokens=256); capped Target Selection (MaxTokens=32, Temp=0.1).
+- **Character Voice Depth**: Added Rule 8 [CHARACTER VOICE] to system prompt. Restructured identity block from passive facts to prescriptive behavioral directives with [SPEECH TRIGGERS] and [CORE VALUES].
+- **SentimentMapping Fix**: Schema uses `"<intensity tag>"` instead of `float`. Added `SentimentMapper->GeneratePromptInstructions()` to system prompt.
+- **LLM Logging**: Added `LogAINPCLLM` category + `LLM_LOG` macro. Full prompt/response logging in `SendHTTPRequest` and `ExtractContentFromResponse`.
+- **Docs**: Created `docs/design/Token_Optimization_Changelog.md`.
+
+## [2026-02-03] Fix Target Selection Component Lookup & Add Player Priority
+**Type**: fix/feat
+**Scope**: TargetSelectionSubsystem, CognitionComponent, UtilityAIController
+**Description**:
+- **Critical Bug Fix**: `TargetSelectionSubsystem` was looking up `CognitionComponent`, `MemoryComponent`, and `GoalComponent` on the Pawn, but all live on the Controller. This silently disabled memory-driven scoring (revenge +1000, retaliation +500) and directive state matching.
+- **Player Significance (+150)**: Player-controlled pawns get flat score bonus — Hero figure commands more NPC attention.
+- **Last Speaker Priority (+600, 15s)**: Whoever just spoke to an NPC gets high priority in target selection. Added `LastSpeaker`/`LastSpeakerTime` to CognitionComponent, set by UtilityAIController on speech events.
+- **Target Selection Logging**: `SelectTargetByLLM` now logs full candidate list and match result (Exact/Fuzzy/No Match). `OnTargetSuggestionReceived` upgraded to `TARGET_LOG(Warning)`.
+
 ## [2026-02-03] Fix Moral Ambiguity in Death Events
 **Type**: fix
 **Scope**: SensoryComponent, Cognition

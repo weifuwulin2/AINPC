@@ -172,8 +172,16 @@ float UAttentionBudgetComponent::CalculateEventPriority(const FSemanticEvent& Ev
 		if (ActorFactionID != "None")
 		{
 			float Reputation = MyFaction->GetReputationWith(ActorFactionID);
-			float RelationshipScore = FMath::Abs(Reputation) / 100.0f; // 0-1
-			Score += RelationshipScore * 0.3f; // Bonus up to +0.3
+			// Hostile (0-25) and Friendly (75-100) are both attention-grabbing.
+			// Neutral (50) is least interesting. Convert to 0-1 extremity score.
+			float Extremity = FMath::Abs(Reputation - 50.0f) / 50.0f; // 0=neutral, 1=extreme
+			Score += Extremity * 0.3f; // Bonus up to +0.3
+
+			// Extra boost for hostile factions — enemies demand more attention
+			if (Reputation < 25.0f)
+			{
+				Score += 0.15f;
+			}
 		}
 	}
 
@@ -209,15 +217,15 @@ float UAttentionBudgetComponent::CalculateEventPriority(const FSemanticEvent& Ev
 		{
 			float TargetReputation = MyFaction->GetReputationWith(TargetFactionID);
 
-			// If someone attacks my friend, I care!
-			if (TargetReputation > 50.0f && bIsCombat)
+			// If someone attacks my friend, I care a lot!
+			if (TargetReputation >= 75.0f && bIsCombat)
 			{
 				Score += 0.2f;
 			}
 			// If someone attacks my enemy, also interesting (but less)
-			else if (TargetReputation < -50.0f && bIsCombat)
+			else if (TargetReputation < 25.0f && bIsCombat)
 			{
-				Score += 0.1f; 
+				Score += 0.1f;
 			}
 		}
 	}

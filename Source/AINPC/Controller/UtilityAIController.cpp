@@ -390,6 +390,13 @@ void AUtilityAIController::OnSemanticEventReceived(const FSemanticEvent& Event)
     // ✅ Trigger Cognition to process this event (replaces legacy RelaySensoryToCognition)
     if (CognitionComp)
     {
+        // Track who just spoke to us (for target selection priority)
+        if (Event.Instigator && Event.Content.Contains(TEXT("said to you")))
+        {
+            CognitionComp->LastSpeaker = Event.Instigator;
+            CognitionComp->LastSpeakerTime = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f;
+        }
+
         CognitionComp->ProcessStimulus(Event.Content);
     }
 

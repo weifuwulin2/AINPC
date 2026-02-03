@@ -37,7 +37,8 @@ AActor* UTargetSelectionSubsystem::SelectTarget(
 	// 修复：只查找一次所有组件
 	// ========================================
 	UFactionReputationComponent* FactionComp = MyPawn->FindComponentByClass<UFactionReputationComponent>();
-	UCognitionComponent* Cognition = MyPawn->FindComponentByClass<UCognitionComponent>();
+	// CognitionComponent lives on the Controller, NOT the Pawn
+	UCognitionComponent* Cognition = Controller->FindComponentByClass<UCognitionComponent>();
 
 	// ✅ Step 1: Check Cache First (with Combat Policy validation)
 	AActor* CachedTarget = GetCachedTarget(Controller, Context, Config, MyPawn, FactionComp);
@@ -299,9 +300,13 @@ float UTargetSelectionSubsystem::CalculateTargetScore(
 	// ✅ Memory-Driven Priority (Highest weight)
 	if (Cognition)
 	{
-		// Check for "killed ally" memory
-		// Access MemoryComponent directly as Cognition doesn't expose retrieval
-		UMemoryComponent* MemoryComp = MyPawn->FindComponentByClass<UMemoryComponent>();
+		// MemoryComponent lives on the Controller, not the Pawn
+		UMemoryComponent* MemoryComp = nullptr;
+		if (APawn* PawnRef = Cast<APawn>(MyPawn))
+		{
+			if (AController* Ctrl = PawnRef->GetController())
+				MemoryComp = Ctrl->FindComponentByClass<UMemoryComponent>();
+		}
 		if (MemoryComp)
 		{
 			TArray<FMemoryItem> RelevantMemories = MemoryComp->RetrieveRelevantMemories(TargetName, 5);
@@ -372,10 +377,42 @@ float UTargetSelectionSubsystem::CalculateTargetScore(
 		TARGET_LOG(Verbose, "Target %s is FLEEING: +400", *TargetName);
 	}
 
+	// ✅ Player Significance (Player is a Hero - more influential in this world)
+	if (APawn* TargetPawn = Cast<APawn>(Target))
+	{
+		if (TargetPawn->IsPlayerControlled())
+		{
+			Score += 150.0f;  // Hero presence - NPCs naturally pay more attention to the Player
+			TARGET_LOG(Verbose, "Target %s is Player (Hero): +150", *TargetName);
+		}
+	}
+
+	// ✅ Last Speaker Priority (someone just spoke to me → I should respond to THEM)
+	if (Cognition && Cognition->LastSpeaker.IsValid() && Cognition->LastSpeaker.Get() == Target)
+	{
+		float TimeSinceSpoke = MyPawn->GetWorld() ?
+			(MyPawn->GetWorld()->GetTimeSeconds() - Cognition->LastSpeakerTime) : 999.0f;
+		if (TimeSinceSpoke < 15.0f)  // 15 second window
+		{
+			Score += 600.0f;  // Strong pull to respond to whoever addressed me
+			TARGET_LOG(Verbose, "Target %s just spoke to me (%.1fs ago): +600", *TargetName, TimeSinceSpoke);
+		}
+	}
+
 	// ✅ Match Goal/Directive State
-	// If I am in Combat/Work/Social, I prefer targets who are appropriate for that state.
-	UGoalComponent* MyGoal = MyPawn->FindComponentByClass<UGoalComponent>();
-	UGoalComponent* TargetGoal = Target->FindComponentByClass<UGoalComponent>();
+	// GoalComponent lives on the Controller, not the Pawn
+	UGoalComponent* MyGoal = nullptr;
+	UGoalComponent* TargetGoal = nullptr;
+	if (APawn* SelfPawn = Cast<APawn>(MyPawn))
+	{
+		if (AController* C = SelfPawn->GetController())
+			MyGoal = C->FindComponentByClass<UGoalComponent>();
+	}
+	if (APawn* TargetAsPawn = Cast<APawn>(Target))
+	{
+		if (AController* C = TargetAsPawn->GetController())
+			TargetGoal = C->FindComponentByClass<UGoalComponent>();
+	}
 	
 	if (MyGoal && TargetGoal)
 	{
@@ -443,6 +480,13 @@ AActor* UTargetSelectionSubsystem::SelectTargetByLLM(
 		NameToActorMap.Add(SmartName, Actor);
 	}
 
+	// Log candidate list
+	TARGET_LOG(Warning, "━━━ LLM Target Selection ━━━ %s has %d candidates:", *AINPCHelpers::GetSmartActorName(MyPawn), CandidateNames.Num());
+	for (int32 i = 0; i < CandidateNames.Num(); i++)
+	{
+		TARGET_LOG(Warning, "  [%d] %s", i, *CandidateNames[i]);
+	}
+
 	// Get context string
 	FString ContextString;
 	switch (Context)
@@ -463,14 +507,16 @@ AActor* UTargetSelectionSubsystem::SelectTargetByLLM(
 			ContextString = "unknown action";
 	}
 
-	// Ask LLM (will be implemented in CognitionComponent)
+	TARGET_LOG(Warning, "  Context: %s — Sending to LLM...", *ContextString);
+
+	// Ask LLM
 	FString SelectedName = Cognition->SuggestTarget(CandidateNames, ContextString);
 
 	// Find actor by name
 	AActor** FoundActor = NameToActorMap.Find(SelectedName);
 	if (FoundActor && *FoundActor)
 	{
-		TARGET_LOG(Log, "LLM selected target (Exact Match): %s for context: %s", 
+		TARGET_LOG(Warning, "  ✓ LLM Result (Exact Match): '%s' for context: %s",
 			*SelectedName, *ContextString);
 		return *FoundActor;
 	}
@@ -512,12 +558,12 @@ AActor* UTargetSelectionSubsystem::SelectTargetByLLM(
 
 	if (BestMatchActor)
 	{
-		TARGET_LOG(Warning, "LLM selected target (Fuzzy Match): '%s' matched with candidate '%s'", 
+		TARGET_LOG(Warning, "  ~ LLM Result (Fuzzy Match): LLM said '%s' → matched candidate '%s'",
 			*SelectedName, *AINPCHelpers::GetSmartActorName(BestMatchActor));
 		return BestMatchActor;
 	}
 
-	TARGET_LOG(Warning, "LLM selection failed to find actor for: %s (No exact or fuzzy match found)", *SelectedName);
+	TARGET_LOG(Warning, "  ✗ LLM Result (NO MATCH): LLM returned '%s' but no candidate matched", *SelectedName);
 	return nullptr;
 }
 

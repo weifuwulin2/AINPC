@@ -166,6 +166,33 @@ FString UMemoryComponent::GetAllRecentMemoriesAsString()
 	return Result;
 }
 
+FString UMemoryComponent::GetTopMemoriesAsString(int32 Limit)
+{
+	if (MemoryStream.Num() == 0) return TEXT("");
+
+	// Sort indices by importance (descending)
+	TArray<int32> Indices;
+	for (int32 i = 0; i < MemoryStream.Num(); ++i)
+	{
+		Indices.Add(i);
+	}
+
+	Indices.Sort([this](int32 A, int32 B) {
+		return MemoryStream[A].ImportanceScore > MemoryStream[B].ImportanceScore;
+	});
+
+	// Take top N
+	FString Result;
+	int32 Count = FMath::Min(Limit, Indices.Num());
+	for (int32 i = 0; i < Count; ++i)
+	{
+		const FMemoryItem& Item = MemoryStream[Indices[i]];
+		Result += FString::Printf(TEXT("- [Imp:%.1f] %s\n"), Item.ImportanceScore, *Item.Description);
+	}
+
+	return Result;
+}
+
 void UMemoryComponent::ConsolidateMemories(const TArray<FString>& NewInsights)
 {
 	// 1. In a real system, you might archive old memories here.
