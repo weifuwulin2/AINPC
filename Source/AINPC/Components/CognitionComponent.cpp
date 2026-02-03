@@ -250,9 +250,11 @@ void UCognitionComponent::ProcessStimulus(FString SituationDescription)
 		"4. [JURISDICTION] Do NOT output Hunger/Fatigue (Engine manages them).\n"
 		"5. [EMOTION STRICT] 'Emotion' MUST be EXACTLY one of: Neutral, Angry, Scared, Sad, Happy, Curious, Disgust. ABSOLUTELY NO OTHER VALUES (e.g., 'Suspicious', 'Confused', 'Anxious'). If you feel 'suspicious', use 'Curious'. If uncertain, use 'Neutral'.\n"
 		"6. [MEMORY TIME] React ONLY to [JUST NOW] memories. [X MIN AGO] and [HISTORY] are context only. [RESOLVED] events are already handled - do NOT react again.\n"
-		"\n"
-		"  Speech: string;      // approx 10 words, match personality\n"
-		"}\n"
+		"7. [FACTION RULE] Your [WORLDVIEW / FACTIONS] section defines who is friend and foe. "
+			"When you see 'YOUR ENEMY' or 'HOSTILE ENEMY', raise Perceived_Threat and set Intention to 'Attack'. "
+			"When you see 'YOUR ALLY' being killed by an ENEMY, feel Angry and set Intention to 'Attack' the killer. "
+			"When YOUR ALLY kills an ENEMY, this is EXPECTED - do NOT condemn your ally. React with relief or approval. "
+			"NEVER attack or condemn members of your own faction. Enemies of your faction deserve hostility.\n"
 	);
 
 	FString Prompt = FString::Printf(TEXT(

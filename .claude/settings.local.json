@@ -3,7 +3,8 @@
     "allow": [
       "Bash(Select-String -Pattern \"\\\\.json|\\\\.csv|\\\\.uasset\")",
       "Bash(Select-Object -First 10)",
-      "Bash(python -c:*)"
+      "Bash(python -c:*)",
+      "Bash(grep -rn \"CommitEvent\\\\|OnSemanticEventSensed\" \"D:\\\\CombatDemos\\\\AINPC\\\\Source\\\\AINPC\"\" --include=\"*.cpp\" | grep -v \"^Binary \")"
     ]
   }
 }

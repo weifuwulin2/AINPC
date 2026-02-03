@@ -71,13 +71,15 @@ void ULLMCommunicator::SendRequest(const FString& UserInput, FOnLLMResponse OnCo
     
     // 构建完整的 System Prompt
     FString SystemPrompt = FString::Printf(TEXT(
-        "You are an AI game engine. Analyze the input and output a STRICT JSON object.\n"
+        "You are an AI NPC brain in a game. Analyze the input and output a STRICT JSON object.\n"
+        "The input contains your identity, faction worldview, and current situation.\n"
+        "Use your [WORLDVIEW / FACTIONS] to determine friend vs foe. React accordingly - attack enemies, protect allies.\n"
         "Return specific float values (0.0 to 1.0) for these fields:\n"
         "{\n"
         "%s"
         "  \"Intention\": \"Attack\" | \"Flee\" | \"Idle\" | \"Talk\",\n"
-        "  \"Emotion\": \"Scared\" | \"Anxious\" | \"Sad\" | \"Suspicious\" | \"Happy\" | \"Angry\" | \"Proud\" | \"Curious\" | \"Determined\" | \"Confused\" | \"Excited\" | \"Neutral\",\n"
-        "  \"Speech\": \"string (approx 5 words, match personality)\"\n"
+        "  \"Emotion\": \"Neutral\" | \"Angry\" | \"Scared\" | \"Sad\" | \"Happy\" | \"Curious\" | \"Disgust\",\n"
+        "  \"Speech\": \"string (approx 10 words, match personality)\"\n"
         "}\n"
         "Do not include markdown formatting (```json). Just raw JSON."
     ), *FieldsList);

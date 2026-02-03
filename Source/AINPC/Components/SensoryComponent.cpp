@@ -126,14 +126,8 @@ bool USensoryComponent::ProcessEventFilter(FSemanticEvent& Event)
 			Event.Verb = AINPCTags::Social_Greet; // Or use a dedicated "Awareness" tag
 			Event.Magnitude = FMath::Max(Event.Magnitude, HighPriorityMagnitude); // Ensure minimum magnitude
 			
-			FName TargetFaction = GetActorFaction(Event.Target);
-			FName SelfFaction = GetActorFaction(GetOwner());
-			bool bIsPlayer = Event.Target->ActorHasTag("Player");
-			
-			Event.Content = FString::Printf(TEXT("I noticed %s (%s%s)"), 
-				*Event.Target->GetName(), 
-				bIsPlayer ? TEXT("Player, ") : TEXT(""),
-				*TargetFaction.ToString());
+			FString TargetDesc = DescribeActorWithRelationship(Event.Target);
+			Event.Content = FString::Printf(TEXT("I noticed %s"), *TargetDesc);
 			
 			AINPC_LOG(Warning, "[Sensory] → PASS: High-Priority Target (Magnitude: %.2f)", Event.Magnitude);
 			
@@ -166,8 +160,8 @@ bool USensoryComponent::ProcessEventFilter(FSemanticEvent& Event)
 			// Upgrade the tag to indicate "Awareness" rather than just "Vision"
 			Event.Verb = AINPCTags::Social_Greet; // Or create a new tag like "Social.Awareness"
 			Event.Magnitude = 0.4f; // Medium importance
-			Event.Content = FString::Printf(TEXT("I've noticed %s is around frequently"), 
-				*Event.Target->GetName());
+			FString FreqTargetDesc = DescribeActorWithRelationship(Event.Target);
+			Event.Content = FString::Printf(TEXT("I've noticed %s is around frequently"), *FreqTargetDesc);
 			
 			// Reset counter after triggering
 			ResetVisualAccumulation(Event.Target);
@@ -208,10 +202,18 @@ bool USensoryComponent::ProcessEventFilter(FSemanticEvent& Event)
 
 FString USensoryComponent::ParseDescriptionTemplate(const FString& Template, AActor* Instigator, AActor* Target)
 {
-	// Simple string replacement: {Instigator} -> Name, {Target} -> Name
+	// Smart replacement: {Instigator} -> "I" if self, or name+faction if other
 	FString Result = Template;
-	FString InstigatorName = Instigator ? Instigator->GetActorLabel() : TEXT("Someone");
-	FString TargetName = Target ? Target->GetActorLabel() : TEXT("Object");
+	FString InstigatorName;
+	if (Instigator && IsMyself(Instigator))
+	{
+		InstigatorName = TEXT("I");
+	}
+	else
+	{
+		InstigatorName = Instigator ? DescribeActorWithRelationship(Instigator) : TEXT("Someone");
+	}
+	FString TargetName = Target ? AINPCHelpers::GetSmartActorName(Target) : TEXT("Object");
 
 	Result.ReplaceInline(TEXT("{Instigator}"), *InstigatorName);
 	Result.ReplaceInline(TEXT("{Target}"), *TargetName);
@@ -521,8 +523,8 @@ void USensoryComponent::CleanupPerceptionTracking()
 
 void USensoryComponent::HandleDamageTaken(AActor* DamagedActor, float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser)
 {
-    FString Extra = FString::Printf(TEXT("taking %.1f damage"), Damage);
-    FString Desc = FormatDescription("was attacked by", DamageCauser, Extra);
+    FString AttackerDesc = DamageCauser ? DescribeActorWithRelationship(DamageCauser) : TEXT("unknown");
+    FString Desc = FString::Printf(TEXT("I was attacked by %s, taking %.1f damage"), *AttackerDesc, Damage);
     
     // Generate Semantic Event
     FSemanticEvent Event;
@@ -583,7 +585,8 @@ void USensoryComponent::ReceiveSpeech(AActor* Speaker, FString Message)
     Event.Instigator = Speaker;
     Event.Target = GetOwner();
     Event.Verb = AINPCTags::Social_Chat;
-    Event.Content = FString::Printf(TEXT("%s said to you: \"%s\". Listen and respond naturally to what they just said."), *SpeakerName, *Message);
+    FString SpeakerDesc = DescribeActorWithRelationship(Speaker);
+    Event.Content = FString::Printf(TEXT("%s said to you: \"%s\". Listen and respond naturally to what they just said."), *SpeakerDesc, *Message);
     Event.Magnitude = 0.8f;
 
     // Speech events bypass ProcessEventFilter entirely - player explicitly sent a message
@@ -652,10 +655,16 @@ void USensoryComponent::HandleDeath(AActor* DeadActor, AActor* Killer)
     {
         // 自己死亡 - 极其重要的事件
         DeathTag = AINPCTags::Event_Death_Self;
-        
-        // Use FormatDescription for clarity
-        FString KillerDesc = Killer ? FormatDescription("was killed by", Killer, "") : TEXT("I have died");
-        Desc = KillerDesc.IsEmpty() ? TEXT("I have died") : KillerDesc;
+
+        if (Killer)
+        {
+            FString KillerDesc = DescribeActorWithRelationship(Killer);
+            Desc = FString::Printf(TEXT("I was killed by %s"), *KillerDesc);
+        }
+        else
+        {
+            Desc = TEXT("I have died");
+        }
         
         Magnitude = 1.0f; // 最高重要性
         
@@ -665,21 +674,33 @@ void USensoryComponent::HandleDeath(AActor* DeadActor, AActor* Killer)
     {
         // 目睹他人死亡 - 重要但不如自己死亡
         DeathTag = AINPCTags::Event_Death_Witnessed;
-        
-        // ✅ Use FormatDescription to show meaningful names (Personality/Profession)
-        // Instead of "BP_NPC_C_123", show "Cautious (Miner)"
-        FString DeadActorDesc = FormatDescription("witnessed the death of", DeadActor, "");
+
+        // ✅ Build death description with full self-awareness and faction context
+        // 构建包含完整自我意识和阵营上下文的死亡描述
+        // describe relationships explicitly using the robust helper
+        FString DeadDesc = DescribeActorWithRelationship(DeadActor);
         
         if (Killer)
         {
-            // ✅ Standardized Killer Name
-            FString KillerName = AINPCHelpers::GetSmartActorName(Killer);
-            
-            Desc = DeadActorDesc + FString::Printf(TEXT(" (killed by %s)"), *KillerName);
+            FString KillerDesc = DescribeActorWithRelationship(Killer);
+            bool bIAmTheKiller = IsMyself(Killer);
+
+            if (bIAmTheKiller)
+            {
+                // Self-attributed kill
+                Desc = FString::Printf(TEXT("I killed %s."), *DeadDesc);
+            }
+            else
+            {
+                 // Witnessed kill: "I witnessed [Killer] (MY ALLY) kill [Dead] (MY ENEMY)"
+                 // This format ensures the Cognition Prompt rules trigger correctly.
+                 // Rule: "When YOUR ALLY kills an ENEMY... react with relief."
+                 Desc = FString::Printf(TEXT("I witnessed %s kill %s."), *KillerDesc, *DeadDesc);
+            }
         }
         else
         {
-            Desc = DeadActorDesc;
+            Desc = FString::Printf(TEXT("I witnessed the death of %s."), *DeadDesc);
         }
         
         Magnitude = 0.7f; // 高重要性
@@ -820,6 +841,104 @@ FString USensoryComponent::FormatDescriptionWithContext(FString Verb, AActor* Ta
     return Description;
 }
 
+
+// ==========================================
+// Universal Actor Description Helpers
+// ==========================================
+
+bool USensoryComponent::IsMyself(AActor* Actor) const
+{
+    if (!Actor) return false;
+    AActor* Owner = GetOwner();
+    if (Actor == Owner) return true;
+    if (AAIController* AICon = Cast<AAIController>(Owner))
+    {
+        return (AICon->GetPawn() == Actor);
+    }
+    return false;
+}
+
+FString USensoryComponent::DescribeActorWithRelationship(AActor* Actor) const
+{
+    if (!Actor) return TEXT("Unknown");
+
+    FString Name = AINPCHelpers::GetSmartActorName(Actor);
+    AActor* Owner = GetOwner();
+    
+    // Get Faction info for display
+    FName ActorFaction = GetActorFaction(Actor);
+    const bool bHasFaction = !ActorFaction.IsNone() && ActorFaction != "None";
+
+    // Player special case
+    if (Actor->ActorHasTag(TEXT("Player")))
+    {
+        // Player is an Ally if not hostile
+        bool bIsHostile = FactionHelpers::AreActorsHostile(Owner, Actor);
+        if (bIsHostile)
+        {
+             return FString::Printf(TEXT("%s (Player, MY ENEMY)"), *Name);
+        }
+        else
+        {
+             return FString::Printf(TEXT("%s (Player, MY ALLY)"), *Name);
+        }
+    }
+
+    // Determine relationship using FactionReputationComponent for consistency.
+    // This uses the same attitude pipeline as combat decisions (personal rep -> global faction matrix).
+    FString Relationship = "";
+
+    // Try to get attitude from the Owner's FactionReputationComponent (checks Controller then Pawn)
+    UFactionReputationComponent* MyFacComp = Owner->FindComponentByClass<UFactionReputationComponent>();
+    if (!MyFacComp)
+    {
+        if (AAIController* AICon = Cast<AAIController>(Owner))
+        {
+            if (APawn* Pawn = AICon->GetPawn())
+            {
+                MyFacComp = Pawn->FindComponentByClass<UFactionReputationComponent>();
+            }
+        }
+    }
+
+    if (MyFacComp)
+    {
+        float Attitude = MyFacComp->GetAttitudeTowards(Actor);
+        if (Attitude < 25.0f)
+        {
+            Relationship = TEXT("MY ENEMY");
+        }
+        else if (Attitude >= 75.0f)
+        {
+            Relationship = TEXT("MY ALLY");
+        }
+    }
+    else
+    {
+        // Fallback: same faction = ally
+        FName MyFaction = FactionHelpers::GetFactionID(Owner);
+        if (bHasFaction && !MyFaction.IsNone() && MyFaction != "None" && ActorFaction == MyFaction)
+        {
+            Relationship = TEXT("MY ALLY");
+        }
+    }
+
+    // Build result
+    if (bHasFaction)
+    {
+        if (!Relationship.IsEmpty())
+        {
+            return FString::Printf(TEXT("%s (Faction: %s, %s)"), *Name, *ActorFaction.ToString(), *Relationship);
+        }
+        return FString::Printf(TEXT("%s (Faction: %s)"), *Name, *ActorFaction.ToString());
+    }
+
+    if (!Relationship.IsEmpty())
+    {
+        return FString::Printf(TEXT("%s (%s)"), *Name, *Relationship);
+    }
+    return Name;
+}
 
 // ==========================================
 // Visual Accumulation Helpers
@@ -1050,8 +1169,9 @@ void USensoryComponent::HandleObservedActionChange(AActor* NPC, UUtilityActionBa
         FString ActionName = NewAction ? NewAction->ActionName : "None";
         FString OldActionName = OldAction ? OldAction->ActionName : "None";
 
-        Event.Content = FString::Printf(TEXT("%s changed action from %s to %s"),
-            *AINPCHelpers::GetSmartActorName(NPC), *OldActionName, *ActionName);
+        FString NPCDesc = DescribeActorWithRelationship(NPC);
+        Event.Content = FString::Printf(TEXT("I see %s changed action from %s to %s"),
+            *NPCDesc, *OldActionName, *ActionName);
         Event.Magnitude = 0.3f; // Medium priority
 
         OnSemanticEventSensed.Broadcast(Event);
@@ -1062,7 +1182,8 @@ void USensoryComponent::HandleObservedActionChange(AActor* NPC, UUtilityActionBa
 	FSemanticEvent ObservationEvent;
 	ObservationEvent.Instigator = NPC;
 	ObservationEvent.Verb = NewAction->ActivityTag;
-	ObservationEvent.Content = FString::Printf(TEXT("%s started %s"), *AINPCHelpers::GetSmartActorName(NPC), *NewAction->ActionName);
+	FString ObservedNPCDesc = DescribeActorWithRelationship(NPC);
+	ObservationEvent.Content = FString::Printf(TEXT("I see %s started %s"), *ObservedNPCDesc, *NewAction->ActionName);
 	ObservationEvent.Timestamp = GetWorld()->GetTimeSeconds();
 	ObservationEvent.Location = NPC->GetActorLocation();
 
@@ -1135,19 +1256,19 @@ void USensoryComponent::HandleBatchedObservations(const TArray<FSemanticEvent>& 
             // Copy context tags from first event
             MergedEvent.ContextTags = EventList[0]->ContextTags;
 
-            // Build merged description
-            TArray<FString> ActorNames;
+            // Build merged description with faction context
+            TArray<FString> ActorDescs;
             for (const FSemanticEvent* Event : EventList)
             {
                 if (Event->Instigator)
                 {
-                    ActorNames.Add(AINPCHelpers::GetSmartActorName(Event->Instigator));
+                    ActorDescs.Add(DescribeActorWithRelationship(Event->Instigator));
                 }
             }
 
-            MergedEvent.Content = FString::Printf(TEXT("%d NPCs (%s) doing similar actions"),
-                ActorNames.Num(),
-                *FString::Join(ActorNames, TEXT(", ")));
+            MergedEvent.Content = FString::Printf(TEXT("I see %d NPCs (%s) doing similar actions"),
+                ActorDescs.Num(),
+                *FString::Join(ActorDescs, TEXT(", ")));
 
             OnSemanticEventSensed.Broadcast(MergedEvent);
 

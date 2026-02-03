@@ -798,7 +798,17 @@ This file contains a log of commit messages for the AINPC project.
 
 ## [2026-02-01] Refine Faction Helpers API
 **Type**: refactor
-**Scope**: FactionHelpers
+**Scope**: Faction System
 **Description**:
-- **Added**: GetAttitudeDescription(float Attitude) helper function to convert numeric reputation values into LLM-friendly string descriptions (e.g., "Trusted Ally", "Hostile").
-- **Benefit**: Standardizes attitude descriptions across prompt building logic.
+- **API Consolidation**: Fully migrated all faction logic to new `FactionHelpers` namespace.
+- **Deprecation**: Removed legacy `GetFactionID` methods from `SensoryComponent`.
+
+## [2026-02-03] Fix Moral Ambiguity in Death Events
+**Type**: fix
+**Scope**: SensoryComponent, Cognition
+**Description**:
+- **Problem**: NPCs were condemning allies (e.g., Player) for killing enemies because the event description lacked relationship context ("I witnessed Player kill Slave"). The Cognition prompt defaulted to "Murder" interpretation.
+- **Solution**:
+  - **Enhanced Tagging**: Updated `SensoryComponent::DescribeActorWithRelationship` to robustly tag actors as `(MY ALLY)` or `(MY ENEMY)` based on Faction Reputation (Friendly/Hostile), not just ID equality.
+  - **Simplified Logic**: Refactored `HandleDeath` to trust these tags instead of complex manual branching.
+  - **Result**: Events now read "I witnessed Player (MY ALLY) kill Slave (MY ENEMY)", correctly triggering the "Relief/Approval" response rule in the LLM.

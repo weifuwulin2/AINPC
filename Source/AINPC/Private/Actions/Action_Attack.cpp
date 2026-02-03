@@ -176,18 +176,19 @@ void UAction_Attack::Execute_Implementation(AAIController* Controller)
 	{
 		// Out of range - pursue target
 		FAIMoveRequest MoveReq(Target);
-		MoveReq.SetAcceptanceRadius(50.0f); // ⚠️ DEBUG: Force close range
-		
+		MoveReq.SetAcceptanceRadius(50.0f);
+		MoveReq.SetAllowPartialPath(true); // Allow moving along partial NavMesh for distant targets
+
 		EPathFollowingRequestResult::Type Result = Controller->MoveTo(MoveReq);
-		
+
 		FString ResultStr;
 		switch(Result) {
 			case EPathFollowingRequestResult::Failed: ResultStr = "Failed"; break;
 			case EPathFollowingRequestResult::AlreadyAtGoal: ResultStr = "AlreadyAtGoal"; break;
 			case EPathFollowingRequestResult::RequestSuccessful: ResultStr = "RequestSuccessful"; break;
 		}
-		
-		AINPC_LOG(Log, "Action_Attack: Moving to target (Dist: %.1f). Result: %s", 
+
+		AINPC_LOG(Log, "Action_Attack: Moving to target (Dist: %.1f). Result: %s",
 			FMath::Sqrt(DistSq), *ResultStr);
 	}
 }

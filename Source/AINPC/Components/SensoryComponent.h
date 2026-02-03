@@ -160,6 +160,15 @@ private:
 	// 新增：包含阵营/敌对信息的增强描述，供 LLM 使用
 	FString FormatDescriptionWithContext(FString Verb, AActor* Target, FName SelfFaction, FName TargetFaction, bool bIsHostile);
 
+	// ✅ Universal helper: Describe any actor with faction relationship relative to self
+	// 通用辅助：描述任何 Actor 及其与自身的阵营关系
+	// Returns e.g. "Guard (Faction: Human, MY ALLY)" or "Slave (Faction: Slave, MY ENEMY)"
+	FString DescribeActorWithRelationship(AActor* Actor) const;
+
+	// ✅ Check if an actor is myself (Owner or Owner's Pawn)
+	// 检查一个 Actor 是否是自己
+	bool IsMyself(AActor* Actor) const;
+
 
 private:
 	// ✅ 注意力追踪：防止重复感知同一目标
