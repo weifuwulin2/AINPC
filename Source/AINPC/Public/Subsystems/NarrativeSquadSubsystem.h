@@ -82,9 +82,17 @@ struct FNarrativeTimelineEntry
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Timeline", meta=(Categories="Directive"))
 	FGameplayTag DirectiveOverride;
 
-	/** Optional bark ID for squad leader to speak. */
+	/** Role name from MemberRoles (e.g., "Leader", "Victim") — designates who speaks. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Timeline")
-	FName BarkID;
+	FName ForcedSpeakerRole;
+
+	/** Context prompt for forced speech (sent to CognitionComponent::ProcessStimulus). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Timeline", meta=(MultiLine=true))
+	FString ForcedSpeakerPrompt;
+
+	/** If > 0, this percentage of the squad speaks simultaneously using PlotUpdate as context. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Timeline")
+	float MassReactionPercentage = 0.0f;
 
 	/** If true, NPCs in this scene will NOT observe other NPCs' action changes during this timeline node.
 	 * 如果为 true，场景中的 NPC 在此 timeline 节点期间将不会观察其他 NPC 的动作变化。
@@ -185,31 +193,6 @@ struct FNarrativeSceneSquad
 	
 	UPROPERTY()
 	class ANarrativeSceneAnchor* AssignedAnchor = nullptr;
-
-	// --- Ambient Dialogue Configuration ---
-	
-	/** Enable ambient dialogue for this scene */
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Ambient Dialogue")
-	bool bEnableAmbientDialogue = true;
-
-	/** Minimum interval between ambient dialogue triggers (seconds) */
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Ambient Dialogue")
-	float AmbientDialogueIntervalMin = 5.0f;  // Changed from 30.0f for testing
-
-	/** Maximum interval between ambient dialogue triggers (seconds) */
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Ambient Dialogue")
-	float AmbientDialogueIntervalMax = 10.0f;  // Changed from 60.0f for testing
-
-	/** Number of NPCs that speak per trigger (1-2 recommended) */
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Ambient Dialogue")
-	int32 AmbientSpeakersPerTrigger = 2;
-
-	/** Player must be within this distance for ambient dialogue to trigger */
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Ambient Dialogue")
-	float PlayerActivationRadius = 2000.0f;
-
-	/** Runtime timer handle for ambient dialogue */
-	FTimerHandle AmbientDialogueTimer;
 
 	// --- Timeline System ---
 
@@ -316,20 +299,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Narrative Squad")
 	void UnregisterAnchor(class ANarrativeSceneAnchor* Anchor);
 
-	// --- Ambient Dialogue API ---
-
-	/** 
-	 * Manually configure ambient dialogue settings for a scene.
-	 * Call before activating the scene.
-	 */
-	UFUNCTION(BlueprintCallable, Category = "Narrative Squad")
-	void ConfigureAmbientDialogue(int32 SquadID, bool bEnabled, float MinInterval, float MaxInterval, int32 SpeakersPerTrigger, float ActivationRadius);
-
-	/** Manually trigger ambient dialogue for testing */
-	UFUNCTION(BlueprintCallable, Category = "Narrative Squad")
-	void TriggerAmbientDialogueNow(int32 SquadID);
-
-	/** 
+	/**
 	 * Applies a GameplayTag to all squad members with a specific Role (e.g., "Slave", "Guard").
 	 * Useful for triggering state changes like combat or behavior overrides.
 	 */
@@ -358,19 +328,8 @@ protected:
 	UFUNCTION()
 	void OnNarrativeEventRecorded(const FNarrativeEvent& Event);
 
-	// --- Ambient Dialogue Internal ---
-
-	/** Start the ambient dialogue timer for a scene */
-	void StartAmbientDialogue(int32 SquadID);
-
-	/** Trigger ambient dialogue (timer callback) */
-	void TriggerAmbientDialogue(int32 SquadID);
-
-	/** Request a specific NPC to generate ambient dialogue */
-	void RequestAmbientDialogue(AActor* Speaker, const FNarrativeSceneSquad* Squad);
-
-	/** Check if player is near the scene anchor */
-	bool IsPlayerNearScene(const FNarrativeSceneSquad* Squad) const;
+	/** Find the actor assigned to a specific role name within a squad. */
+	AActor* FindActorByRole(const FNarrativeSceneSquad& Squad, FName RoleName) const;
 
 	// --- Timeline System Internal ---
 

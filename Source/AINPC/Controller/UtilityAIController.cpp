@@ -181,10 +181,20 @@ void AUtilityAIController::OnPossess(APawn* InPawn)
             // CognitionComp->bEnableReasoning = false; // Re-enabled to allow LLM to generate 'grunts' and 'hisses'
             AINPC_LOG(Warning, "✅ Cognition Reasoning stays ENABLED for Monster (to allow speech generation). Amygdala Hijack handles threat.");
         }
-        
+
+        // D. Set Profession so LoadActionsFromTable can load Attack action
+        if (UtilityComp)
+        {
+            UtilityComp->SetProfession(MonsterComp->MonsterProfessionID);
+            AINPC_LOG(Warning, "✅ Set Monster ProfessionID: %s", *MonsterComp->MonsterProfessionID.ToString());
+        }
+
+        // E. Ensure Combat.AlwaysHostile tag is on the Pawn
+        InPawn->Tags.AddUnique(FName("Combat.AlwaysHostile"));
+
         AINPC_LOG(Warning, "Monster initialization complete. Skipping NPCDefinition.");
         AINPC_LOG(Warning, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        
+
         // ✅ Still configure avoidance for monsters
         if (ACharacter* CharPawn = Cast<ACharacter>(InPawn))
         {
@@ -194,7 +204,7 @@ void AUtilityAIController::OnPossess(APawn* InPawn)
                 MovementComp->AvoidanceConsiderationRadius = 500.0f; // 5m
             }
         }
-        
+
         return; // Skip NPCDefinition
     }
 
@@ -397,7 +407,7 @@ void AUtilityAIController::OnSemanticEventReceived(const FSemanticEvent& Event)
             CognitionComp->LastSpeakerTime = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f;
         }
 
-        CognitionComp->ProcessStimulus(Event.Content);
+        CognitionComp->ProcessStimulus(Event.Content, false, Event.Magnitude);
     }
 
     // Request debug log

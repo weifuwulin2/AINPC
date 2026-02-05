@@ -128,6 +128,10 @@ void UCognitionComponent::BeginDestroy()
 		{
 			World->GetTimerManager().ClearTimer(RetryStimulusTimerHandle);
 		}
+		if (PendingStimulusFlushTimer.IsValid())
+		{
+			World->GetTimerManager().ClearTimer(PendingStimulusFlushTimer);
+		}
 	}
 	
 	Super::BeginDestroy();
@@ -162,7 +166,7 @@ void UCognitionComponent::SetLOD(EContextLOD NewLOD)
 	}
 }
 
-void UCognitionComponent::ProcessStimulus(FString SituationDescription)
+void UCognitionComponent::ProcessStimulus(FString SituationDescription, bool bForceImmediate, float Priority)
 {
 	// 🔍 DEBUG TRACE: Force Visibility with LogTemp Error
 	UE_LOG(LogTemp, Error, TEXT("🔍 [Cognition] ProcessStimulus Called! Input Len: %d | Data: %.20s"), 
@@ -208,19 +212,45 @@ void UCognitionComponent::ProcessStimulus(FString SituationDescription)
 		return;
 	}
 
-	// 5. Rate Limiting (check BEFORE building prompt to avoid wasted work)
+	// 5. Rate Limiting with Priority Buffer
+	// During cooldown, buffer only the highest-priority stimulus; flush when cooldown expires.
 	float CurrentTime = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f;
-	bool bIsHighPriority = SituationDescription.Contains(TEXT("HOSTILE")) || SituationDescription.Contains(TEXT("DANGER"));
 	bool bIsPlayerSpeech = SituationDescription.Contains(TEXT("said to you"));
+
+	// Compute effective priority: use passed-in Priority as base, boost by keyword heuristic
+	float EffectivePriority = Priority;
+	if (SituationDescription.Contains(TEXT("HOSTILE")) || SituationDescription.Contains(TEXT("DANGER")))
+		EffectivePriority = FMath::Max(EffectivePriority, 0.8f);
+	if (bIsPlayerSpeech)
+		EffectivePriority = FMath::Max(EffectivePriority, 0.9f);
+
+	bool bIsHighPriority = EffectivePriority >= 0.8f;
 	float Cooldown = bIsHighPriority ? 1.5f : 4.0f;
 
-	if (bIsPlayerSpeech)
+	if (bIsPlayerSpeech || bForceImmediate)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[Cognition] Player Speech detected - bypassing rate limit"));
+		UE_LOG(LogTemp, Warning, TEXT("[Cognition] Rate limit bypassed (PlayerSpeech=%d, ForceImmediate=%d)"), bIsPlayerSpeech, bForceImmediate);
 	}
 	else if (CurrentTime - LastLLMRequestTime < Cooldown)
 	{
-		UE_LOG(LogTemp, Verbose, TEXT("[Cognition] Rate Limited. Time: %.2f, Last: %.2f, Cd: %.2f"), CurrentTime, LastLLMRequestTime, Cooldown);
+		// Rate limited: buffer highest-priority stimulus
+		if (!PendingStimulusBuffer.IsSet() || EffectivePriority > PendingStimulusBuffer.GetValue().Priority)
+		{
+			PendingStimulusBuffer.Emplace(FPendingCognitionStimulus{SituationDescription, EffectivePriority, bForceImmediate});
+			UE_LOG(LogTemp, Warning, TEXT("[Cognition] Buffered stimulus (Priority=%.2f): %.40s..."), EffectivePriority, *SituationDescription);
+		}
+		else
+		{
+			UE_LOG(LogTemp, Verbose, TEXT("[Cognition] Dropped lower-priority stimulus (%.2f <= %.2f)"), EffectivePriority, PendingStimulusBuffer.GetValue().Priority);
+		}
+
+		// Ensure flush timer is set for remaining cooldown
+		if (GetWorld() && !GetWorld()->GetTimerManager().IsTimerActive(PendingStimulusFlushTimer))
+		{
+			float RemainingCooldown = Cooldown - (CurrentTime - LastLLMRequestTime);
+			GetWorld()->GetTimerManager().SetTimer(PendingStimulusFlushTimer, this,
+				&UCognitionComponent::FlushPendingStimulus, FMath::Max(RemainingCooldown, 0.1f), false);
+		}
 		return;
 	}
 	LastLLMRequestTime = CurrentTime;
@@ -325,6 +355,16 @@ void UCognitionComponent::OnLLMReply(bool bSuccess, const FMentalState& NewState
 	else
 	{
 		AINPC_LOG_ERROR("Failed to process thought.");
+	}
+}
+
+void UCognitionComponent::FlushPendingStimulus()
+{
+	if (PendingStimulusBuffer.IsSet())
+	{
+		FPendingCognitionStimulus Stimulus = PendingStimulusBuffer.GetValue();
+		PendingStimulusBuffer.Reset();
+		ProcessStimulus(Stimulus.Description, Stimulus.bForceImmediate, Stimulus.Priority);
 	}
 }
 
@@ -512,17 +552,18 @@ bool UCognitionComponent::IsDataReady(const FString& PersonalityID, const FStrin
 	if (!bDataReady)
 	{
 		AINPC_LOG_WARNING("[Cognition] 🔄 Data not ready - PersonalityID: %s, Faction: %s. Scheduling retry...", *PersonalityID, *FactionStr);
-		
-		PendingStimulus = SituationDescription;
+
+		// Buffer the stimulus for retry (reuses priority buffer struct for consistency)
+		PendingStimulusBuffer.Emplace(FPendingCognitionStimulus{SituationDescription, 0.5f, false});
 		if (!GetWorld()->GetTimerManager().IsTimerActive(RetryStimulusTimerHandle))
 		{
 			GetWorld()->GetTimerManager().SetTimer(RetryStimulusTimerHandle, [this]()
 			{
-				if (!PendingStimulus.IsEmpty())
+				if (PendingStimulusBuffer.IsSet())
 				{
-					FString CheckStimulus = PendingStimulus;
-					PendingStimulus.Empty();
-					ProcessStimulus(CheckStimulus);
+					FPendingCognitionStimulus Stimulus = PendingStimulusBuffer.GetValue();
+					PendingStimulusBuffer.Reset();
+					ProcessStimulus(Stimulus.Description, Stimulus.bForceImmediate, Stimulus.Priority);
 				}
 			}, 0.5f, false);
 		}

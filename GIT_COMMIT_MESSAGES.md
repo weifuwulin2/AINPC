@@ -4,6 +4,16 @@ This file contains a log of commit messages for the AINPC project.
 
 ---
 
+## [2026-02-05] Docs, Timeline Speech & Sentiment Refactor
+**Type**: feat/docs
+**Scope**: Narrative, UtilityAI, Config
+**Description**:
+- **Design**: Added `Deterministic_Timeline_Speech_Design.md`.
+- **Narrative**: Implemented Timeline Speech (Forced/Mass Reaction) in `NarrativeSquadSubsystem` & `CognitionComponent`.
+- **UtilityAI**: Refactored `SentimentMapping` (Tag->Value) and added `MonsterComponent`.
+- **Config**: Externalized settings (`AINPCSettings`) and updated `DefaultGame.ini`.
+- **Core**: Updates to `TimeManager`, `FactionHelpers`, and `UtilityActionBase`.
+
 ## [2026-02-02] Targeted Chat & Narrative Context
 **Type**: feat
 **Scope**: Cognition/Sensory

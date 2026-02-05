@@ -20,10 +20,11 @@ public:
 
 	// ==================== Utility AI Tuning ====================
 
-	/** Additive bonus when action's IntentionTag matches LLM's current Intention.
-	 *  Higher values give LLM more agency over action selection. */
+	/** Multiplicative bonus when action's IntentionTag matches LLM's current Intention.
+	 *  Applied as (1 + Bonus) multiplier to MotivationSum — LLM amplifies existing needs, cannot create them.
+	 *  e.g., 1.5 means a matching Intention makes the action 2.5x more appealing. */
 	UPROPERTY(config, EditAnywhere, Category = "Utility AI", meta = (ClampMin = "0.0", ClampMax = "5.0"))
-	float IntentionMatchBonus = 2.5f;
+	float IntentionMatchBonus = 1.5f;
 
 	/** Multiplier when action's DirectiveTag matches current GoalComponent Directive.
 	 *  Applied to final score. Default 1.5x encourages matching. */

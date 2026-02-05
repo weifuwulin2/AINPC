@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased] - 2026-02-05
+
+### 📖 Documentation
+- **Component Guide**: Added `docs/mustknow/Component_Location_Guide.md`.
+- **Timeline Design**: Added `docs/design/Deterministic_Timeline_Speech_Design.md` (Replacing Ambient Dialogue).
+
+### ✨ Features
+- **Timeline Speech & Narrative**:
+  - Implemented deterministic timeline-driven speech logic in `NarrativeSquadSubsystem` (Forced Speaker/Mass Reaction).
+  - Updated `CognitionComponent` to support `bForceImmediate` bypass for rate limits.
+  - Refactored `UtilityAIController` and `Action_TalkTo` to handle narrative speech events.
+- **Sentiment Mapping**: Refactored `SentimentMapping` to support robust Tag-to-Value conversion (Likert Scale) and auto-generate LLM prompt instructions.
+- **Monster Logic**: Added `MonsterComponent` for auto-configuring faction/profession of brainless entities.
+
+### 🔧 Systems & Config
+- **Config**: Externalized settings in `AINPCSettings.h`.
+- **TimeManager**: Updated `TimeManager` subsystem with hour-change delegates.
+- **Factions**: Refactored `FactionHelpers` and `FactionReputationComponent` to unify hostility logic.
+- **Components**: Polished `UtilityAIComponent` and `MetabolismComponent`.
+- **LLM**: Updated `LLMCommunicator` and `DefaultGame.ini` (DeepSeek).
+
 ## [0.6.7] - 2026-02-03
 
 ### 🏗️ Refactor - LLMCommunicator Dual-Mode API & Token Optimization

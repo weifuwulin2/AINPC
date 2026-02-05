@@ -8,6 +8,7 @@ Welcome to the AINPC Knowledge Base. This index serves as the central hub for al
 *   [**Framework Testing Guide**](guides/Framework_Testing_Guide.md) - A complete guide to testing the AINPC framework features.
 *   [**Quick Start**](../README.md#🚀-快速开始--quick-start) - (Link to Main README)
 *   [**LLM Configuration**](guides/LLM_Config_Guide.md) - How to set up API keys and endpoints.
+*   [**Component Location Guide**](mustknow/Component_Location_Guide.md) - **(New)** Quick reference for locating key components and systems.
 
 ### 🏗️ Architecture & Design
 *   [**Data Flow Analysis**](analysis/DataFlow_Analysis.md) - **(Crucial)** Mermaid diagrams and detailed system data flow analysis.

@@ -38,7 +38,7 @@ public:
 
 	// 唯一的输入口：接收外界刺激（"我看见了僵尸"）
 	UFUNCTION(BlueprintCallable, Category = "AI | Cognition")
-	void ProcessStimulus(FString SituationDescription);
+	void ProcessStimulus(FString SituationDescription, bool bForceImmediate = false, float Priority = 0.5f);
 
 	// 委托：Controller 绑定这个来获取结果
 	UPROPERTY(BlueprintAssignable, Category = "AI | Cognition")
@@ -126,7 +126,18 @@ private:
 
 	// 重试定时器 / Retry timer
 	FTimerHandle RetryStimulusTimerHandle;
-	FString PendingStimulus;
+
+	// Priority buffer: keeps only the highest-priority stimulus during rate-limit cooldown
+	struct FPendingCognitionStimulus
+	{
+		FString Description;
+		float Priority;
+		bool bForceImmediate;
+	};
+	TOptional<FPendingCognitionStimulus> PendingStimulusBuffer;
+	FTimerHandle PendingStimulusFlushTimer;
+
+	void FlushPendingStimulus();
 	
 	// ✅ Rate Limiting
 	float LastLLMRequestTime = -999.0f;

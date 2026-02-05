@@ -21,8 +21,13 @@ public:
 protected:
 	virtual void BeginPlay() override;
 
-public:	
+public:
     // Optional: Override Faction ID specifically for this monster type
     UPROPERTY(EditAnywhere, Category="Monster")
     FName MonsterFactionID = "Monsters";
+
+    // ProfessionID determines which actions are loaded from ActionDataTable
+    // Must match a RequiredProfessionIDs entry in the table for Attack, etc.
+    UPROPERTY(EditAnywhere, Category="Monster")
+    FName MonsterProfessionID = "Monster";
 };

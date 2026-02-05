@@ -19,11 +19,25 @@ namespace FactionHelpers
 
 		// 1. Narrative Override (Centralized Logic)
 		// Check for InScene Tag on Actor or Pawn/Controller
-		// ✅ EXCEPTION: If Directive.Combat is present, DO NOT force Neutral.
-		// This allows plot-driven combat (e.g. Uprisings) to use real Factions.
+		// ✅ EXCEPTION: If Directive.Combat or Combat.AlwaysHostile is present, DO NOT force Neutral.
+		// This allows plot-driven combat and monsters to use real Factions.
 		bool bHasCombatDirective = Actor->ActorHasTag("Directive.Combat");
+		bool bAlwaysHostile = Actor->ActorHasTag("Combat.AlwaysHostile");
 
-		if (!bHasCombatDirective)
+		// Also check Pawn/Controller pair for AlwaysHostile
+		if (!bAlwaysHostile)
+		{
+			if (APawn* P = Cast<APawn>(Actor))
+			{
+				if (P->GetController() && P->GetController()->ActorHasTag("Combat.AlwaysHostile")) bAlwaysHostile = true;
+			}
+			if (AController* C = Cast<AController>(Actor))
+			{
+				if (C->GetPawn() && C->GetPawn()->ActorHasTag("Combat.AlwaysHostile")) bAlwaysHostile = true;
+			}
+		}
+
+		if (!bHasCombatDirective && !bAlwaysHostile)
 		{
 			if (Actor->ActorHasTag("Status.InScene")) return "Neutral";
 
@@ -100,18 +114,51 @@ namespace FactionHelpers
 		return TEXT("Sworn Ally");
 	}
 
+	// Helper: Check if actor (or its Pawn/Controller pair) has a tag
+	static bool ActorOrPawnHasTag(AActor* Actor, FName Tag)
+	{
+		if (Actor->ActorHasTag(Tag)) return true;
+		if (APawn* P = Cast<APawn>(Actor))
+		{
+			if (P->GetController() && P->GetController()->ActorHasTag(Tag)) return true;
+		}
+		if (AController* C = Cast<AController>(Actor))
+		{
+			if (C->GetPawn() && C->GetPawn()->ActorHasTag(Tag)) return true;
+		}
+		return false;
+	}
+
 	bool AreActorsHostile(AActor* ActorA, AActor* ActorB)
 	{
 		if (!ActorA || !ActorB) return false;
 		if (ActorA == ActorB) return false;
 
+		// 0. Combat.AlwaysHostile bypass (Monsters attack everything non-Monster)
+		// This check works regardless of FactionReputationComponent or FactionSubsystem state
+		bool bAIsAlwaysHostile = ActorOrPawnHasTag(ActorA, FName("Combat.AlwaysHostile"));
+		bool bBIsAlwaysHostile = ActorOrPawnHasTag(ActorB, FName("Combat.AlwaysHostile"));
+		if (bAIsAlwaysHostile || bBIsAlwaysHostile)
+		{
+			// Both are AlwaysHostile (e.g. Monster vs Monster) → not hostile to each other
+			if (bAIsAlwaysHostile && bBIsAlwaysHostile) return false;
+
+			// Dead check: don't be hostile to dead actors
+			if (ActorOrPawnHasTag(ActorA, FName("Status.Dead")) || ActorOrPawnHasTag(ActorB, FName("Status.Dead")))
+				return false;
+
+			return true; // One side is AlwaysHostile → hostile to the other
+		}
+
 		// 1. Personal Reputation Check (Highest Priority)
 		// Check Local Components for Override (e.g. "I personally hate YOU")
+		// FactionReputationComponent is typically on the Character (Pawn), not Controller.
+		// So we check: Actor directly → Pawn→Controller → Controller→Pawn
 		if (UFactionReputationComponent* FacCompA = ActorA->FindComponentByClass<UFactionReputationComponent>())
 		{
 			return FacCompA->IsHostile(ActorB);
 		}
-		// Check fallback Controller/Pawn for A
+		// Check fallback: Pawn → Controller
 		if (APawn* PawnA = Cast<APawn>(ActorA))
 		{
 			if (AController* ConA = PawnA->GetController())
@@ -119,6 +166,17 @@ namespace FactionHelpers
 				if (UFactionReputationComponent* FacCompCon = ConA->FindComponentByClass<UFactionReputationComponent>())
 				{
 					return FacCompCon->IsHostile(ActorB);
+				}
+			}
+		}
+		// Check fallback: Controller → Pawn (SensoryComponent lives on Controller!)
+		if (AController* ConA = Cast<AController>(ActorA))
+		{
+			if (APawn* PawnOfA = ConA->GetPawn())
+			{
+				if (UFactionReputationComponent* FacCompPawn = PawnOfA->FindComponentByClass<UFactionReputationComponent>())
+				{
+					return FacCompPawn->IsHostile(ActorB);
 				}
 			}
 		}

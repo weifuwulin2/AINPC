@@ -87,10 +87,36 @@ bool UFactionReputationComponent::EvaluateCombatPolicy(const AActor* Source, con
 		return true;
 	}
 
+	// 2b. Monsters bypass scene safety (always hostile regardless of narrative state)
+	if (Source->ActorHasTag("Combat.AlwaysHostile") || Target->ActorHasTag("Combat.AlwaysHostile"))
+	{
+		// Also check Pawn/Controller pair for the tag
+		UE_LOG(LogAINPC, Warning, TEXT("   ✅ ALLOWED: Combat.AlwaysHostile tag (Monster bypass)"));
+		return true;
+	}
+	// Check Pawn/Controller pair for AlwaysHostile tag
+	auto HasAlwaysHostileTag = [](const AActor* Actor) -> bool
+	{
+		if (const APawn* P = Cast<APawn>(Actor))
+		{
+			if (P->GetController() && P->GetController()->ActorHasTag("Combat.AlwaysHostile")) return true;
+		}
+		if (const AController* C = Cast<AController>(Actor))
+		{
+			if (C->GetPawn() && C->GetPawn()->ActorHasTag("Combat.AlwaysHostile")) return true;
+		}
+		return false;
+	};
+	if (HasAlwaysHostileTag(Source) || HasAlwaysHostileTag(Target))
+	{
+		UE_LOG(LogAINPC, Warning, TEXT("   ✅ ALLOWED: Combat.AlwaysHostile on Pawn/Controller pair (Monster bypass)"));
+		return true;
+	}
+
 	// 3. Narrative Scene Safety (Medium Priority - Default Peace)
 	bool bSourceInScene = Source->ActorHasTag("Status.InScene");
 	bool bTargetInScene = Target->ActorHasTag("Status.InScene");
-	
+
 	if (bSourceInScene || bTargetInScene)
 	{
 		UE_LOG(LogAINPC, Warning, TEXT("   ❌ DENIED: Scene Safety (Source.InScene=%d, Target.InScene=%d)"), bSourceInScene, bTargetInScene);

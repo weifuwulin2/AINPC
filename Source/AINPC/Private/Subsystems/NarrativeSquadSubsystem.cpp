@@ -505,7 +505,6 @@ void UNarrativeSquadSubsystem::ActivateScene(int32 SquadID)
 	{
 		NARRATIVE_LOG(Warning, TEXT("✅ Found Squad %d in ActiveSquads"), SquadID);
 		NARRATIVE_LOG(Warning, TEXT("   - bIsActive: %s"), Squad->bIsActive ? TEXT("true") : TEXT("false"));
-		NARRATIVE_LOG(Warning, TEXT("   - bEnableAmbientDialogue: %s"), Squad->bEnableAmbientDialogue ? TEXT("true") : TEXT("false"));
 		
 		if (!Squad->bIsActive)
 		{
@@ -561,19 +560,7 @@ void UNarrativeSquadSubsystem::ActivateScene(int32 SquadID)
 				}
 			}
 			
-			// Note: NPCs will speak via Ambient Dialogue system, not all at once
-			
-			// Start Ambient Dialogue Timer
-			if (Squad->bEnableAmbientDialogue)
-			{
-				NARRATIVE_LOG(Warning, TEXT("🎤 About to call StartAmbientDialogue for Squad %d"), SquadID);
-				StartAmbientDialogue(SquadID);
-				NARRATIVE_LOG(Warning, TEXT("ActivateScene: Squad %d Activated with Ambient Dialogue enabled."), SquadID);
-			}
-			else
-			{
-				NARRATIVE_LOG(Warning, TEXT("ActivateScene: Squad %d Activated (Ambient Dialogue disabled)."), SquadID);
-			}
+			NARRATIVE_LOG(Warning, TEXT("ActivateScene: Squad %d Activated."), SquadID);
 		}
 		else
 		{
@@ -592,12 +579,6 @@ void UNarrativeSquadSubsystem::EndScene(int32 SquadID)
 
 	FNarrativeSceneSquad& Squad = ActiveSquads[SquadID];
 	Squad.bIsActive = false;
-	
-	// Stop Ambient Dialogue Timer
-	if (UWorld* World = GetWorld())
-	{
-		World->GetTimerManager().ClearTimer(Squad.AmbientDialogueTimer);
-	}
 	
 	// Release Anchor
 	if (Squad.AssignedAnchor)
@@ -714,274 +695,16 @@ void UNarrativeSquadSubsystem::EndScene(int32 SquadID)
 	ActiveSquads.Remove(SquadID);
 	NARRATIVE_LOG(Log, TEXT("Scene Squad %d Ended and Disbanded."), SquadID);
 }
-// ============================================================================
-// AMBIENT DIALOGUE SYSTEM
-// ============================================================================
-
-void UNarrativeSquadSubsystem::ConfigureAmbientDialogue(int32 SquadID, bool bEnabled, float MinInterval, float MaxInterval, int32 SpeakersPerTrigger, float ActivationRadius)
+AActor* UNarrativeSquadSubsystem::FindActorByRole(const FNarrativeSceneSquad& Squad, FName RoleName) const
 {
-	FNarrativeSceneSquad* Squad = ActiveSquads.Find(SquadID);
-	if (!Squad) return;
-
-	Squad->bEnableAmbientDialogue = bEnabled;
-	Squad->AmbientDialogueIntervalMin = MinInterval;
-	Squad->AmbientDialogueIntervalMax = MaxInterval;
-	Squad->AmbientSpeakersPerTrigger = SpeakersPerTrigger;
-	Squad->PlayerActivationRadius = ActivationRadius;
-
-	UE_LOG(LogTemp, Log, TEXT("[AmbientDialogue] Configured Squad %d: Enabled=%d, Interval=[%.1f-%.1f], Speakers=%d, Radius=%.0f"), 
-		SquadID, bEnabled, MinInterval, MaxInterval, SpeakersPerTrigger, ActivationRadius);
-
-	// Restart timer if scene is already active
-	if (Squad->bIsActive && bEnabled)
+	for (const auto& Pair : Squad.MemberRoles)
 	{
-		if (UWorld* World = GetWorld())
+		if (IsValid(Pair.Key) && Pair.Value == RoleName)
 		{
-			World->GetTimerManager().ClearTimer(Squad->AmbientDialogueTimer);
-		}
-		StartAmbientDialogue(SquadID);
-	}
-}
-
-void UNarrativeSquadSubsystem::StartAmbientDialogue(int32 SquadID)
-{
-	NARRATIVE_LOG(Warning, TEXT("[AmbientDialogue] 🔧 StartAmbientDialogue called for Squad %d"), SquadID);
-	
-	FNarrativeSceneSquad* Squad = ActiveSquads.Find(SquadID);
-	if (!Squad)
-	{
-		AINPC_LOG_ERROR(TEXT("[AmbientDialogue] ❌ Squad %d not found in ActiveSquads!"), SquadID);
-		return;
-	}
-	
-	if (!Squad->bIsActive)
-	{
-		NARRATIVE_LOG(Warning, TEXT("[AmbientDialogue] ⚠️ Squad %d is not active (bIsActive=false)"), SquadID);
-		return;
-	}
-	
-	if (!Squad->bEnableAmbientDialogue)
-	{
-		NARRATIVE_LOG(Warning, TEXT("[AmbientDialogue] ⚠️ Squad %d has Ambient Dialogue disabled (bEnableAmbientDialogue=false)"), SquadID);
-		return;
-	}
-
-	UWorld* World = GetWorld();
-	if (!World)
-	{
-		AINPC_LOG_ERROR(TEXT("[AmbientDialogue] ❌ GetWorld() returned nullptr!"));
-		return;
-	}
-
-	// Calculate random interval
-	float RandomInterval = FMath::RandRange(Squad->AmbientDialogueIntervalMin, Squad->AmbientDialogueIntervalMax);
-
-	// Set timer
-	World->GetTimerManager().SetTimer(
-		Squad->AmbientDialogueTimer,
-		FTimerDelegate::CreateUObject(this, &UNarrativeSquadSubsystem::TriggerAmbientDialogue, SquadID),
-		RandomInterval,
-		false // One-shot, we'll restart after triggering
-	);
-
-	NARRATIVE_LOG(Warning, TEXT("[AmbientDialogue] ✅ Timer set! Squad %d will trigger in %.1f seconds"), SquadID, RandomInterval);
-}
-
-void UNarrativeSquadSubsystem::TriggerAmbientDialogue(int32 SquadID)
-{
-	FNarrativeSceneSquad* Squad = ActiveSquads.Find(SquadID);
-	if (!Squad || !Squad->bIsActive)
-	{
-		return; // Scene ended, don't restart timer
-	}
-
-	// ✅ Check if player is nearby
-	if (!IsPlayerNearScene(Squad))
-	{
-		NARRATIVE_LOG(Warning, TEXT("[AmbientDialogue] ⏭️ Squad %d: Player not nearby, skipping trigger"), SquadID);
-		// Restart timer for next check
-		StartAmbientDialogue(SquadID);
-		return;
-	}
-
-	// Collect valid speakers (NPCs with CognitionComponent)
-	TArray<AActor*> ValidSpeakers;
-	for (const auto& Pair : Squad->MemberRoles)
-	{
-		if (IsValid(Pair.Key))
-		{
-			UCognitionComponent* CogComp = AINPCHelpers::GetCognitionComponent(Pair.Key);
-
-			if (CogComp)
-			{
-				ValidSpeakers.Add(Pair.Key);
-			}
+			return Pair.Key;
 		}
 	}
-
-	if (ValidSpeakers.Num() == 0)
-	{
-		NARRATIVE_LOG(Warning, TEXT("[AmbientDialogue] ❌ Squad %d: No valid speakers found"), SquadID);
-		StartAmbientDialogue(SquadID);
-		return;
-	}
-
-	// Randomly select 1-N speakers
-	int32 NumSpeakers = FMath::Min(
-		FMath::RandRange(1, Squad->AmbientSpeakersPerTrigger), 
-		ValidSpeakers.Num()
-	);
-
-	NARRATIVE_LOG(Warning, TEXT("[AmbientDialogue] 🎬 Squad %d: Triggering %d/%d speakers (Player nearby)"), 
-		SquadID, NumSpeakers, ValidSpeakers.Num());
-
-	for (int32 i = 0; i < NumSpeakers; i++)
-	{
-		int32 RandomIndex = FMath::RandRange(0, ValidSpeakers.Num() - 1);
-		AActor* SelectedSpeaker = ValidSpeakers[RandomIndex];
-		ValidSpeakers.RemoveAt(RandomIndex); // Avoid duplicate selection
-
-		// Trigger the NPC to speak
-		RequestAmbientDialogue(SelectedSpeaker, Squad);
-	}
-
-	// Restart timer for next trigger
-	StartAmbientDialogue(SquadID);
-}
-
-void UNarrativeSquadSubsystem::RequestAmbientDialogue(AActor* Speaker, const FNarrativeSceneSquad* Squad)
-{
-	if (!IsValid(Speaker) || !Squad) return;
-
-	UCognitionComponent* CogComp = AINPCHelpers::GetCognitionComponent(Speaker);
-
-	if (!CogComp) return;
-
-	// Get NPC's current activity from UtilityAIComponent (actual executing action, not scheduled)
-	FString CurrentActivity = TEXT("idle");
-	
-	// First try: Get actual executing action's ActivityTag from UtilityAIComponent
-	if (AAIController* AIController = Cast<AAIController>(Speaker->GetInstigatorController()))
-	{
-		if (UUtilityAIComponent* UtilComp = AIController->FindComponentByClass<UUtilityAIComponent>())
-		{
-			if (UtilComp->CurrentAction && UtilComp->CurrentAction->ActivityTag.IsValid())
-			{
-				// Extract just the activity name from the tag (e.g., "Interaction.Mine" -> "mining")
-				FString TagStr = UtilComp->CurrentAction->ActivityTag.ToString();
-				if (TagStr.Contains(TEXT(".")))
-				{
-					TagStr.Split(TEXT("."), nullptr, &CurrentActivity);
-				}
-				else
-				{
-					CurrentActivity = TagStr;
-				}
-			}
-		}
-	}
-	
-	// Fallback: If no action, try scheduled activity from GoalComponent
-	if (CurrentActivity == TEXT("idle"))
-	{
-		if (UGoalComponent* GoalComp = Speaker->FindComponentByClass<UGoalComponent>())
-		{
-			FGameplayTag ActivityTag = GoalComp->GetScheduledActivity();
-			if (ActivityTag.IsValid())
-			{
-				// Extract just the activity name from the tag (e.g., "Interaction.Mine" -> "mining")
-				FString TagStr = ActivityTag.ToString();
-				if (TagStr.Contains(TEXT(".")))
-				{
-					TagStr.Split(TEXT("."), nullptr, &CurrentActivity);
-				}
-				else
-				{
-					CurrentActivity = TagStr;
-				}
-			}
-		}
-	}
-
-	// Get NPC's emotional state (optional enhancement)
-	FString EmotionContext = TEXT("");
-	if (UPersonalityComponent* PersComp = AINPCHelpers::GetPersonalityComponent(Speaker))
-
-	{
-		// Note: You may need to implement GetCurrentEmotionalState() in PersonalityComponent
-		// For now, we'll leave it as a placeholder
-		EmotionContext = TEXT("neutral"); // Placeholder
-	}
-
-	// Build the ambient dialogue prompt
-	FString AmbientPrompt = FString::Printf(
-		TEXT("You are currently in this scene: %s\n"
-			 "Your role in this scene: %s\n"
-			 "Current activity: %s\n\n"
-			 "Generate a brief, impactful line (1-2 sentences) that reflects your character's reaction to the immediate PLOT CONFLICT. "
-			 "Do NOT engage in idle chitchat or talk about the weather. "
-			 "Instead, reveal your stance, your fears, or your determination regarding the events unfolding (e.g. the uprising, the specific danger). "
-			 "Your goal is to build tension and reinforce the narrative situation."),
-		*Squad->PlotOutline,
-		*Squad->MemberRoles.FindRef(Speaker).ToString(),
-		*CurrentActivity
-	);
-
-	// Trigger CognitionComponent to generate response
-	CogComp->ProcessStimulus(AmbientPrompt);
-
-	NARRATIVE_LOG(Warning, TEXT("[AmbientDialogue] 💬 %s triggered ambient speech (Activity: %s)"), 
-		*Speaker->GetName(), *CurrentActivity);
-	NARRATIVE_LOG(Warning, TEXT("[AmbientDialogue] 🔔 Speech should appear above NPC's head in 1-2 seconds if EmotionDisplayComponent is configured."));
-}
-
-bool UNarrativeSquadSubsystem::IsPlayerNearScene(const FNarrativeSceneSquad* Squad) const
-{
-	if (!Squad) return false;
-
-	UWorld* World = GetWorld();
-	if (!World) return false;
-
-	// Get player location
-	APlayerController* PC = World->GetFirstPlayerController();
-	if (!PC) return false;
-
-	APawn* PlayerPawn = PC->GetPawn();
-	if (!PlayerPawn) return false;
-
-	FVector PlayerLocation = PlayerPawn->GetActorLocation();
-
-	// Check distance from anchor (if assigned)
-	if (Squad->AssignedAnchor)
-	{
-		float DistanceSq = FVector::DistSquared(PlayerLocation, Squad->AssignedAnchor->GetActorLocation());
-		float RadiusSq = Squad->PlayerActivationRadius * Squad->PlayerActivationRadius;
-		
-		return DistanceSq <= RadiusSq;
-	}
-
-	// Fallback: Check distance from any squad member
-	for (const auto& Pair : Squad->MemberRoles)
-	{
-		if (IsValid(Pair.Key))
-		{
-			float DistanceSq = FVector::DistSquared(PlayerLocation, Pair.Key->GetActorLocation());
-			float RadiusSq = Squad->PlayerActivationRadius * Squad->PlayerActivationRadius;
-			
-			if (DistanceSq <= RadiusSq)
-			{
-				return true;
-			}
-		}
-	}
-
-	return false;
-}
-
-void UNarrativeSquadSubsystem::TriggerAmbientDialogueNow(int32 SquadID)
-{
-	// Manual trigger for testing - bypasses timer
-	TriggerAmbientDialogue(SquadID);
+	return nullptr;
 }
 
 // ============================================================================
@@ -1169,8 +892,48 @@ void UNarrativeSquadSubsystem::TriggerTimelineNode(int32 SquadID, int32 NodeInde
 		}
 	}
 
-	// TODO: Trigger Bark if BarkID is set
-	// For now, we'll skip bark implementation
+	// --- Forced Speaker ---
+	if (!Node.ForcedSpeakerRole.IsNone() && !Node.ForcedSpeakerPrompt.IsEmpty())
+	{
+		AActor* Speaker = FindActorByRole(*Squad, Node.ForcedSpeakerRole);
+		if (Speaker)
+		{
+			if (auto CogComp = AINPCHelpers::GetCognitionComponent(Speaker))
+			{
+				CogComp->ProcessStimulus(Node.ForcedSpeakerPrompt, true, 1.0f);
+				NARRATIVE_LOG(Warning, TEXT("   -> Forced Speaker '%s' (Role: %s) to speak"),
+					*Speaker->GetName(), *Node.ForcedSpeakerRole.ToString());
+			}
+		}
+		else
+		{
+			NARRATIVE_LOG(Warning, TEXT("   -> Could not find actor with role '%s' for forced speech"),
+				*Node.ForcedSpeakerRole.ToString());
+		}
+	}
+	// --- Mass Reaction ---
+	else if (Node.MassReactionPercentage > 0.0f)
+	{
+		TArray<AActor*> Candidates;
+		Squad->MemberRoles.GetKeys(Candidates);
+		int32 Count = FMath::Max(1, FMath::CeilToInt(Candidates.Num() * Node.MassReactionPercentage));
+
+		// Shuffle and take first Count
+		for (int32 i = 0; i < FMath::Min(Count, Candidates.Num()); i++)
+		{
+			int32 Rand = FMath::RandRange(i, Candidates.Num() - 1);
+			Candidates.Swap(i, Rand);
+			if (IsValid(Candidates[i]))
+			{
+				if (auto CogComp = AINPCHelpers::GetCognitionComponent(Candidates[i]))
+				{
+					CogComp->ProcessStimulus(Node.PlotUpdate, true, 1.0f);
+				}
+			}
+		}
+		NARRATIVE_LOG(Warning, TEXT("   -> Mass Reaction: %d/%d members triggered (%.0f%%)"),
+			FMath::Min(Count, Candidates.Num()), Candidates.Num(), Node.MassReactionPercentage * 100.0f);
+	}
 }
 
 bool UNarrativeSquadSubsystem::GetSquadMembers(const AActor* ContextActor, TArray<AActor*>& OutMembers) const

@@ -280,33 +280,8 @@ void UUtilityAIComponent::EvaluateAndDecide()
         // Fix Bug #7: Inertia should only be handled in Transition logic, not here.
         // Applying it here breaks Priority selection (Low priority + Inertia > High Priority).
 
-        // 🧠 LLM 意图加成 (Intention Guidance)
-        // LLM 提供"建议"，Utility AI 依然做最终决策
-        // LLM provides "suggestion", Utility AI still makes final decision
-        // ✅ Fix: Same issue as Inertia - don't let bonus break priority rules
-        if (State && !State->ToStruct().Intention.IsEmpty())
-        {
-            FString LLMIntention = State->ToStruct().Intention;
-
-            // 检查 Action 名称是否包含 Intention 关键词
-            // Check if Action name contains the Intention keyword
-            // 例如：Intention="Attack" 匹配 ActionName="Test_Attack"
-            if (Action->ActionName.Contains(LLMIntention))
-            {
-                float OldScore = Score;
-                float IntentionBonus = 0.3f; // 可配置的加成值
-                Score += IntentionBonus;
-
-                // NOTE: CurrentActionScore remains UNMODIFIED (BaseScore)
-                // This ensures Priority system isn't broken by LLM bonus
-
-                if (bShouldLog)
-                {
-                    UTILITY_LOG(Log, "    ↳ [%s] 🧠 LLM Intention Bonus: +%.2f (Intention: %s, %.3f -> %.3f)",
-                           *PersonalityID, IntentionBonus, *LLMIntention, OldScore, Score);
-                }
-            }
-        }
+        // 🧠 LLM Intention is now handled inside CalculateScore() via IntentionTag (multiplicative).
+        // The old additive +0.3 here was a duplicate and has been removed.
 
         if (Score > BestScore)
         {

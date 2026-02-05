@@ -48,7 +48,10 @@ FString ULLMCommunicator::BuildRoleplaySystemPrompt() const
             "   - Your Personality Traits shape HOW you speak (e.g., low Agreeableness = blunt/rude, high Neuroticism = anxious/dramatic).\n"
             "   - Your Core Values shape WHAT you care about. Mention them when relevant (e.g., a character who values 'Freedom' protests captivity).\n"
             "   - Your Social Class shapes your vocabulary and tone (e.g., a Soldier is curt, a Noble is formal).\n"
-            "   - NEVER speak in generic NPC voice. Every line must sound like only THIS character would say it.\n\n"
+            "   - NEVER speak in generic NPC voice. Every line must sound like only THIS character would say it.\n"
+        "9. [SPEECH LENGTH] Speech MUST be 8-12 words MAX. This is a HARD LIMIT. Write like a real game NPC — short, punchy, in-character. "
+            "Do NOT write full sentences with clauses. Do NOT explain yourself. "
+            "Examples: 'Back off before I gut you.' / 'Heh, finally some peace.' / 'You... you killed them all.'\n\n"
     );
 
     // --- Sentiment Tag Instructions (from SentimentMapper) ---
@@ -78,7 +81,7 @@ FString ULLMCommunicator::BuildRoleplaySystemPrompt() const
         "%s"
         "  \"Intention\": \"Attack\" | \"Flee\" | \"Idle\" | \"Talk\",\n"
         "  \"Emotion\": \"Neutral\" | \"Angry\" | \"Scared\" | \"Sad\" | \"Happy\" | \"Curious\" | \"Disgust\",\n"
-        "  \"Speech\": \"string (approx 10 words, in-character voice shaped by identity/trauma/values)\"\n"
+        "  \"Speech\": \"string (STRICT 8-12 words max, short and punchy, in-character)\"\n"
         "}\n"
         "Do not include markdown formatting (```json). Just raw JSON."
     ), *FieldsList);
@@ -227,15 +230,24 @@ void ULLMCommunicator::SendRoleplayRequest(const FString& UserPrompt, FOnLLMResp
 
     LLM_LOG(Log, "[Roleplay] Sending request...");
 
+    TWeakObjectPtr<ULLMCommunicator> WeakThis(this);
     SendHTTPRequest(SystemPrompt, UserPrompt, 0.7f, true, 0,
-        [this, OnComplete](FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful)
+        [WeakThis, OnComplete](FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful)
         {
             FMentalState ResultState;
 
-            FString Content;
-            if (!ExtractContentFromResponse(Response, bWasSuccessful, Content))
+            if (!WeakThis.IsValid())
             {
-                LLM_LOG(Error, "[Roleplay] Failed to extract content from response.");
+                UE_LOG(LogTemp, Warning, TEXT("[LLM] Roleplay callback fired but LLMCommunicator was destroyed. Ignoring."));
+                OnComplete.ExecuteIfBound(false, ResultState);
+                return;
+            }
+            ULLMCommunicator* Self = WeakThis.Get();
+
+            FString Content;
+            if (!Self->ExtractContentFromResponse(Response, bWasSuccessful, Content))
+            {
+                UE_LOG(LogAINPCLLM, Error, TEXT("[Roleplay] Failed to extract content from response."));
                 OnComplete.ExecuteIfBound(false, ResultState);
                 return;
             }
@@ -256,12 +268,12 @@ void ULLMCommunicator::SendRoleplayRequest(const FString& UserPrompt, FOnLLMResp
                 if (InnerJsonObject->HasField(TEXT(#Name))) \
                 { \
                     TSharedPtr<FJsonValue> FieldValue = InnerJsonObject->TryGetField(TEXT(#Name)); \
-                    if (FieldValue->Type == EJson::String) \
+                    if (FieldValue.IsValid() && FieldValue->Type == EJson::String) \
                     { \
                         FString Tag = FieldValue->AsString(); \
-                        if (SentimentMapper) \
+                        if (IsValid(Self->SentimentMapper)) \
                         { \
-                            float MappedValue = SentimentMapper->TagToValue(Tag); \
+                            float MappedValue = Self->SentimentMapper->TagToValue(Tag); \
                             ResultState.Name = (MappedValue >= 0.0f) ? MappedValue : DefaultValue; \
                         } \
                         else \
@@ -269,7 +281,7 @@ void ULLMCommunicator::SendRoleplayRequest(const FString& UserPrompt, FOnLLMResp
                             ResultState.Name = DefaultValue; \
                         } \
                     } \
-                    else if (FieldValue->Type == EJson::Number) \
+                    else if (FieldValue.IsValid() && FieldValue->Type == EJson::Number) \
                     { \
                         ResultState.Name = FieldValue->AsNumber(); \
                     } \
@@ -319,13 +331,22 @@ void ULLMCommunicator::SendFunctionalRequest(
 {
     LLM_LOG(Log, "[Functional] Sending (Temp=%.1f, MaxTok=%d)", Temperature, MaxTokens);
 
+    TWeakObjectPtr<ULLMCommunicator> WeakThisFunc(this);
     SendHTTPRequest(SystemPrompt, UserPrompt, Temperature, bJsonMode, MaxTokens,
-        [this, OnComplete](FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful)
+        [WeakThisFunc, OnComplete](FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful)
         {
-            FString Content;
-            if (!ExtractContentFromResponse(Response, bWasSuccessful, Content))
+            if (!WeakThisFunc.IsValid())
             {
-                LLM_LOG(Error, "[Functional] Failed to extract content from response.");
+                UE_LOG(LogTemp, Warning, TEXT("[LLM] Functional callback fired but LLMCommunicator was destroyed. Ignoring."));
+                OnComplete.ExecuteIfBound(false, TEXT(""));
+                return;
+            }
+            ULLMCommunicator* Self = WeakThisFunc.Get();
+
+            FString Content;
+            if (!Self->ExtractContentFromResponse(Response, bWasSuccessful, Content))
+            {
+                UE_LOG(LogAINPCLLM, Error, TEXT("[Functional] Failed to extract content from response."));
                 OnComplete.ExecuteIfBound(false, TEXT(""));
                 return;
             }

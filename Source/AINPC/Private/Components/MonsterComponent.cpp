@@ -17,14 +17,30 @@ void UMonsterComponent::BeginPlay()
     AActor* Owner = GetOwner();
     if (!Owner) return;
 
-    // 1. Force Faction ID
+    // 0. Tag: Bypass scene safety rules (EvaluateCombatPolicy / GetFactionID)
+    Owner->Tags.AddUnique(FName("Combat.AlwaysHostile"));
+
+    // 1. Force Faction ID on Pawn's components
     if (UNPCDefinitionComponent* DefComp = Owner->FindComponentByClass<UNPCDefinitionComponent>())
     {
         DefComp->FactionID = MonsterFactionID;
     }
-    else if (UFactionReputationComponent* FacComp = Owner->FindComponentByClass<UFactionReputationComponent>())
+    if (UFactionReputationComponent* FacComp = Owner->FindComponentByClass<UFactionReputationComponent>())
     {
         FacComp->FactionID = MonsterFactionID;
+    }
+
+    // 1b. Also sync to Controller's FactionReputationComponent (fix BeginPlay timing)
+    if (APawn* Pawn = Cast<APawn>(Owner))
+    {
+        if (AController* Controller = Pawn->GetController())
+        {
+            if (UFactionReputationComponent* CtrlFacComp = Controller->FindComponentByClass<UFactionReputationComponent>())
+            {
+                CtrlFacComp->FactionID = MonsterFactionID;
+                UE_LOG(LogTemp, Log, TEXT("[MonsterComponent] Synced FactionID '%s' to Controller's FactionReputationComponent"), *MonsterFactionID.ToString());
+            }
+        }
     }
 
     // 2. Force Personality to "Brainless Feral"

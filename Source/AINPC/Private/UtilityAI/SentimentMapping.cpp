@@ -89,10 +89,14 @@ void USentimentMapper::InitializeDefaultMapping()
 
 float USentimentMapper::TagToValue(const FString& Tag) const
 {
-    // 查找映射
-    // Lookup mapping
+    if (TagToValueMap.Num() == 0)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[SentimentMapper] TagToValueMap is empty! Was Initialize() called? Returning -1.0"));
+        return -1.0f;
+    }
+
     const float* ValuePtr = TagToValueMap.Find(Tag);
-    
+
     if (ValuePtr)
     {
         return *ValuePtr;
@@ -100,7 +104,7 @@ float USentimentMapper::TagToValue(const FString& Tag) const
     else
     {
         UE_LOG(LogTemp, Warning, TEXT("[SentimentMapper] Tag '%s' not found in mapping! Returning -1.0"), *Tag);
-        return -1.0f;  // 表示未找到
+        return -1.0f;
     }
 }
 

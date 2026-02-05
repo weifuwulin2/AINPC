@@ -261,7 +261,9 @@
 				{
 					"TagName": "None"
 				},
-				"BarkID": "None",
+				"ForcedSpeakerRole": "Tyrant Lord",
+				"ForcedSpeakerPrompt": "You survey your mining operation with pride. Bark an order at the slaves to work harder, or mock their weakness. Show your absolute authority.",
+				"MassReactionPercentage": 0.0,
 				"bSuppressActionObservation": true
 			},
 			{
@@ -279,7 +281,9 @@
 				{
 					"TagName": "Directive.Combat"
 				},
-				"BarkID": "None",
+				"ForcedSpeakerRole": "Loyal Guard",
+				"ForcedSpeakerPrompt": "You notice one of the slaves slowing down. Threaten them back to work. Show the slaves what happens when they disobey.",
+				"MassReactionPercentage": 0.0,
 				"bSuppressActionObservation": false
 			},
 			{
@@ -297,7 +301,9 @@
 				{
 					"TagName": "Directive.Combat"
 				},
-				"BarkID": "None",
+				"ForcedSpeakerRole": "None",
+				"ForcedSpeakerPrompt": "",
+				"MassReactionPercentage": 0.5,
 				"bSuppressActionObservation": false
 			},
 			{
@@ -315,7 +321,9 @@
 				{
 					"TagName": "Directive.Combat"
 				},
-				"BarkID": "None",
+				"ForcedSpeakerRole": "None",
+				"ForcedSpeakerPrompt": "",
+				"MassReactionPercentage": 1.0,
 				"bSuppressActionObservation": false
 			},
 			{
@@ -333,7 +341,9 @@
 				{
 					"TagName": "Directive.Combat"
 				},
-				"BarkID": "None",
+				"ForcedSpeakerRole": "Tyrant Lord",
+				"ForcedSpeakerPrompt": "An intruder dares enter your domain! Command your guards to kill the trespasser. Threaten the slaves to stay in line or face the same fate.",
+				"MassReactionPercentage": 0.0,
 				"bSuppressActionObservation": false
 			}
 		],

@@ -132,20 +132,10 @@ void UAction_TalkTo::Execute_Implementation(AAIController* Controller)
                 
                 // Clear speech to avoid loop
                 UAICon->MentalState->Speech = "";
-                
-                 // Reduce Social Need (Loneliness) significantly after speaking
-                 if (UAICon->MentalState)
-                 {
-                     UAICon->MentalState->Loneliness = FMath::Max(0.0f, UAICon->MentalState->Loneliness - 0.2f);
-                     UAICon->MentalState->Boredom = FMath::Max(0.0f, UAICon->MentalState->Boredom - 0.1f);
-                     
-                     // Sync Interpolator
-                     if (UAICon->CognitionComp && UAICon->CognitionComp->Interpolator)
-                     {
-                         UAICon->CognitionComp->Interpolator->SetTargetValue(TEXT("Loneliness"), UAICon->MentalState->Loneliness);
-                         UAICon->CognitionComp->Interpolator->SetTargetValue(TEXT("Boredom"), UAICon->MentalState->Boredom);
-                     }
-                 }
+
+                // NOTE: Loneliness/Boredom reduction is handled by the LLM through ProcessStimulus.
+                // Manual reduction here was double-dipping and caused score oscillation
+                // (Loneliness→0 → Talk score=0 → forced yield → Loneliness grows → Talk wins again).
             }
 		}
 	}

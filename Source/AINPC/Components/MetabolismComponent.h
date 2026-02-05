@@ -50,7 +50,8 @@ public:
 
 	// 情绪冷却速率 (每秒减少多少)
 	// Emotional decay rate (Cool down) per second
-	// Example: 0.05 = Takes 20 seconds to go from Furious(1.0) to Calm(0.0)
+	// Example: 0.05 = Takes 20 seconds to go from Furious(1.0) to Calm(0
+	// .0)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Metabolism|Emotional")
 	float EmotionalDecayRate = 0.05f;
 

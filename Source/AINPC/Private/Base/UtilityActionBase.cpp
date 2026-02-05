@@ -127,9 +127,11 @@ float UUtilityActionBase::CalculateScore(UNPCMentalState* MentalState, AAIContro
 
     // =========================================================
     // Step 5: Base Formula
-    // Score = BaseReward × (MotivationSum + IntentionBonus + ScheduleBonus) × ContextProduct
+    // Intention is multiplicative (amplifier, not engine) — LLM can only boost existing needs, not create them.
+    // Schedule remains additive (time-based obligation can create motivation).
+    // Score = BaseReward × (MotivationSum + ScheduleBonus) × (1 + IntentionBonus) × ContextProduct
     // =========================================================
-    float EffectiveMotivation = MotivationSum + IntentionBonus + ScheduleBonus;
+    float EffectiveMotivation = (MotivationSum + ScheduleBonus) * (1.0f + IntentionBonus);
     float FinalScore = BaseReward * EffectiveMotivation * ContextProduct;
 
     // =========================================================
@@ -147,8 +149,8 @@ float UUtilityActionBase::CalculateScore(UNPCMentalState* MentalState, AAIContro
         UE_LOG(LogAINPCUtility, Warning, TEXT("    [%s] 📊 Calculation Summary:"), *ActionName);
         UE_LOG(LogAINPCUtility, Log, TEXT("      • Base Reward: %.2f"), BaseReward);
         UE_LOG(LogAINPCUtility, Log, TEXT("      • Motivation Sum: %.2f"), MotivationSum);
-        UE_LOG(LogAINPCUtility, Log, TEXT("      • Intention Bonus: %.2f %s"), IntentionBonus, IntentionBonus > 0 ? TEXT("(✅ APPLIED)") : TEXT(""));
-        UE_LOG(LogAINPCUtility, Log, TEXT("      • Schedule Bonus: %.2f %s"), ScheduleBonus, ScheduleBonus > 0 ? TEXT("(✅ APPLIED)") : TEXT(""));
+        UE_LOG(LogAINPCUtility, Log, TEXT("      • Intention Multiplier: x%.2f %s"), 1.0f + IntentionBonus, IntentionBonus > 0 ? TEXT("(✅ APPLIED)") : TEXT(""));
+        UE_LOG(LogAINPCUtility, Log, TEXT("      • Schedule Bonus: +%.2f %s"), ScheduleBonus, ScheduleBonus > 0 ? TEXT("(✅ APPLIED)") : TEXT(""));
         UE_LOG(LogAINPCUtility, Log, TEXT("      • Context Product: %.2f"), ContextProduct);
         UE_LOG(LogAINPCUtility, Warning, TEXT("      👉 FINAL SCORE = %.3f"), FinalScore);
     }
@@ -615,8 +617,10 @@ float UUtilityActionBase::GetConsiderationValue(EUtilityInputType InputType, UNP
                 FTargetSelectionConfig Config;
                 Config.MaxDistance = 6000.0f; // Match the generous combat range
                 
-                // Optimized Candidate Check
-                UFactionReputationComponent* FactionComp = Controller->FindComponentByClass<UFactionReputationComponent>();
+                // ✅ FIX: FactionReputationComponent lives on the Pawn, NOT the Controller.
+                // Using Controller-> returned nullptr, skipping the entire attitude check
+                // and making ALL actors (including friendly Player) pass as valid combat targets.
+                UFactionReputationComponent* FactionComp = BotPawn->FindComponentByClass<UFactionReputationComponent>();
                 TArray<AActor*> Candidates = TargetSys->GetTargetCandidates(Controller, ETargetSelectionContext::Combat, Config, BotPawn, FactionComp);
                 
 

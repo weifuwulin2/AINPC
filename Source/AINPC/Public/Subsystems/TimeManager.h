@@ -18,9 +18,9 @@ public:
 	// --- Configuration ---
 
 	// How many real-world seconds equal one game hour?
-	// Default: 60s = 1 hour (24 minutes = 1 day)
+	// Default: 10s = 1 hour (4 minutes = 1 day) — showcase speed
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Time")
-	float RealSecondsPerGameHour = 60.0f;
+	float RealSecondsPerGameHour = 10.0f;
 
 	// Starting hour of the day
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Time")
