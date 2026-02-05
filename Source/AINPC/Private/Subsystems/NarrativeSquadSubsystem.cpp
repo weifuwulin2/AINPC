@@ -188,45 +188,60 @@ void UNarrativeSquadSubsystem::OnNarrativeEventRecorded(const FNarrativeEvent& E
 		// EXTRACT CONTEXT FROM EVENT (Dead Actor details)
 		// =========================================================================================
 		// We try to find if this event is about a member of THIS squad.
-		
+
 		FString DeadMemberName = "";
 		FString DeadMemberRole = "";
 		FString DeadMemberProfession = "";
 		AActor* DeadMemberActor = nullptr;
 
-		// Check for Death Tags to extract context
-		for (const FGameplayTag& RawTag : Event.Tags)
+		// ✅ FIX: Extract victim name from Event.Description instead of non-existent Death_ tags.
+		// RecordNPCDeath format: "<SmartName> was killed by <Killer>"
+		// The old code looked for "Death_<Name>" tags, but RecordNPCDeath never adds them.
+		bool bIsDeathEvent = false;
+		for (const FGameplayTag& T : Event.Tags)
 		{
-			FString TagStr = RawTag.ToString();
-			if (TagStr.StartsWith("Death_"))
+			if (T.MatchesTag(AINPCTags::Event_Death))
 			{
-				FString PossibleName = TagStr.RightChop(6); // Remove "Death_" prefix
-				
-				// Is this actor in our squad?
-				for (const auto& MemberPair : Squad.MemberRoles)
-				{
-					FString MemberSmartName = AINPCHelpers::GetSmartActorName(MemberPair.Key);
-					NARRATIVE_LOG(Warning, TEXT("   - Inspecting Squad Member: '%s' (Smart: %s) (Role: %s) vs Event Actor: '%s'"), 
-						*MemberPair.Key->GetName(), *MemberSmartName, *MemberPair.Value.ToString(), *PossibleName);
+				bIsDeathEvent = true;
+				break;
+			}
+		}
 
-					if (MemberPair.Key && MemberSmartName == PossibleName)
+		if (bIsDeathEvent)
+		{
+			// Extract victim name from description: "<Name> was killed by <Killer>"
+			int32 KilledByIdx = Event.Description.Find(TEXT(" was killed by"), ESearchCase::IgnoreCase);
+			FString VictimName = (KilledByIdx != INDEX_NONE)
+				? Event.Description.Left(KilledByIdx)
+				: Event.Description;
+
+			// Match against squad members by SmartActorName
+			for (const auto& MemberPair : Squad.MemberRoles)
+			{
+				if (!MemberPair.Key) continue;
+
+				FString MemberSmartName = AINPCHelpers::GetSmartActorName(MemberPair.Key);
+				NARRATIVE_LOG(Warning, TEXT("   - Inspecting Squad Member: '%s' (Smart: %s) (Role: %s) vs Victim: '%s'"),
+					*MemberPair.Key->GetName(), *MemberSmartName, *MemberPair.Value.ToString(), *VictimName);
+
+				if (MemberSmartName == VictimName)
+				{
+					DeadMemberActor = MemberPair.Key;
+					DeadMemberName = VictimName;
+					DeadMemberRole = MemberPair.Value.ToString();
+
+					if (UNPCDefinitionComponent* Def = DeadMemberActor->FindComponentByClass<UNPCDefinitionComponent>())
 					{
-						DeadMemberActor = MemberPair.Key;
-						DeadMemberName = PossibleName;
-						DeadMemberRole = MemberPair.Value.ToString();
-						
-						if (UNPCDefinitionComponent* Def = DeadMemberActor->FindComponentByClass<UNPCDefinitionComponent>())
+						if (!Def->ProfessionID.IsNone())
 						{
-							if (!Def->ProfessionID.IsNone())
-							{
-								DeadMemberProfession = Def->ProfessionID.ToString();
-							}
+							DeadMemberProfession = Def->ProfessionID.ToString();
 						}
-						break; // Found member
 					}
+
+					NARRATIVE_LOG(Warning, TEXT("   ✅ Found dead squad member! Name: %s, Role: %s"), *DeadMemberName, *DeadMemberRole);
+					break;
 				}
 			}
-			if (DeadMemberActor) break;
 		}
 
 		// Helper matcher lambda
@@ -640,12 +655,13 @@ void UNarrativeSquadSubsystem::EndScene(int32 SquadID)
 				{
 					GoalComp->InitializeProfession(TargetProfession);
 					
-					// ✅ Force immediate behavior change
-					// Setting a new directive interrupts the current action (e.g., stop mining)
-					// Idle directive allows NPC to transition back to normal behavior
-					GoalComp->SetDirective(AINPCTags::Directive_Idle);
+					// ✅ CRITICAL: After profession change, immediately refresh schedule and arbitration
+					// This ensures the NPC resumes schedule-based behavior (Work/Rest/etc.) 
+					// instead of staying in a confused Idle state.
+					GoalComp->CheckSchedule();      // Update CachedScheduleDirective based on new profession
+					GoalComp->UpdateArbitration();  // Apply the correct directive
 					
-					NARRATIVE_LOG(Warning, TEXT("🎓 NPC %s: Profession updated to %s, Directive forced to Idle"), 
+					NARRATIVE_LOG(Warning, TEXT("🎓 NPC %s: Profession updated to %s, Schedule refreshed"), 
 						*Member->GetName(), *TargetProfession.ToString());
 				}
 				else

@@ -21,7 +21,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Sentiment Mapping**: Refactored `SentimentMapping` to support robust Tag-to-Value conversion (Likert Scale) and auto-generate LLM prompt instructions.
 - **Monster Logic**: Added `MonsterComponent` for auto-configuring faction/profession of brainless entities.
 
+### 🐛 Fixed
+- **TalkTo Action**: Removed incorrect `Boredom` reduction from `MarkConversationSatisfied`. Talk now only affects `Loneliness`.
+- **EndScene Behavior**: Fixed post-scene NPC behavior by calling `CheckSchedule()` + `UpdateArbitration()` instead of forcing Idle directive. NPCs now correctly resume schedule-based activities.
+
 ### 🔧 Systems & Config
+- **MetabolismComponent**: Added need-pause mechanism. When NPC is actively satisfying a need (Eat→Hunger, Sleep→Fatigue, Work→Boredom, Talk→Loneliness), that need pauses growth instead of competing with restoration.
+- **Action_SmartObject**: Updated logging to use `UTILITY_LOG` macro for consistency.
+- **InertiaBonus Standardization**: Set all actions' `InertiaBonus` to 1 (100%) to prevent rapid action switching. Actions now require 2x score to interrupt current action.
 - **Config**: Externalized settings in `AINPCSettings.h`.
 - **TimeManager**: Updated `TimeManager` subsystem with hour-change delegates.
 - **Factions**: Refactored `FactionHelpers` and `FactionReputationComponent` to unify hostility logic.

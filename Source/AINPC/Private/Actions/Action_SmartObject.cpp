@@ -534,7 +534,7 @@ void UAction_SmartObject::RestoreStats(AAIController* Controller)
 		float OldHunger = State->Hunger;
 		State->Hunger = FMath::Clamp(State->Hunger - RestoreRate, 0.0f, 1.0f);
 		float Delta = OldHunger - State->Hunger;
-		UE_LOG(LogTemp, Warning, TEXT("[%s] Eating... Hunger: %.2f (-%0.2f this tick, Rate: %.2f/s)"), 
+		UTILITY_LOG(Warning, "[%s] Eating... Hunger: %.2f (-%.2f this tick, Rate: %.2f/s)", 
 		       *ActionName, State->Hunger, Delta, RestoreRate);
 	}
 	else if (SmartObjectTag == AINPCTags::Interaction_Rest)
@@ -542,7 +542,7 @@ void UAction_SmartObject::RestoreStats(AAIController* Controller)
 		float OldFatigue = State->Fatigue;
 		State->Fatigue = FMath::Clamp(State->Fatigue - RestoreRate, 0.0f, 1.0f);
 		float Delta = OldFatigue - State->Fatigue;
-		UE_LOG(LogTemp, Warning, TEXT("[%s] Sleeping... Fatigue: %.2f (-%0.2f this tick, Rate: %.2f/s)"), 
+		UTILITY_LOG(Warning, "[%s] Sleeping... Fatigue: %.2f (-%.2f this tick, Rate: %.2f/s)", 
 		       *ActionName, State->Fatigue, Delta, RestoreRate);
 	}
 	// ✅ Work actions reduce Boredom (work provides purpose and fulfillment)
@@ -551,8 +551,14 @@ void UAction_SmartObject::RestoreStats(AAIController* Controller)
 		float OldBoredom = State->Boredom;
 		State->Boredom = FMath::Clamp(State->Boredom - RestoreRate, 0.0f, 1.0f);
 		float Delta = OldBoredom - State->Boredom;
-		UE_LOG(LogTemp, Warning, TEXT("[%s] Working... Boredom: %.2f (-%0.2f this tick, Rate: %.2f/s)"), 
-		       *ActionName, State->Boredom, Delta, RestoreRate);
+		UTILITY_LOG(Warning, "[%s] Working... Boredom: %.2f -> %.2f (Δ=%.2f, Rate: %.2f/s)", 
+		       *ActionName, OldBoredom, State->Boredom, Delta, RestoreRate);
+	}
+	else
+	{
+		// ⚠️ DEBUG: Log when tag doesn't match any known category
+		UTILITY_LOG(Warning, "[%s] ⚠️ RestoreStats called but tag '%s' didn't match Eat/Rest/Work!", 
+		       *ActionName, *SmartObjectTag.ToString());
 	}
     // Add more cases here as needed (e.g. Socializing -> Reduce Loneliness)
 }

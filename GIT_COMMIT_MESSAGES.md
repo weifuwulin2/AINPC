@@ -4,6 +4,16 @@ This file contains a log of commit messages for the AINPC project.
 
 ---
 
+## [2026-02-05] UtilityAI Stability & Metabolism Need-Pause
+**Type**: fix/feat
+**Scope**: MetabolismComponent, NarrativeSquadSubsystem, UtilityAI
+**Description**:
+- **Metabolism**: Added need-pause mechanism. When NPC performs actions satisfying a need (Eat→Hunger, Work→Boredom, etc.), that need stops growing.
+- **TalkTo Fix**: Removed incorrect `Boredom` reduction from Talk action. Talk now only affects `Loneliness`.
+- **EndScene Fix**: Replaced `SetDirective(Idle)` with `CheckSchedule()` + `UpdateArbitration()` for proper schedule resumption.
+- **Inertia Standardization**: Set all action `InertiaBonus` to 1 (100%) to prevent rapid action switching.
+- **Logging**: Updated `Action_SmartObject` to use `UTILITY_LOG` macro.
+
 ## [2026-02-05] Docs, Timeline Speech & Sentiment Refactor
 **Type**: feat/docs
 **Scope**: Narrative, UtilityAI, Config

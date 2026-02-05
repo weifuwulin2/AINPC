@@ -18,36 +18,30 @@
 		],
 		"BaseReward": 3,
 		"CooldownTime": 0,
-		"InertiaBonus": 0,
-		"SmartObjectTag":
-		{
+		"InertiaBonus": 1,
+		"SmartObjectTag": {
 			"TagName": "None"
 		},
 		"InteractionMontage": "/Script/Engine.AnimMontage'/Game/AINPC/Animations/Montages/Sleep.Sleep'",
 		"bLoopAnimation": false,
 		"ActionDuration": 1,
-		"ActivityTag":
-		{
+		"ActivityTag": {
 			"TagName": "Interaction.Combat"
 		},
-		"IntentionTag":
-		{
+		"IntentionTag": {
 			"TagName": "Intention.Attack"
 		},
-		"DirectiveTag":
-		{
+		"DirectiveTag": {
 			"TagName": "Directive.Combat"
 		},
 		"ActionName": "Attack",
 		"RequiredProfessionIDs": [],
-		"PersonalityInfluence":
-		{
+		"PersonalityInfluence": {
 			"Neuroticism": -1
 		},
 		"bNeedsTarget": true,
 		"TargetContext": "Combat",
-		"TargetConfigOverride":
-		{
+		"TargetConfigOverride": {
 			"bUseLLMEnhancement": true,
 			"MaxDistance": 3000,
 			"FriendlyReputationThreshold": 50,
@@ -70,36 +64,30 @@
 		],
 		"BaseReward": 3,
 		"CooldownTime": 0,
-		"InertiaBonus": 0,
-		"SmartObjectTag":
-		{
+		"InertiaBonus": 1,
+		"SmartObjectTag": {
 			"TagName": "None"
 		},
 		"InteractionMontage": "None",
 		"bLoopAnimation": true,
 		"ActionDuration": 0,
-		"ActivityTag":
-		{
+		"ActivityTag": {
 			"TagName": "Interaction.Flee"
 		},
-		"IntentionTag":
-		{
+		"IntentionTag": {
 			"TagName": "Intention.Flee"
 		},
-		"DirectiveTag":
-		{
+		"DirectiveTag": {
 			"TagName": "Directive.Combat"
 		},
 		"ActionName": "Flee",
 		"RequiredProfessionIDs": [],
-		"PersonalityInfluence":
-		{
+		"PersonalityInfluence": {
 			"Neuroticism": 1
 		},
 		"bNeedsTarget": false,
 		"TargetContext": "Combat",
-		"TargetConfigOverride":
-		{
+		"TargetConfigOverride": {
 			"bUseLLMEnhancement": true,
 			"MaxDistance": 3000,
 			"FriendlyReputationThreshold": 50,
@@ -122,35 +110,28 @@
 		],
 		"BaseReward": 1,
 		"CooldownTime": 2,
-		"InertiaBonus": 0.05,
-		"SmartObjectTag":
-		{
+		"InertiaBonus": 1,
+		"SmartObjectTag": {
 			"TagName": "None"
 		},
 		"InteractionMontage": "None",
 		"bLoopAnimation": true,
 		"ActionDuration": 0,
-		"ActivityTag":
-		{
+		"ActivityTag": {
 			"TagName": "Interaction.Rest"
 		},
-		"IntentionTag":
-		{
+		"IntentionTag": {
 			"TagName": "Intention.Idle"
 		},
-		"DirectiveTag":
-		{
+		"DirectiveTag": {
 			"TagName": "None"
 		},
 		"ActionName": "Idle",
 		"RequiredProfessionIDs": [],
-		"PersonalityInfluence":
-		{
-		},
+		"PersonalityInfluence": {},
 		"bNeedsTarget": false,
 		"TargetContext": "Combat",
-		"TargetConfigOverride":
-		{
+		"TargetConfigOverride": {
 			"bUseLLMEnhancement": false,
 			"MaxDistance": 3000,
 			"FriendlyReputationThreshold": 50,
@@ -175,45 +156,32 @@
 				"InputType": "HasFriendlyNearby",
 				"CurveType": "Linear",
 				"ResponseCurve": "None"
-			},
-			{
-				"ConsiderationType": "Motivation",
-				"InputType": "Boredom",
-				"CurveType": "Linear",
-				"ResponseCurve": "None"
 			}
 		],
 		"BaseReward": 1,
 		"CooldownTime": 0,
-		"InertiaBonus": 0,
-		"SmartObjectTag":
-		{
+		"InertiaBonus": 1,
+		"SmartObjectTag": {
 			"TagName": "None"
 		},
 		"InteractionMontage": "None",
 		"bLoopAnimation": true,
 		"ActionDuration": 0,
-		"ActivityTag":
-		{
+		"ActivityTag": {
 			"TagName": "Interaction.Social"
 		},
-		"IntentionTag":
-		{
+		"IntentionTag": {
 			"TagName": "Intention.Talk"
 		},
-		"DirectiveTag":
-		{
+		"DirectiveTag": {
 			"TagName": "Directive.Social"
 		},
 		"ActionName": "Talk",
 		"RequiredProfessionIDs": [],
-		"PersonalityInfluence":
-		{
-		},
+		"PersonalityInfluence": {},
 		"bNeedsTarget": true,
 		"TargetContext": "Social",
-		"TargetConfigOverride":
-		{
+		"TargetConfigOverride": {
 			"bUseLLMEnhancement": true,
 			"MaxDistance": 3000,
 			"FriendlyReputationThreshold": 50,
@@ -221,7 +189,14 @@
 		},
 		"Priority": "Social",
 		"CommitmentTime": 5,
-		"ExitConditions": []
+		"ExitConditions": [
+			{
+				"Variable": "Loneliness",
+				"Operator": "LessThan",
+				"Threshold": 0.2,
+				"bWaitForDuration": true
+			}
+		]
 	},
 	{
 		"Name": "Eat",
@@ -242,35 +217,28 @@
 		],
 		"BaseReward": 4,
 		"CooldownTime": 0,
-		"InertiaBonus": 0.5,
-		"SmartObjectTag":
-		{
+		"InertiaBonus": 1,
+		"SmartObjectTag": {
 			"TagName": "Interaction.Eat"
 		},
 		"InteractionMontage": "/Script/Engine.AnimMontage'/Game/AINPC/Animations/MAL/AnimationsLibrary/SocialAnimsBundle2/PartyAnimations/Animations/AS_EatingOnParty_Montage.AS_EatingOnParty_Montage'",
 		"bLoopAnimation": true,
 		"ActionDuration": 10,
-		"ActivityTag":
-		{
+		"ActivityTag": {
 			"TagName": "Interaction.Eat"
 		},
-		"IntentionTag":
-		{
+		"IntentionTag": {
 			"TagName": "None"
 		},
-		"DirectiveTag":
-		{
+		"DirectiveTag": {
 			"TagName": "Directive.Survival"
 		},
 		"ActionName": "Eat",
 		"RequiredProfessionIDs": [],
-		"PersonalityInfluence":
-		{
-		},
+		"PersonalityInfluence": {},
 		"bNeedsTarget": false,
 		"TargetContext": "Combat",
-		"TargetConfigOverride":
-		{
+		"TargetConfigOverride": {
 			"bUseLLMEnhancement": false,
 			"MaxDistance": 3000,
 			"FriendlyReputationThreshold": 50,
@@ -306,35 +274,28 @@
 		],
 		"BaseReward": 4,
 		"CooldownTime": 0,
-		"InertiaBonus": 0,
-		"SmartObjectTag":
-		{
+		"InertiaBonus": 1,
+		"SmartObjectTag": {
 			"TagName": "Interaction.Rest"
 		},
 		"InteractionMontage": "/Script/Engine.AnimMontage'/Game/AINPC/Animations/Montages/Sleep.Sleep'",
 		"bLoopAnimation": true,
 		"ActionDuration": 20,
-		"ActivityTag":
-		{
+		"ActivityTag": {
 			"TagName": "Interaction.Rest"
 		},
-		"IntentionTag":
-		{
+		"IntentionTag": {
 			"TagName": "None"
 		},
-		"DirectiveTag":
-		{
+		"DirectiveTag": {
 			"TagName": "Directive.Survival"
 		},
 		"ActionName": "Sleep",
 		"RequiredProfessionIDs": [],
-		"PersonalityInfluence":
-		{
-		},
+		"PersonalityInfluence": {},
 		"bNeedsTarget": false,
 		"TargetContext": "Combat",
-		"TargetConfigOverride":
-		{
+		"TargetConfigOverride": {
 			"bUseLLMEnhancement": false,
 			"MaxDistance": 3000,
 			"FriendlyReputationThreshold": 50,
@@ -365,23 +326,19 @@
 		"BaseReward": 2,
 		"CooldownTime": 0,
 		"InertiaBonus": 2,
-		"SmartObjectTag":
-		{
+		"SmartObjectTag": {
 			"TagName": "Interaction.Work.Mine"
 		},
 		"InteractionMontage": "/Script/Engine.AnimMontage'/Game/AINPC/Animations/Montages/Stone_mining_Montage.Stone_mining_Montage'",
 		"bLoopAnimation": true,
 		"ActionDuration": 30,
-		"ActivityTag":
-		{
+		"ActivityTag": {
 			"TagName": "Interaction.Work.Mine"
 		},
-		"IntentionTag":
-		{
+		"IntentionTag": {
 			"TagName": "Intention.Work"
 		},
-		"DirectiveTag":
-		{
+		"DirectiveTag": {
 			"TagName": "Directive.Work"
 		},
 		"ActionName": "Mining Action",
@@ -389,13 +346,10 @@
 			"Miner",
 			"Slave"
 		],
-		"PersonalityInfluence":
-		{
-		},
+		"PersonalityInfluence": {},
 		"bNeedsTarget": false,
 		"TargetContext": "Combat",
-		"TargetConfigOverride":
-		{
+		"TargetConfigOverride": {
 			"bUseLLMEnhancement": false,
 			"MaxDistance": 3000,
 			"FriendlyReputationThreshold": 50,
@@ -419,36 +373,29 @@
 		"BaseReward": 2,
 		"CooldownTime": 0,
 		"InertiaBonus": 2,
-		"SmartObjectTag":
-		{
+		"SmartObjectTag": {
 			"TagName": "Interaction.Work.Farm"
 		},
 		"InteractionMontage": "None",
 		"bLoopAnimation": true,
 		"ActionDuration": 30,
-		"ActivityTag":
-		{
+		"ActivityTag": {
 			"TagName": "Interaction.Work.Farm"
 		},
-		"IntentionTag":
-		{
+		"IntentionTag": {
 			"TagName": "Intention.Work"
 		},
-		"DirectiveTag":
-		{
+		"DirectiveTag": {
 			"TagName": "Directive.Work"
 		},
 		"ActionName": "Farming Action",
 		"RequiredProfessionIDs": [
 			"Farmer"
 		],
-		"PersonalityInfluence":
-		{
-		},
+		"PersonalityInfluence": {},
 		"bNeedsTarget": false,
 		"TargetContext": "Combat",
-		"TargetConfigOverride":
-		{
+		"TargetConfigOverride": {
 			"bUseLLMEnhancement": false,
 			"MaxDistance": 3000,
 			"FriendlyReputationThreshold": 50,
@@ -472,23 +419,19 @@
 		"BaseReward": 2,
 		"CooldownTime": 0,
 		"InertiaBonus": 2,
-		"SmartObjectTag":
-		{
+		"SmartObjectTag": {
 			"TagName": "Interaction.Work.Guard"
 		},
 		"InteractionMontage": "/Script/Engine.AnimMontage'/Game/AINPC/Animations/MM_ChargedAttack_Montage.MM_ChargedAttack_Montage'",
 		"bLoopAnimation": true,
 		"ActionDuration": 60,
-		"ActivityTag":
-		{
+		"ActivityTag": {
 			"TagName": "Interaction.Work.Guard"
 		},
-		"IntentionTag":
-		{
+		"IntentionTag": {
 			"TagName": "Intention.Work"
 		},
-		"DirectiveTag":
-		{
+		"DirectiveTag": {
 			"TagName": "Directive.Work"
 		},
 		"ActionName": "Guard Patrol",
@@ -496,13 +439,10 @@
 			"Guard_Day",
 			"Guard"
 		],
-		"PersonalityInfluence":
-		{
-		},
+		"PersonalityInfluence": {},
 		"bNeedsTarget": false,
 		"TargetContext": "Combat",
-		"TargetConfigOverride":
-		{
+		"TargetConfigOverride": {
 			"bUseLLMEnhancement": false,
 			"MaxDistance": 3000,
 			"FriendlyReputationThreshold": 50,
@@ -526,23 +466,19 @@
 		"BaseReward": 2,
 		"CooldownTime": 0,
 		"InertiaBonus": 2,
-		"SmartObjectTag":
-		{
+		"SmartObjectTag": {
 			"TagName": "Interaction.Work.Guard"
 		},
 		"InteractionMontage": "None",
 		"bLoopAnimation": true,
 		"ActionDuration": 60,
-		"ActivityTag":
-		{
+		"ActivityTag": {
 			"TagName": "Interaction.Work.Guard"
 		},
-		"IntentionTag":
-		{
+		"IntentionTag": {
 			"TagName": "Intention.Work"
 		},
-		"DirectiveTag":
-		{
+		"DirectiveTag": {
 			"TagName": "Directive.Work"
 		},
 		"ActionName": "Night Guard Patrol",
@@ -550,13 +486,10 @@
 			"Guard_Night",
 			"Guard"
 		],
-		"PersonalityInfluence":
-		{
-		},
+		"PersonalityInfluence": {},
 		"bNeedsTarget": false,
 		"TargetContext": "Combat",
-		"TargetConfigOverride":
-		{
+		"TargetConfigOverride": {
 			"bUseLLMEnhancement": false,
 			"MaxDistance": 3000,
 			"FriendlyReputationThreshold": 50,
@@ -586,36 +519,29 @@
 		"BaseReward": 2,
 		"CooldownTime": 0,
 		"InertiaBonus": 2,
-		"SmartObjectTag":
-		{
+		"SmartObjectTag": {
 			"TagName": "Interaction.Work.Trade"
 		},
 		"InteractionMontage": "None",
 		"bLoopAnimation": true,
 		"ActionDuration": 60,
-		"ActivityTag":
-		{
+		"ActivityTag": {
 			"TagName": "Interaction.Work.Trade"
 		},
-		"IntentionTag":
-		{
+		"IntentionTag": {
 			"TagName": "Intention.Work"
 		},
-		"DirectiveTag":
-		{
+		"DirectiveTag": {
 			"TagName": "Directive.Work"
 		},
 		"ActionName": "Merchant Stand",
 		"RequiredProfessionIDs": [
 			"Merchant"
 		],
-		"PersonalityInfluence":
-		{
-		},
+		"PersonalityInfluence": {},
 		"bNeedsTarget": false,
 		"TargetContext": "Combat",
-		"TargetConfigOverride":
-		{
+		"TargetConfigOverride": {
 			"bUseLLMEnhancement": false,
 			"MaxDistance": 3000,
 			"FriendlyReputationThreshold": 50,
@@ -639,36 +565,29 @@
 		"BaseReward": 2,
 		"CooldownTime": 0,
 		"InertiaBonus": 2,
-		"SmartObjectTag":
-		{
+		"SmartObjectTag": {
 			"TagName": "Interaction.Work.Scavenge"
 		},
 		"InteractionMontage": "None",
 		"bLoopAnimation": true,
 		"ActionDuration": 20,
-		"ActivityTag":
-		{
+		"ActivityTag": {
 			"TagName": "Interaction.Work.Scavenge"
 		},
-		"IntentionTag":
-		{
+		"IntentionTag": {
 			"TagName": "Intention.Beg"
 		},
-		"DirectiveTag":
-		{
+		"DirectiveTag": {
 			"TagName": "Directive.Work"
 		},
 		"ActionName": "Scavenging",
 		"RequiredProfessionIDs": [
 			"Scavenger"
 		],
-		"PersonalityInfluence":
-		{
-		},
+		"PersonalityInfluence": {},
 		"bNeedsTarget": false,
 		"TargetContext": "Combat",
-		"TargetConfigOverride":
-		{
+		"TargetConfigOverride": {
 			"bUseLLMEnhancement": false,
 			"MaxDistance": 3000,
 			"FriendlyReputationThreshold": 50,
@@ -692,36 +611,29 @@
 		"BaseReward": 2,
 		"CooldownTime": 0,
 		"InertiaBonus": 2,
-		"SmartObjectTag":
-		{
+		"SmartObjectTag": {
 			"TagName": "Interaction.Work.Pray"
 		},
 		"InteractionMontage": "None",
 		"bLoopAnimation": true,
 		"ActionDuration": 120,
-		"ActivityTag":
-		{
+		"ActivityTag": {
 			"TagName": "Interaction.Work.Pray"
 		},
-		"IntentionTag":
-		{
+		"IntentionTag": {
 			"TagName": "Intention.Idle"
 		},
-		"DirectiveTag":
-		{
+		"DirectiveTag": {
 			"TagName": "Directive.Work"
 		},
 		"ActionName": "Praying Ritual",
 		"RequiredProfessionIDs": [
 			"Zealot"
 		],
-		"PersonalityInfluence":
-		{
-		},
+		"PersonalityInfluence": {},
 		"bNeedsTarget": false,
 		"TargetContext": "Combat",
-		"TargetConfigOverride":
-		{
+		"TargetConfigOverride": {
 			"bUseLLMEnhancement": false,
 			"MaxDistance": 3000,
 			"FriendlyReputationThreshold": 50,
@@ -745,36 +657,29 @@
 		"BaseReward": 2,
 		"CooldownTime": 0,
 		"InertiaBonus": 2,
-		"SmartObjectTag":
-		{
+		"SmartObjectTag": {
 			"TagName": "Interaction.Work.Study"
 		},
 		"InteractionMontage": "None",
 		"bLoopAnimation": true,
 		"ActionDuration": 60,
-		"ActivityTag":
-		{
+		"ActivityTag": {
 			"TagName": "Interaction.Work.Study"
 		},
-		"IntentionTag":
-		{
+		"IntentionTag": {
 			"TagName": "Intention.Investigate"
 		},
-		"DirectiveTag":
-		{
+		"DirectiveTag": {
 			"TagName": "Directive.Work"
 		},
 		"ActionName": "Scholarly Study",
 		"RequiredProfessionIDs": [
 			"Scholar"
 		],
-		"PersonalityInfluence":
-		{
-		},
+		"PersonalityInfluence": {},
 		"bNeedsTarget": false,
 		"TargetContext": "Combat",
-		"TargetConfigOverride":
-		{
+		"TargetConfigOverride": {
 			"bUseLLMEnhancement": false,
 			"MaxDistance": 3000,
 			"FriendlyReputationThreshold": 50,
@@ -798,23 +703,19 @@
 		"BaseReward": 2,
 		"CooldownTime": 0,
 		"InertiaBonus": 2,
-		"SmartObjectTag":
-		{
+		"SmartObjectTag": {
 			"TagName": "Interaction.Work.Command"
 		},
 		"InteractionMontage": "/Script/Engine.AnimMontage'/Game/AINPC/Animations/MM_ChargedAttack_Montage.MM_ChargedAttack_Montage'",
 		"bLoopAnimation": true,
 		"ActionDuration": 30,
-		"ActivityTag":
-		{
+		"ActivityTag": {
 			"TagName": "Interaction.Work.Command"
 		},
-		"IntentionTag":
-		{
+		"IntentionTag": {
 			"TagName": "Intention.Command"
 		},
-		"DirectiveTag":
-		{
+		"DirectiveTag": {
 			"TagName": "Directive.Work"
 		},
 		"ActionName": "Command Action",
@@ -822,13 +723,10 @@
 			"Leader",
 			"Guard"
 		],
-		"PersonalityInfluence":
-		{
-		},
+		"PersonalityInfluence": {},
 		"bNeedsTarget": false,
 		"TargetContext": "Combat",
-		"TargetConfigOverride":
-		{
+		"TargetConfigOverride": {
 			"bUseLLMEnhancement": false,
 			"MaxDistance": 3000,
 			"FriendlyReputationThreshold": 50,

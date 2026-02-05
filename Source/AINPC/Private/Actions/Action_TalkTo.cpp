@@ -32,7 +32,12 @@ void UAction_TalkTo::Enter_Implementation(AAIController* Controller)
 	{
 		ExecutionTime = World->GetTimeSeconds();
 	}
-	
+
+	// Reset conversation state
+	bConversationSatisfied = false;
+	ConversationTimer = 0.f;
+	NoTargetTimer = 0.f;
+
 	CurrentTarget = FindBestTalkTarget(Controller);
 
 	UE_LOG(LogTemp, Display, TEXT("───────────────────────────────────────"));
@@ -69,11 +74,18 @@ void UAction_TalkTo::Execute_Implementation(AAIController* Controller)
 		if (CurrentTarget)
 		{
 			Controller->SetFocus(CurrentTarget);
+			NoTargetTimer = 0.f;
 			UE_LOG(LogTemp, Log, TEXT("[TalkTo] Found new target: %s"), *CurrentTarget->GetName());
 		}
 		else
 		{
-			// Nothing to do, stop and wait
+			// No valid target - track how long we've been without one
+			NoTargetTimer += World->GetDeltaSeconds();
+			if (NoTargetTimer > 5.0f)
+			{
+				// Stuck with no target for too long - satisfy needs to allow exit
+				MarkConversationSatisfied(Controller);
+			}
 			Controller->StopMovement();
 			return;
 		}
@@ -92,51 +104,51 @@ void UAction_TalkTo::Execute_Implementation(AAIController* Controller)
 		Controller->StopMovement();
 		Controller->SetFocus(CurrentTarget);
 
-		// ✅ Auto-speech timer: increment and trigger LLM when expired
-		// 自动对话计时器：累积时间
-		float DeltaTime = World->GetDeltaSeconds();
-		ConversationTimer += DeltaTime;
-		
-		if (ConversationTimer >= AutoSpeakInterval)
+		// ✅ Check max conversation duration - satisfy social needs after talking long enough
+		float ElapsedTime = World->GetTimeSeconds() - ExecutionTime;
+		if (!bConversationSatisfied && ElapsedTime > MaxConversationDuration)
 		{
-			ConversationTimer = 0.f; // Reset timer
+			MarkConversationSatisfied(Controller);
+		}
 
-            // Trigger Dialogue via LLM
-			if (AUtilityAIController* UAICon = Cast<AUtilityAIController>(Controller))
+		// ✅ Auto-speech timer: only generate new speech if conversation not yet satisfied
+		if (!bConversationSatisfied)
+		{
+			float DeltaTime = World->GetDeltaSeconds();
+			ConversationTimer += DeltaTime;
+
+			if (ConversationTimer >= AutoSpeakInterval)
 			{
-                // Trigger Cognition - with topic guidance for natural conversation
-                if (UAICon->CognitionComp)
-                {
-                    FString Stimulus = FString::Printf(
-                        TEXT("You are having a friendly chat with %s. Make light small talk about everyday topics like the weather, work, local news, or how their day is going. Keep it casual and brief."),
-                        *CurrentTarget->GetName()
-                    );
-                    UAICon->CognitionComp->ProcessStimulus(Stimulus);
-                    UE_LOG(LogTemp, Log, TEXT("[Action_TalkTo] Auto-speak triggered after %.1fs"), AutoSpeakInterval);
-                }
+				ConversationTimer = 0.f;
+
+				if (AUtilityAIController* UAICon = Cast<AUtilityAIController>(Controller))
+				{
+					if (UAICon->CognitionComp)
+					{
+						FString Stimulus = FString::Printf(
+							TEXT("You are having a friendly chat with %s. Make light small talk about everyday topics like the weather, work, local news, or how their day is going. Keep it casual and brief."),
+							*CurrentTarget->GetName()
+						);
+						UAICon->CognitionComp->ProcessStimulus(Stimulus);
+						UE_LOG(LogTemp, Log, TEXT("[Action_TalkTo] Auto-speak triggered after %.1fs"), AutoSpeakInterval);
+					}
+				}
 			}
 		}
-		
-		// Poll for Speech output every frame (independent of the 5s trigger)
+
+		// Poll for Speech output every frame (independent of auto-speak trigger)
 		if (AUtilityAIController* UAICon = Cast<AUtilityAIController>(Controller))
 		{
-            if (UAICon->MentalState && !UAICon->MentalState->Speech.IsEmpty())
-            {
-                // Emit speech
-                if (UAICon->SensoryComp)
-                {
-                    UAICon->SensoryComp->ReceiveSpeech(ControlledPawn, UAICon->MentalState->Speech);
-                }
-                
-                UE_LOG(LogTemp, Log, TEXT("[Action_TalkTo] Said: %s"), *UAICon->MentalState->Speech);
-                
-                // Clear speech to avoid loop
-                UAICon->MentalState->Speech = "";
+			if (UAICon->MentalState && !UAICon->MentalState->Speech.IsEmpty())
+			{
+				if (UAICon->SensoryComp)
+				{
+					UAICon->SensoryComp->ReceiveSpeech(ControlledPawn, UAICon->MentalState->Speech);
+				}
 
-                // NOTE: Loneliness/Boredom reduction is handled by the LLM through ProcessStimulus.
-                // Manual reduction here was double-dipping and caused score oscillation
-                // (Loneliness→0 → Talk score=0 → forced yield → Loneliness grows → Talk wins again).
-            }
+				UE_LOG(LogTemp, Log, TEXT("[Action_TalkTo] Said: %s"), *UAICon->MentalState->Speech);
+				UAICon->MentalState->Speech = "";
+			}
 		}
 	}
 }
@@ -160,6 +172,26 @@ void UAction_TalkTo::Exit_Implementation(AAIController* Controller)
 	UE_LOG(LogTemp, Display, TEXT("───────────────────────────────────────"));
 	UE_LOG(LogTemp, Display, TEXT("[ACTION] TalkTo Exited"));
 	UE_LOG(LogTemp, Display, TEXT("───────────────────────────────────────"));
+}
+
+void UAction_TalkTo::MarkConversationSatisfied(AAIController* Controller)
+{
+	if (bConversationSatisfied) return;
+	bConversationSatisfied = true;
+
+	// Set low Loneliness target via Interpolator.
+	// The Interpolator (InterpSpeed=2.0) will smoothly reduce values over ~1-2s,
+	// causing TalkTo's score to drop naturally, allowing other actions to take over.
+	// NOTE: Talk only affects Loneliness. Boredom is reduced through Work activities.
+	if (AUtilityAIController* UAICon = Cast<AUtilityAIController>(Controller))
+	{
+		if (UAICon->CognitionComp && UAICon->CognitionComp->Interpolator && UAICon->MentalState)
+		{
+			UAICon->CognitionComp->Interpolator->SetTargetValue(TEXT("Loneliness"), 0.1f);
+		}
+	}
+
+	UE_LOG(LogTemp, Log, TEXT("[Action_TalkTo] Conversation satisfied - Loneliness reduced, yielding soon"));
 }
 
 AActor* UAction_TalkTo::FindBestTalkTarget(AAIController* Controller)

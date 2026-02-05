@@ -77,12 +77,14 @@ public:
 	bool HasContextTag(FGameplayTag Tag) const;
 
 	void SetDirective(FGameplayTag NewDirective);
-	
-protected:
+
 	void UpdateArbitration();
 
 	// Checks schedule and updates CachedScheduleDirective
 	void CheckSchedule();
+	
+protected:
+	
 
 	void SetLOD(EContextLOD NewLOD);
 
