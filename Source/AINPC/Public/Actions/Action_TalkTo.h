@@ -50,4 +50,7 @@ public:
 private:
 	// Findings nearest friendly/neutral unit
 	AActor* FindBestTalkTarget(AAIController* Controller);
+
+	// Build a personality-driven conversation stimulus from NPC's needs, values, and memories
+	FString BuildConversationStimulus(AAIController* Controller, AActor* Target);
 };

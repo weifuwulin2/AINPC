@@ -13,17 +13,20 @@ USmartObjectComponent::USmartObjectComponent()
 	SlotOffsets.Add(FVector::ZeroVector);
 }
 
+void USmartObjectComponent::OnRegister()
+{
+	Super::OnRegister();
+#if WITH_EDITOR
+	RefreshEditorArrows();
+#endif
+}
+
 void USmartObjectComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
 	// ✅ Initialize Slots from configured offsets
 	InitializeSlots();
-
-#if WITH_EDITOR
-	// Create debug arrows for visualization in PIE
-	CreateDebugArrows();
-#endif
 
 	// ✅ Auto-Register with SmartObjectManager
 	if (UWorld* World = GetWorld())
@@ -105,35 +108,38 @@ void USmartObjectComponent::InitializeSlots()
 }
 
 #if WITH_EDITOR
-void USmartObjectComponent::CreateDebugArrows()
+void USmartObjectComponent::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+{
+	Super::PostEditChangeProperty(PropertyChangedEvent);
+	RefreshEditorArrows();
+}
+
+void USmartObjectComponent::RefreshEditorArrows()
 {
 	AActor* Owner = GetOwner();
-	if (!Owner) return;
+	if (!Owner || !Owner->GetRootComponent()) return;
 
 	// Clear existing arrows
 	for (UArrowComponent* Arrow : DebugArrows)
 	{
-		if (Arrow)
-		{
-			Arrow->DestroyComponent();
-		}
+		if (Arrow) Arrow->DestroyComponent();
 	}
 	DebugArrows.Empty();
 
-	// Create an arrow for each slot
-	for (int32 i = 0; i < Slots.Num(); ++i)
+	// Create arrow per SlotOffset (local space)
+	for (int32 i = 0; i < SlotOffsets.Num(); ++i)
 	{
 		UArrowComponent* Arrow = NewObject<UArrowComponent>(Owner);
 		if (Arrow)
 		{
 			Arrow->SetupAttachment(Owner->GetRootComponent());
-			Arrow->SetWorldLocation(Slots[i].Location);
-			Arrow->SetWorldRotation(Slots[i].Rotation);
+			Arrow->SetRelativeLocation(SlotOffsets[i]);
 			Arrow->SetArrowColor(FLinearColor::Green);
-			Arrow->ArrowSize = 0.5f;
+			Arrow->ArrowSize = 0.75f;
+			Arrow->ArrowLength = 60.0f;
 			Arrow->bIsEditorOnly = true;
+			Arrow->SetHiddenInGame(true);
 			Arrow->RegisterComponent();
-			
 			DebugArrows.Add(Arrow);
 		}
 	}

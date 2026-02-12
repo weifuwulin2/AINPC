@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Rule 0 False Yield**: NPCs no longer abandon Eat/Sleep actions just because Hunger/Fatigue dropped to 0 (score→0). `IsWithinDuration()` now suppresses Rule 0 during `ActionDuration`, recognizing that low score means "need satisfied", not "action invalid".
 - **ActionDuration Had No Effect on Transitions**: `ActionDuration` from DataTable was only used for animation looping inside `Action_SmartObject`. Now it's loaded into the base class via `InitFromConfig()` and checked by both `CanTransition` (Rule 0) and `CheckExitConditions` (`bWaitForDuration`).
 - **ActionDuration Field Shadow**: Removed duplicate `ActionDuration` declaration in `Action_SmartObject.h` that shadowed the base class field. All actions now use the unified field from `UUtilityActionBase`.
+- **Eat Action Self-Score Undermining**: `RestoreStats()` was called by the recovery timer even while the NPC was still walking to the SmartObject (`bIsInteracting=false`). This reduced Hunger prematurely, causing Eat's score to drop and get interrupted by lower-priority actions like Merchant Stand before the NPC could actually eat. Added `bIsInteracting` guard to skip stat restoration until the NPC has arrived and started interacting.
+- **DDC Crash on Startup**: Fixed "no writable nodes available" DDC crash by adding explicit `[DerivedDataBackendGraph]` configuration in `DefaultEngine.ini`, forcing the local project `DerivedDataCache` path.
 
 ### 🔧 Systems & Config
 - **CheckExitConditions Duration Fix**: `bWaitForDuration` now uses `ActionDuration` (actual intended duration) instead of `CommitmentTime` (interrupt protection window). Falls back to `CommitmentTime` if `ActionDuration` is 0.

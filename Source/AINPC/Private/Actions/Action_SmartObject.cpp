@@ -521,6 +521,14 @@ void UAction_SmartObject::RestoreStats(AAIController* Controller)
 	UNPCMentalState* State = UtilController->MentalState;
 	if (!State) return;
 
+	// ✅ FIX: Only restore stats when NPC has actually reached the SmartObject and is interacting.
+	// Previously, stats were restored while still walking, causing the action's score to drop
+	// and get interrupted by other actions before the NPC could actually eat/sleep/work.
+	if (!bIsInteracting)
+	{
+		return;
+	}
+
 	// ✅ Read RestoreValue from SmartObject
 	float RestoreRate = 0.2f; // Default fallback
 	if (TargetSmartObject)

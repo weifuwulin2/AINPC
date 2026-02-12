@@ -4,6 +4,31 @@ This file contains a log of commit messages for the AINPC project.
 
 ---
 
+## [2026-02-12] Fix Eat Action Premature Interruption (Self-Score Undermining)
+**Type**: fix
+**Scope**: Action_SmartObject
+**Description**:
+- **Root Cause**: `SetupRecoveryTimer` started a 1s repeating timer calling `RestoreStats()` immediately on `Enter()`, even while the NPC was still walking to the SmartObject. `RestoreStats` reduced `Hunger` each tick, causing the Eat action's score to plummet (e.g., 6.298 → 1.0) before the NPC could reach the food.
+- **Consequence**: `CanTransition` used the now-low Eat score for inertia threshold calculation, allowing lower-priority actions (e.g., Merchant Stand at 3.374) to pass the threshold and interrupt Eat.
+- **Fix**: Added `bIsInteracting` guard at the top of `RestoreStats()`. Stats are now only restored when the NPC has physically arrived at the SmartObject and is actively interacting, not during the approach walk.
+
+**Files Changed**:
+- `Source/AINPC/Private/Actions/Action_SmartObject.cpp` - Added early return in `RestoreStats` when `!bIsInteracting`
+
+---
+
+## [2026-02-12] Fix DDC Crash on Startup
+**Type**: fix
+**Scope**: Config
+**Description**:
+- **Issue**: Unreal Engine crashed on startup with "no writable nodes available" DDC error.
+- **Fix**: Added explicit `[DerivedDataBackendGraph]` and `[InstalledDerivedDataBackendGraph]` sections to `DefaultEngine.ini`, forcing the DDC to use the project-local `%GAMEDIR%DerivedDataCache` path.
+
+**Files Changed**:
+- `Config/DefaultEngine.ini` - Added DDC backend graph configuration
+
+---
+
 ## [2026-02-12] Fix CommitmentTime & ActionDuration in Transition System
 **Type**: fix
 **Scope**: UtilityActionBase, Action_SmartObject, UtilityAIComponent

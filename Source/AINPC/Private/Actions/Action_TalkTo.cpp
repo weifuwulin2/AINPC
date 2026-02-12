@@ -4,11 +4,14 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "EngineUtils.h"
-#include "Components/SensoryComponent.h" 
+#include "Components/SensoryComponent.h"
 #include "Controller/UtilityAIController.h"
 #include "Components/CognitionComponent.h"
+#include "Components/MemoryComponent.h"
+#include "Components/NPCDefinitionComponent.h"
 #include "UtilityAI/MentalStateInterpolation.h"
 #include "UtilityAI/UNPCMentalState.h"
+#include "Utilities/AINPCHelpers.h"
 
 UAction_TalkTo::UAction_TalkTo()
 {
@@ -125,10 +128,7 @@ void UAction_TalkTo::Execute_Implementation(AAIController* Controller)
 				{
 					if (UAICon->CognitionComp)
 					{
-						FString Stimulus = FString::Printf(
-							TEXT("You are having a friendly chat with %s. Make light small talk about everyday topics like the weather, work, local news, or how their day is going. Keep it casual and brief."),
-							*CurrentTarget->GetName()
-						);
+						FString Stimulus = BuildConversationStimulus(Controller, CurrentTarget);
 						UAICon->CognitionComp->ProcessStimulus(Stimulus);
 						UE_LOG(LogTemp, Log, TEXT("[Action_TalkTo] Auto-speak triggered after %.1fs"), AutoSpeakInterval);
 					}
@@ -222,4 +222,71 @@ AActor* UAction_TalkTo::FindBestTalkTarget(AAIController* Controller)
 	}
 
 	return BestCandidate;
+}
+
+FString UAction_TalkTo::BuildConversationStimulus(AAIController* Controller, AActor* Target)
+{
+	AUtilityAIController* UAICon = Cast<AUtilityAIController>(Controller);
+	if (!UAICon) return TEXT("You are chatting with someone nearby.");
+
+	FString TargetName = Target ? AINPCHelpers::GetSmartActorName(Target) : TEXT("someone");
+
+	FString Result = FString::Printf(TEXT("You are chatting with %s.\n\n"), *TargetName);
+
+	// --- Current Needs (what's on the NPC's mind) ---
+	if (UNPCMentalState* State = UAICon->MentalState)
+	{
+		TArray<FString> Concerns;
+		if (State->Hunger > 0.4f)
+			Concerns.Add(FString::Printf(TEXT("You're feeling hungry (%.0f%%)"), State->Hunger * 100.f));
+		if (State->Fatigue > 0.4f)
+			Concerns.Add(FString::Printf(TEXT("You're feeling tired (%.0f%%)"), State->Fatigue * 100.f));
+		if (State->Boredom > 0.4f)
+			Concerns.Add(TEXT("You're bored and restless"));
+		if (State->Perceived_Threat > 0.3f)
+			Concerns.Add(TEXT("You feel uneasy, sensing danger nearby"));
+		if (State->Indignity > 0.3f)
+			Concerns.Add(TEXT("Something has offended or upset you recently"));
+
+		if (Concerns.Num() > 0)
+		{
+			Result += TEXT("[YOUR CURRENT CONCERNS]\n");
+			for (const FString& C : Concerns)
+				Result += TEXT("- ") + C + TEXT("\n");
+			Result += TEXT("\n");
+		}
+	}
+
+	// --- Core Values & Motivation (from NPCDefinition -> SocialProfile) ---
+	APawn* Pawn = Controller->GetPawn();
+	UNPCDefinitionComponent* DefComp = Pawn ? Pawn->FindComponentByClass<UNPCDefinitionComponent>() : nullptr;
+	if (DefComp)
+	{
+		FSocialProfileDef SocialProfile;
+		if (DefComp->GetSocialProfileDef(SocialProfile))
+		{
+			if (!SocialProfile.Motivation.IsEmpty())
+				Result += FString::Printf(TEXT("[YOUR MOTIVATION] %s\n"), *SocialProfile.Motivation);
+			if (SocialProfile.KeyValues.Num() > 0)
+				Result += TEXT("[YOUR VALUES] ") + FString::Join(SocialProfile.KeyValues, TEXT(", ")) + TEXT("\n");
+		}
+	}
+	Result += TEXT("\n");
+
+	// --- Recent Memories (top 3 as topic seeds) ---
+	if (UAICon->CognitionComp && UAICon->MemoryComp)
+	{
+		FString Memories = UAICon->MemoryComp->GetTopMemoriesAsString(3);
+		if (!Memories.IsEmpty())
+		{
+			Result += TEXT("[RECENT EXPERIENCES]\n") + Memories + TEXT("\n");
+		}
+	}
+
+	// --- Conversation Instruction ---
+	Result += TEXT("[INSTRUCTION] Talk about what matters to YOU right now. ");
+	Result += TEXT("Share your thoughts, worries, opinions, or recent experiences. ");
+	Result += TEXT("Don't make generic small talk - speak from your personality and current situation.");
+
+	return Result;
 }

@@ -93,6 +93,11 @@ public:
 protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+	virtual void OnRegister() override;
+#if WITH_EDITOR
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+	void RefreshEditorArrows();
+#endif
 
 #if WITH_EDITORONLY_DATA
 	// Visual debug arrows (Editor only)
@@ -103,9 +108,4 @@ protected:
 private:
 	// Populate Slots array from SlotOffsets
 	void InitializeSlots();
-
-#if WITH_EDITOR
-	// Create debug arrows for visualization
-	void CreateDebugArrows();
-#endif
 };
