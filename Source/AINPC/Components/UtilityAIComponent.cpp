@@ -123,8 +123,7 @@ void UUtilityAIComponent::LoadActionsFromTable()
             {
                 SmartObjectAction->InteractionMontage = Row->InteractionMontage;
                 SmartObjectAction->bLoopAnimation = Row->bLoopAnimation;
-                SmartObjectAction->ActionDuration = Row->ActionDuration;
-                
+                // NOTE: ActionDuration is now loaded via InitFromConfig() for all actions
             }
             // ✅ 如果是 Action_Attack，传递攻击动画
             else if (UAction_Attack* AttackAction = Cast<UAction_Attack>(NewAction))
@@ -385,39 +384,16 @@ bool UUtilityAIComponent::CanTransition(UUtilityActionBase* Current, UUtilityAct
 
     // Rule 0: Current Action Invalid (Score 0)
     // If current action computes to ~0 score, it implies it cannot run.
-    // Always yield regardless of priority.
-    if (CurrentScore <= 0.1f)
+    // BUT: If current action is within its ActionDuration, don't yield —
+    // the score is low because need is being satisfied, not because the action is invalid.
+    if (CurrentScore <= 0.1f && !Current->IsWithinDuration(CurrentTime))
     {
-        UE_LOG(LogTemp, Log, TEXT("[Transition] ⚠️ Current Action %s Score is low (%.3f) - Forcing Yield to %s"),
+        UE_LOG(LogTemp, Log, TEXT("[Transition] Current Action %s Score is low (%.3f) - Forcing Yield to %s"),
             *Current->ActionName, CurrentScore, *Candidate->ActionName);
         return true;
     }
 
-    // Rule 1: Priority Gate
-    // Lower priority cannot interrupt higher priority
-    if (Candidate->Priority < Current->Priority)
-    {
-        // ✅ EXCEPTION: Performance-based Priority Decay
-        // Relaxed rule: If Current Action is weak (< 0.4) OR Candidate is overwhelming (> 2x Current),
-        // allow the transition despite priority.
-        
-        bool bCurrentIsWeak = CurrentScore < 0.4f;
-        bool bCandidateIsOverwhelming = CandidateScore > (CurrentScore * 2.0f);
-
-        if (bCurrentIsWeak || bCandidateIsOverwhelming)
-        {
-             UE_LOG(LogTemp, Warning, TEXT("[Transition] ⚠️ Priority Shield Broken: %s(%.2f) yields to %s(%.2f) [Weak:%d, Overwhelming:%d]"),
-                *Current->ActionName, CurrentScore, *Candidate->ActionName, CandidateScore, bCurrentIsWeak, bCandidateIsOverwhelming);
-             return true;
-        }
-
-        UE_LOG(LogTemp, Verbose, TEXT("[Transition] Denied: %s(%d) < %s(%d) Priority"),
-               *Candidate->ActionName, (int32)Candidate->Priority,
-               *Current->ActionName, (int32)Current->Priority);
-        return false;
-    }
-    
-    // Rule 2: Commitment Lock
+    // Rule 1: Commitment Lock
     // If current action is committed, only Threat+ can break it
     if (Current->IsCommitted(CurrentTime))
     {
@@ -435,45 +411,51 @@ bool UUtilityAIComponent::CanTransition(UUtilityActionBase* Current, UUtilityAct
             return true;
         }
     }
-    
-    // Rule 3: Same-Priority Inertia
-    // Must beat current score by inertia margin
-    if (Candidate->Priority == Current->Priority)
+
+    // Rule 2: Priority-Scaled Inertia
+    // Priority difference modulates the inertia threshold:
+    //   - Higher priority candidate → lower threshold (easier to switch)
+    //   - Same priority            → standard threshold
+    //   - Lower priority candidate → higher threshold (harder to switch)
+    //
+    // Formula:
+    //   PriorityDiff  = Candidate.Priority - Current.Priority  (positive = candidate is higher)
+    //   PriorityScale = Clamp(1.0 - PriorityDiff / 20.0, 0.0, 2.0)
+    //   Threshold     = CurrentScore * (1 + InertiaBonus * PriorityScale)
+    //
+    // Examples (InertiaBonus=1.0):
+    //   Threat(50) → Work(30):  diff=+20, scale=0.0, threshold = Score * 1.0 (zero inertia)
+    //   Talk(35)   → Work(30):  diff=+5,  scale=0.75, threshold = Score * 1.75
+    //   Same priority:          diff=0,   scale=1.0, threshold = Score * 2.0
+    //   Work(30)   → Talk(35):  diff=-5,  scale=1.25, threshold = Score * 2.25
     {
-        // ✅ Fix: Use CurrentScore (Fresh) instead of LastScore (Stale)
-        // If CurrentAction utility has dropped (e.g. 0.8 -> 0.2), we should NOT use 0.8 to block transition.
-        float InertiaThreshold = CurrentScore * (1.0f + Current->InertiaBonus);
-        
+        float PriorityDiff = (float)((int32)Candidate->Priority - (int32)Current->Priority);
+        float PriorityScale = FMath::Clamp(1.0f - PriorityDiff / 20.0f, 0.0f, 2.0f);
+        float InertiaThreshold = CurrentScore * (1.0f + Current->InertiaBonus * PriorityScale);
+
         if (CandidateScore <= InertiaThreshold)
         {
-            UE_LOG(LogTemp, Verbose, TEXT("[Transition] Denied: %s(%.2f) <= %s(%.2f + %.0f%% inertia)"),
-                   *Candidate->ActionName, CandidateScore,
-                   *Current->ActionName, CurrentScore, Current->InertiaBonus * 100.0f);
+            UE_LOG(LogTemp, Verbose, TEXT("[Transition] Denied: %s(P:%d, %.2f) <= %s(P:%d, %.2f * (1+%.1f*%.2f)=%.2f)"),
+                   *Candidate->ActionName, (int32)Candidate->Priority, CandidateScore,
+                   *Current->ActionName, (int32)Current->Priority, CurrentScore,
+                   Current->InertiaBonus, PriorityScale, InertiaThreshold);
             return false;
         }
+
+        UE_LOG(LogTemp, Log, TEXT("[Transition] Allowed: %s(P:%d, %.2f) > %s(P:%d, threshold=%.2f, scale=%.2f)"),
+               *Candidate->ActionName, (int32)Candidate->Priority, CandidateScore,
+               *Current->ActionName, (int32)Current->Priority, InertiaThreshold, PriorityScale);
     }
-    
-    // Rule 4: Data-Driven Exit Conditions
-    // Check if current action should exit based on its configured conditions
+
+    // Rule 3: Data-Driven Exit Conditions
     if (OwnerController && OwnerController->MentalState)
     {
         if (Current->CheckExitConditions(OwnerController->MentalState, OwnerController))
         {
             UE_LOG(LogTemp, Log, TEXT("[Transition] %s exit conditions met -> allowing switch to %s"),
                    *Current->ActionName, *Candidate->ActionName);
-            return true;
         }
     }
-    
-    // Rule 5: Higher priority always wins (unless blocked by Rules 1-2)
-    if (Candidate->Priority > Current->Priority)
-    {
-        UE_LOG(LogTemp, Log, TEXT("[Transition] Allowed: %s(%d) > %s(%d) Priority"),
-               *Candidate->ActionName, (int32)Candidate->Priority,
-               *Current->ActionName, (int32)Current->Priority);
-        return true;
-    }
-    
-    // Default: Allow if we passed all checks
+
     return true;
 }

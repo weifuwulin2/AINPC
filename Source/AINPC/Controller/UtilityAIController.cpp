@@ -311,15 +311,17 @@ void AUtilityAIController::BeginPlay()
     // 每5分钟触发一次记忆整理，将短期记忆转化为长期洞察
     if (CognitionComp)
     {
+        TWeakObjectPtr<AUtilityAIController> WeakSelf(this);
         GetWorldTimerManager().SetTimer(
             DreamingTimerHandle,
-            [this]() 
-            { 
-                if (CognitionComp)
+            [WeakSelf]()
+            {
+                AUtilityAIController* Self = WeakSelf.Get();
+                if (Self && Self->CognitionComp)
                 {
-                    CognitionComp->StartDreaming();
-                    UE_LOG(LogTemp, Log, TEXT("[%s] Dreaming cycle triggered - consolidating memories..."), 
-                           *GetName());
+                    Self->CognitionComp->StartDreaming();
+                    UE_LOG(LogTemp, Log, TEXT("[%s] Dreaming cycle triggered - consolidating memories..."),
+                           *Self->GetName());
                 }
             },
             300.0f,  // 每5分钟 (300秒)

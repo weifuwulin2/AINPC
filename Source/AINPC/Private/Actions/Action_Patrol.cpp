@@ -29,13 +29,21 @@ void UAction_Patrol::Execute_Implementation(AAIController* Controller)
 		{
 			// Arrived at point, start waiting
 			bIsWaiting = true;
-			
+
 			// Set timer to move to next point
+			TWeakObjectPtr<AAIController> WeakController(Controller);
+			TWeakObjectPtr<UAction_Patrol> WeakSelf(this);
 			Controller->GetWorld()->GetTimerManager().SetTimer(
 				WaitTimerHandle,
-				[this, Controller]()
+				[WeakSelf, WeakController]()
 				{
-					MoveToRandomPoint(Controller);
+					if (UAction_Patrol* Self = WeakSelf.Get())
+					{
+						if (AAIController* Ctrl = WeakController.Get())
+						{
+							Self->MoveToRandomPoint(Ctrl);
+						}
+					}
 				},
 				PatrolWaitTime,
 				false

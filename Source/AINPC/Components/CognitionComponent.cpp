@@ -557,13 +557,15 @@ bool UCognitionComponent::IsDataReady(const FString& PersonalityID, const FStrin
 		PendingStimulusBuffer.Emplace(FPendingCognitionStimulus{SituationDescription, 0.5f, false});
 		if (!GetWorld()->GetTimerManager().IsTimerActive(RetryStimulusTimerHandle))
 		{
-			GetWorld()->GetTimerManager().SetTimer(RetryStimulusTimerHandle, [this]()
+			TWeakObjectPtr<UCognitionComponent> WeakSelf(this);
+			GetWorld()->GetTimerManager().SetTimer(RetryStimulusTimerHandle, [WeakSelf]()
 			{
-				if (PendingStimulusBuffer.IsSet())
+				UCognitionComponent* Self = WeakSelf.Get();
+				if (Self && Self->PendingStimulusBuffer.IsSet())
 				{
-					FPendingCognitionStimulus Stimulus = PendingStimulusBuffer.GetValue();
-					PendingStimulusBuffer.Reset();
-					ProcessStimulus(Stimulus.Description, Stimulus.bForceImmediate, Stimulus.Priority);
+					FPendingCognitionStimulus Stimulus = Self->PendingStimulusBuffer.GetValue();
+					Self->PendingStimulusBuffer.Reset();
+					Self->ProcessStimulus(Stimulus.Description, Stimulus.bForceImmediate, Stimulus.Priority);
 				}
 			}, 0.5f, false);
 		}
@@ -892,13 +894,17 @@ FString UCognitionComponent::SuggestTarget(const TArray<FString>& CandidateNames
 	}
 
 	// --- Send Functional Request (deterministic, capped) ---
+	TWeakObjectPtr<UCognitionComponent> WeakSelf(this);
 	LLMService->SendFunctionalRequest(
 		SystemPrompt,
 		UserPrompt,
 		FOnLLMResponseRaw::CreateLambda(
-			[this, SelectionContext](bool bSuccess, const FString& Response)
+			[WeakSelf, SelectionContext](bool bSuccess, const FString& Response)
 			{
-				this->OnTargetSuggestionReceived(bSuccess, Response, SelectionContext);
+				if (UCognitionComponent* Self = WeakSelf.Get())
+				{
+					Self->OnTargetSuggestionReceived(bSuccess, Response, SelectionContext);
+				}
 			}
 		),
 		0.1f,  // Near-deterministic

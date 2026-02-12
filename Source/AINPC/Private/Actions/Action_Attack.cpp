@@ -167,6 +167,17 @@ void UAction_Attack::Execute_Implementation(AAIController* Controller)
 	// Debug Distance Log
 	// AINPC_LOG(Log, "Action_Attack: Execute Tick. Dist: %.1f / Range: %.1f. bIsAttacking: %d", FMath::Sqrt(DistSq), AttackRange, bIsAttacking);
 
+	// Safety timeout: force-reset bIsAttacking if stuck (e.g., anim callback never fired)
+	if (bIsAttacking && AttackStartTime > 0.0f)
+	{
+		float TimeSinceAttack = GetWorld()->GetTimeSeconds() - AttackStartTime;
+		if (TimeSinceAttack > 5.0f)
+		{
+			AINPC_LOG_WARNING("Action_Attack: bIsAttacking stuck for %.1fs - force resetting", TimeSinceAttack);
+			bIsAttacking = false;
+		}
+	}
+
 	if (DistSq <= RangeSq)
 	{
 		// In range - perform attack
@@ -198,14 +209,30 @@ void UAction_Attack::Exit_Implementation(AAIController* Controller)
 	Super::Exit_Implementation(Controller);
 
 	bIsAttacking = false;
-	OwningController = nullptr;
+	AttackStartTime = 0.0f;
 
+	// Stop montage and unbind delegate to prevent stale callbacks
 	if (Controller)
 	{
+		if (ACharacter* Character = Cast<ACharacter>(Controller->GetPawn()))
+		{
+			if (AttackMontage && Character->GetMesh())
+			{
+				if (UAnimInstance* AnimInst = Character->GetMesh()->GetAnimInstance())
+				{
+					if (AnimInst->Montage_IsPlaying(AttackMontage))
+					{
+						Character->StopAnimMontage(AttackMontage);
+					}
+				}
+			}
+		}
 		Controller->StopMovement();
 		Controller->ClearFocus(EAIFocusPriority::Gameplay);
 	}
-	
+
+	OwningController = nullptr;
+
 	if (UTargetSelectionSubsystem* TargetSystem = GetWorld()->GetSubsystem<UTargetSelectionSubsystem>())
 	{
 		TargetSystem->OnTargetInvalidated.RemoveDynamic(this, &UAction_Attack::OnTargetInvalidated);
@@ -238,6 +265,7 @@ void UAction_Attack::PerformAttack(AAIController* Controller)
 
 	bIsAttacking = true;
 	bHasDealtDamage = false;
+	AttackStartTime = Controller->GetWorld()->GetTimeSeconds();
 
 	// Stop movement and face target
 	Controller->StopMovement();

@@ -48,6 +48,7 @@ protected:
 
 	bool bIsAttacking;
 	bool bHasDealtDamage;
+	float AttackStartTime = 0.0f; // Timestamp for timeout safety
 
 	void PerformAttack(AAIController* Controller);
 	

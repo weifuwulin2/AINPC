@@ -109,6 +109,11 @@ void ULLMCommunicator::SendHTTPRequest(
     if (ApiKey.IsEmpty())
     {
         LLM_LOG(Error, "API Key is empty! Call Init() first.");
+        // Invoke callback with failure so callers don't silently stall
+        if (OnComplete)
+        {
+            OnComplete(nullptr, nullptr, false);
+        }
         return;
     }
     Request->SetHeader("Authorization", FString::Printf(TEXT("Bearer %s"), *ApiKey));
@@ -207,8 +212,24 @@ bool ULLMCommunicator::ExtractContentFromResponse(FHttpResponsePtr Response, boo
     }
 
     TSharedPtr<FJsonObject> FirstChoice = (*ChoicesArray)[0]->AsObject();
+    if (!FirstChoice.IsValid())
+    {
+        LLM_LOG(Error, "choices[0] is not a valid JSON object.");
+        return false;
+    }
+
     TSharedPtr<FJsonObject> MessageObj = FirstChoice->GetObjectField(TEXT("message"));
-    OutContent = MessageObj->GetStringField(TEXT("content"));
+    if (!MessageObj.IsValid())
+    {
+        LLM_LOG(Error, "'message' field missing in choices[0].");
+        return false;
+    }
+
+    if (!MessageObj->TryGetStringField(TEXT("content"), OutContent))
+    {
+        LLM_LOG(Error, "'content' field missing in message object.");
+        return false;
+    }
 
     // Cleanup Markdown
     OutContent = OutContent.Replace(TEXT("```json"), TEXT("")).Replace(TEXT("```"), TEXT("")).TrimStartAndEnd();

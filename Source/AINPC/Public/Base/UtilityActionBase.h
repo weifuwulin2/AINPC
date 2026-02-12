@@ -379,6 +379,9 @@ public:
     float CommitmentTime = 0.0f;
 
     UPROPERTY(Transient)
+    float ActionDuration = 0.0f;
+
+    UPROPERTY(Transient)
     TArray<FActionExitCondition> ExitConditions;
 
     // Runtime: When did the Commitment period start?
@@ -411,6 +414,10 @@ public:
     
     // Is this action currently in its Commitment period?
     bool IsCommitted(float CurrentTime) const;
+
+    // Is the action still within its configured ActionDuration?
+    // Returns false if ActionDuration <= 0 (no duration limit).
+    bool IsWithinDuration(float CurrentTime) const;
 
     // Check data-driven exit conditions (returns true if should exit)
     bool CheckExitConditions(UNPCMentalState* MentalState, AAIController* Controller) const;

@@ -48,6 +48,7 @@ void UUtilityActionBase::InitFromConfig(const FUtilityActionConfig& Config)
     // ✅ Transition System fields
     Priority = Config.Priority;
     CommitmentTime = Config.CommitmentTime;
+    ActionDuration = Config.ActionDuration;
     ExitConditions = Config.ExitConditions;
     
     // Debug Log (Simplified)
@@ -771,6 +772,16 @@ bool UUtilityActionBase::IsCommitted(float CurrentTime) const
 }
 
 // =========================================================
+// Transition System: IsWithinDuration
+// =========================================================
+bool UUtilityActionBase::IsWithinDuration(float CurrentTime) const
+{
+    if (ActionDuration <= 0.0f) return false;
+    float Elapsed = CurrentTime - ActionStartTime;
+    return Elapsed < ActionDuration;
+}
+
+// =========================================================
 // Transition System: CheckExitConditions (Data-Driven)
 // =========================================================
 bool UUtilityActionBase::CheckExitConditions(UNPCMentalState* MentalState, AAIController* Controller) const
@@ -783,9 +794,9 @@ bool UUtilityActionBase::CheckExitConditions(UNPCMentalState* MentalState, AAICo
         if (Condition.bWaitForDuration && Controller && Controller->GetWorld())
         {
             float Elapsed = Controller->GetWorld()->GetTimeSeconds() - ActionStartTime;
-            // Use ActionDuration from base class (requires it to be set)
-            // For simplicity, use CommitmentTime as the "minimum duration" if ActionDuration is 0
-            float MinDuration = CommitmentTime > 0.0f ? CommitmentTime : 0.0f;
+            // Use ActionDuration as the actual "minimum duration" for exit conditions
+            // Fall back to CommitmentTime if ActionDuration is not set
+            float MinDuration = ActionDuration > 0.0f ? ActionDuration : CommitmentTime;
             if (Elapsed < MinDuration) continue;
         }
         

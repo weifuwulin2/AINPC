@@ -23,6 +23,9 @@ void UNarrativeSquadSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
 
+	// Ensure NarrativeDirectorSubsystem is initialized before us
+	Collection.InitializeDependency<UNarrativeDirectorSubsystem>();
+
 	// Bind to Director
 	if (UNarrativeDirectorSubsystem* Director = GetWorld()->GetSubsystem<UNarrativeDirectorSubsystem>())
 	{
@@ -390,12 +393,13 @@ int32 UNarrativeSquadSubsystem::SpawnSceneFromTemplate(UDataTable* SceneTable, F
 	}
 
 	// 4. Spawn Cast AFTER Props (with small delay to ensure SmartObjects are registered)
-	FTimerHandle SpawnNPCsTimer;
-	GetWorld()->GetTimerManager().SetTimer(SpawnNPCsTimer, [this, SceneDef, NPCTable, Origin, SquadID, bAutoActivate]()
+	// Copy Cast array by value to avoid dangling DataTable pointer in deferred lambda
+	TArray<FSceneRoleDef> CastCopy = SceneDef->Cast;
+	GetWorld()->GetTimerManager().SetTimer(SpawnNPCsTimerHandle, [this, CastCopy, NPCTable, Origin, SquadID, bAutoActivate]()
 	{
 		static const FString NPCContext = TEXT("NarrativeSquad_SpawnNPCs");
-		
-		for (const FSceneRoleDef& Role : SceneDef->Cast)
+
+		for (const FSceneRoleDef& Role : CastCopy)
 		{
 			const FNPCDefinitionRow* NPCDef = NPCTable->FindRow<FNPCDefinitionRow>(Role.NPCTemplateID, NPCContext);
 			
@@ -549,6 +553,11 @@ void UNarrativeSquadSubsystem::ActivateScene(int32 SquadID)
 					{
 						NARRATIVE_LOG(Warning, TEXT("📜 ⚡ Immediately triggering Timeline Node %d (T=0)"), Squad->CurrentTimelineIndex);
 						TriggerTimelineNode(SquadID, Squad->CurrentTimelineIndex);
+
+						// Re-validate: TriggerTimelineNode may have caused EndScene -> ActiveSquads.Remove
+						Squad = ActiveSquads.Find(SquadID);
+						if (!Squad || !Squad->bIsActive) return;
+
 						Squad->CurrentTimelineIndex++;
 					}
 					else
@@ -755,6 +764,11 @@ void UNarrativeSquadSubsystem::TickTimeline(int32 SquadID)
 			{
 				NARRATIVE_LOG(Warning, TEXT("📜 ⚡ State Condition Met Immediately: %s"), *Node.Trigger.Tag.ToString());
 				TriggerTimelineNode(SquadID, Squad->CurrentTimelineIndex);
+
+				// Re-validate: TriggerTimelineNode may have caused EndScene -> ActiveSquads.Remove
+				Squad = ActiveSquads.Find(SquadID);
+				if (!Squad || !Squad->bIsActive) return;
+
 				Squad->CurrentTimelineIndex++;
 				continue; // Continue to next node immediately
 			}
@@ -763,7 +777,7 @@ void UNarrativeSquadSubsystem::TickTimeline(int32 SquadID)
 			if (!Squad->PendingEventTriggers.Contains(Squad->CurrentTimelineIndex))
 			{
 				Squad->PendingEventTriggers.Add(Squad->CurrentTimelineIndex, Node.Trigger.Tag);
-				NARRATIVE_LOG(Warning, TEXT("📜 Timeline Node %d (T+%.1fs): Waiting for event %s (Payload: %s)"), 
+				NARRATIVE_LOG(Warning, TEXT("📜 Timeline Node %d (T+%.1fs): Waiting for event %s (Payload: %s)"),
 					Squad->CurrentTimelineIndex, Node.TimeOffset, *Node.Trigger.Tag.ToString(), *Node.Trigger.Payload);
 			}
 			break; // Stop processing, wait for event
@@ -772,6 +786,11 @@ void UNarrativeSquadSubsystem::TickTimeline(int32 SquadID)
 		{
 			// Time-only trigger, execute immediately
 			TriggerTimelineNode(SquadID, Squad->CurrentTimelineIndex);
+
+			// Re-validate: TriggerTimelineNode may have caused EndScene -> ActiveSquads.Remove
+			Squad = ActiveSquads.Find(SquadID);
+			if (!Squad || !Squad->bIsActive) return;
+
 			Squad->CurrentTimelineIndex++;
 		}
 	}

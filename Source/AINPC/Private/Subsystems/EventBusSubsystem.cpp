@@ -50,7 +50,9 @@ void UEventBusSubsystem::BroadcastEvent(const FEventMetadata& EventData)
 	// Find matching subscribers
 	int32 DeliveryCount = 0;
 
-	for (FEventSubscription& Subscription : Subscriptions)
+	// Copy subscriptions to prevent iterator invalidation if callbacks modify the list
+	TArray<FEventSubscription> SubscriptionsCopy = Subscriptions;
+	for (FEventSubscription& Subscription : SubscriptionsCopy)
 	{
 		// Skip if subscriber was destroyed
 		if (!Subscription.Subscriber.IsValid())

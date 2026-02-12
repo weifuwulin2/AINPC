@@ -243,6 +243,7 @@ void UAction_SmartObject::Execute_Implementation(AAIController* Controller)
 				// ✅ 刚到达，开始交互 / Just arrived, start interaction
 				bIsInteracting = true;
 				ActionStartTime = Controller->GetWorld()->GetTimeSeconds();
+				CommitmentStartTime = ActionStartTime;  // Restart commitment from interaction, not walk
 
 				// ✅ 设定朝向：交互时必须朝向 Smart Object (例如挖矿时面朝矿石)
 				// Set facing: Must face the Smart Object during interaction
@@ -368,6 +369,7 @@ void UAction_SmartObject::Execute_Implementation(AAIController* Controller)
 							*ActionName, Dist2D);
 						bIsInteracting = true;
 						ActionStartTime = Controller->GetWorld()->GetTimeSeconds();
+						CommitmentStartTime = ActionStartTime;  // Restart commitment from interaction, not walk
 						if (TargetSmartObject)
 						{
 							Controller->SetFocalPoint(TargetSmartObject->GetActorLocation());
@@ -485,22 +487,23 @@ void UAction_SmartObject::SetupRecoveryTimer(AAIController* Controller)
 		}
 	}
 
-	// ✅ Capture WeakPtr to prevent crash if Controller is destroyed
+	// ✅ Capture WeakPtr to prevent crash if Controller or Action is destroyed
 	TWeakObjectPtr<AAIController> WeakController(Controller);
+	TWeakObjectPtr<UAction_SmartObject> WeakSelf(this);
+
+	// ✅ Clear any existing timer before setting a new one (prevents orphaned timers)
+	Controller->GetWorld()->GetTimerManager().ClearTimer(RecoveryTimerHandle);
 
 	// ✅ Setup Timer (1 second interval, repeat)
 	Controller->GetWorld()->GetTimerManager().SetTimer(
 		RecoveryTimerHandle,
-		[this, WeakController]()
+		[WeakSelf, WeakController]()
 		{
-			if (AAIController* StrongController = WeakController.Get())
+			UAction_SmartObject* Self = WeakSelf.Get();
+			AAIController* StrongController = WeakController.Get();
+			if (Self && StrongController)
 			{
-				RestoreStats(StrongController);
-			}
-			else
-			{
-				// Controller is dead, clear timer if possible (though difficult from inside lambda without world access)
-				// At least we don't crash.
+				Self->RestoreStats(StrongController);
 			}
 		},
 		1.0f,  // 每1秒执行一次

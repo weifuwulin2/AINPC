@@ -4,6 +4,32 @@ This file contains a log of commit messages for the AINPC project.
 
 ---
 
+## [2026-02-12] Fix CommitmentTime & ActionDuration in Transition System
+**Type**: fix
+**Scope**: UtilityActionBase, Action_SmartObject, UtilityAIComponent
+**Description**:
+- **CommitmentTime Walk-Time Bug**: `CommitmentStartTime` now resets when `bIsInteracting` becomes true (NPC arrives at SmartObject), not during `Enter()` which includes walk time. Both normal arrival and retry-fallback paths are patched.
+- **ActionDuration Unified**: Moved `ActionDuration` from `Action_SmartObject` (shadow field) to `UUtilityActionBase` as a runtime `UPROPERTY(Transient)`. Loaded via `InitFromConfig()` for all action types. Removed redundant per-class loading in `UtilityAIComponent::LoadActionsFromTable`.
+- **Rule 0 Suppression**: Modified `CanTransition` Rule 0 to check `IsWithinDuration()` before yielding on low score. Prevents NPC from stopping Eat when Hunger→0 causes score→0 (correct behavior, not invalid action).
+- **CheckExitConditions Fix**: `bWaitForDuration` now uses `ActionDuration` as MinDuration (falls back to `CommitmentTime` if 0). Previously used only `CommitmentTime`, making `ActionDuration` irrelevant to exit logic.
+- **IsWithinDuration Helper**: Added `UUtilityActionBase::IsWithinDuration(float CurrentTime)` — returns true if elapsed time since `ActionStartTime` is less than `ActionDuration`.
+
+**Files Changed**:
+- `Source/AINPC/Public/Base/UtilityActionBase.h` - Added `ActionDuration` field, declared `IsWithinDuration()`
+- `Source/AINPC/Private/Base/UtilityActionBase.cpp` - Load in InitFromConfig, implement IsWithinDuration, fix CheckExitConditions
+- `Source/AINPC/Public/Actions/Action_SmartObject.h` - Removed shadowed `ActionDuration` field
+- `Source/AINPC/Private/Actions/Action_SmartObject.cpp` - Reset CommitmentStartTime on interaction start (2 paths)
+- `Source/AINPC/Components/UtilityAIComponent.cpp` - Remove redundant loading, modify Rule 0
+
+**Expected Behavior (Eat: CommitmentTime=5, ActionDuration=10)**:
+- Walk to food (2s) → CommitmentStartTime NOT started yet
+- Arrive → CommitmentStartTime resets, bIsInteracting=true
+- 0-5s: Hard lock (Commitment) — only Threat+ can interrupt
+- 5-10s: Soft lock (Rule 0 suppressed by ActionDuration, inertia protects)
+- 10s+: Normal — all transition rules apply, ExitConditions can trigger
+
+---
+
 ## [2026-02-05] UtilityAI Stability & Metabolism Need-Pause
 **Type**: fix/feat
 **Scope**: MetabolismComponent, NarrativeSquadSubsystem, UtilityAI

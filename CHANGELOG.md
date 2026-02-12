@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased] - 2026-02-12
+
+### 🐛 Fixed
+- **CommitmentTime Walk-Time Bug**: CommitmentStartTime now resets when NPC actually arrives at the SmartObject, not when `Enter()` is called (which includes walk time). A 5s commitment now means 5s of actual interaction protection.
+- **Rule 0 False Yield**: NPCs no longer abandon Eat/Sleep actions just because Hunger/Fatigue dropped to 0 (score→0). `IsWithinDuration()` now suppresses Rule 0 during `ActionDuration`, recognizing that low score means "need satisfied", not "action invalid".
+- **ActionDuration Had No Effect on Transitions**: `ActionDuration` from DataTable was only used for animation looping inside `Action_SmartObject`. Now it's loaded into the base class via `InitFromConfig()` and checked by both `CanTransition` (Rule 0) and `CheckExitConditions` (`bWaitForDuration`).
+- **ActionDuration Field Shadow**: Removed duplicate `ActionDuration` declaration in `Action_SmartObject.h` that shadowed the base class field. All actions now use the unified field from `UUtilityActionBase`.
+
+### 🔧 Systems & Config
+- **CheckExitConditions Duration Fix**: `bWaitForDuration` now uses `ActionDuration` (actual intended duration) instead of `CommitmentTime` (interrupt protection window). Falls back to `CommitmentTime` if `ActionDuration` is 0.
+- **IsWithinDuration Helper**: Added `UUtilityActionBase::IsWithinDuration()` to cleanly check if an action is still within its configured `ActionDuration` window.
+
 ## [Unreleased] - 2026-02-05
 
 ### 📖 Documentation

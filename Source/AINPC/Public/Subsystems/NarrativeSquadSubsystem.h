@@ -357,4 +357,7 @@ protected:
 	TMap<AActor*, int32> ActorSquadMap;
 
 	int32 NextSquadID = 0;
+
+	// Timer handle for deferred NPC spawning (must be member to allow cancellation)
+	FTimerHandle SpawnNPCsTimerHandle;
 };

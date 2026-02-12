@@ -33,11 +33,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
 	bool bLoopAnimation = true;
 
-	// 动作持续时长（秒）/ Action duration in seconds
-	// 0 = 无限持续，直到 Utility AI 切换到其他动作
-	// 0 = Infinite duration, until Utility AI switches to another action
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
-	float ActionDuration = 0.0f;
+	// NOTE: ActionDuration is inherited from UUtilityActionBase — do NOT redeclare here
 
 private:
 	// The object we are currently targeting
@@ -51,8 +47,7 @@ private:
 	// Is the interaction currently active? (e.g. eating loop)
 	bool bIsInteracting = false;
 
-	// 动作开始时间 / Action start time
-	float ActionStartTime = 0.0f;
+	// NOTE: ActionStartTime is inherited from UUtilityActionBase — do NOT redeclare here
 
 	// 调试日志时间戳 / Debug log timestamp
 	// 调试日志时间戳 / Debug log timestamp

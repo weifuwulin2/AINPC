@@ -1,286 +1,157 @@
-# Implementation Plan: Unified Action Transition System
+# Action Transition System
 
-## Goal
-Replace scattered action switching logic (Cooldowns, ShouldExit, hardcoded Emergency checks) with a centralized, priority-based **Transition System**. This makes behavior changes predictable and maintainable.
+## Overview
 
-## Problem Analysis
+The Transition System controls when and how NPCs switch between actions. It uses a **Priority-Scaled Inertia** model: a single formula where priority difference modulates the inertia threshold, replacing the old multi-rule hard-gate approach.
 
-Currently, action switching logic is distributed across **6 locations**:
-
-| # | File | Logic | Issue |
-|---|------|-------|-------|
-| 1 | `UtilityActionBase.cpp:88-111` | Cooldown check | Special `bIsRunning` handling |
-| 2 | `UtilityAIComponent.cpp:292-316` | ShouldExit + Emergency | Hardcoded `Threat > 0.5f` |
-| 3 | `Action_SmartObject.cpp:234-314` | ShouldExit override | Hardcoded `Hunger/Fatigue > 0.8`, 80 lines |
-| 4 | `Action_SmartObject.cpp:254-272` | Duration lock | `bIsInteracting` + `ActionDuration` |
-| 5 | `UtilityAIComponent.cpp:207-217` | Inertia bonus | `Score *= (1 + InertiaBonus * 0.2)` |
-| 6 | `Action_TalkTo.cpp:26-28, 161-163` | Dialogue lock | `bInConversation` flag |
-
-This leads to "Spaghetti Transitions" where:
-- An action stops for unclear reasons (cooldown self-interruption)
-- Emergency thresholds are duplicated and inconsistent
-- Adding new actions requires knowing all 6 places to modify
-
----
-
-## Proposed Architecture
-
-### 1. Action Priority Levels
+## Priority Levels
 
 ```cpp
-UENUM(BlueprintType)
 enum class EActionPriority : uint8
 {
     None = 0,
-    Idle = 10,       // Can always be interrupted (Wander)
-    Ambient = 20,    // Random acts (Looking around)
-    Work = 30,       // Job tasks (Mining, Crafting)
-    Social = 35,     // Dialogue/Interaction (NEW!)
-    Needs = 40,      // Eating/Sleeping - High Inertia
-    Threat = 50,     // Combat/Fleeing - Hard to interrupt
-    Critical = 60    // Death/Stun - Uninterruptible
+    Idle = 10,       // Wander, Patrol — always interruptible
+    Ambient = 20,    // Looking around — low commitment
+    Work = 30,       // Mining, Farming, Merchant Stand
+    Social = 35,     // Talk, Trade interaction
+    Needs = 40,      // Eat, Sleep — high inertia
+    Threat = 50,     // Attack, Flee — urgent
+    Critical = 60    // Death, Stun — uninterruptible
 };
 ```
 
-### 2. Transition Rules ("The Constitution")
+## Transition Rules
 
-Centralize ALL switching logic into one function:
+All switching decisions go through `CanTransition()`. Three rules, evaluated in order:
 
-```cpp
-bool UUtilityAIComponent::CanTransition(UUtilityActionBase* Current, UUtilityActionBase* Candidate, float CandidateScore)
-{
-    // Rule 1: Priority Gate
-    if (Candidate->Priority < Current->Priority) return false;
-    
-    // Rule 2: Commitment Lock (replaces Duration check)
-    if (Current->IsCommitted())
-    {
-        // Only Threat+ can break Commitment
-        if (Candidate->Priority < EActionPriority::Threat) return false;
-    }
-    
-    // Rule 3: Same-Priority Inertia
-    if (Candidate->Priority == Current->Priority)
-    {
-        float CurrentScore = Current->GetLastScore();
-        return CandidateScore > CurrentScore * (1.0f + Current->InertiaBonus);
-    }
-    
-    // Rule 4: Higher Priority always wins
-    return true;
-}
+### Rule 0: Dead Action Yield
+
+```
+IF CurrentScore <= 0.1 → allow transition (current action is effectively invalid)
 ```
 
-### 3. Data-Driven Exit Conditions
+### Rule 1: Commitment Lock
 
-Replace hardcoded `ShouldExit()` overrides with configurable conditions:
-
-```cpp
-USTRUCT(BlueprintType)
-struct FActionExitCondition
-{
-    GENERATED_BODY()
-    
-    UPROPERTY(EditAnywhere)
-    EUtilityInputType Variable;  // e.g., Hunger
-    
-    UPROPERTY(EditAnywhere)
-    EComparisonOperator Operator; // LessThan, GreaterThan
-    
-    UPROPERTY(EditAnywhere)
-    float Threshold;  // e.g., 0.2
-
-    // NEW: Only check this condition after ActionDuration has passed?
-    // Useful for "Eat until full, but at least chew for 5 seconds"
-    UPROPERTY(EditAnywhere)
-    bool bWaitForDuration = false;
-};
-
-// In FUtilityActionConfig:
-UPROPERTY(EditAnywhere, Category = "Transition")
-TArray<FActionExitCondition> ExitConditions;
+```
+IF Current action is within CommitmentTime:
+    IF Candidate is Threat+ → allow (emergency override)
+    ELSE → deny
 ```
 
-**Example Config** (DataTable row for `Action_Eat`):
+CommitmentTime is configured per action in DataTable (e.g., Merchant Stand = 20s, Talk = 5s). This provides short-term stability after an action starts.
+
+### Rule 2: Priority-Scaled Inertia (Core Formula)
+
+This is the key innovation. Instead of treating priority as a hard gate ("higher always wins, lower always blocked"), priority **scales the inertia threshold**:
+
 ```
-ExitConditions: [ { Hunger, LessThan, 0.2 } ]
-```
+PriorityDiff  = Candidate.Priority - Current.Priority
+PriorityScale = Clamp(1.0 - PriorityDiff / 20.0, 0.0, 2.0)
+Threshold     = CurrentScore × (1 + InertiaBonus × PriorityScale)
 
-### 4. Commitment vs Cooldown (Distinct Concepts)
-
-| Concept | Meaning | When Applied |
-|---------|---------|--------------|
-| **Commitment** | "I promise to do this for X seconds" | After `Enter()`, blocks lower-priority interrupts |
-| **Cooldown** | "I am forbidden from doing this again for Y seconds" | After `Exit()`, returns Score=0 |
-
-Both remain in `FUtilityActionConfig`:
-```cpp
-float CommitmentTime = 0.0f;  // NEW: Post-Enter lock duration
-float CooldownTime = 0.0f;    // EXISTING: Post-Exit lockout
+IF CandidateScore > Threshold → allow
+ELSE → deny
 ```
 
-### 5. Unified Action Lifecycle Management
+**How it works:**
 
-Currently, lifecycle logic (Duration, Loop, Exit checks) is only implemented in `Action_SmartObject`. This should be centralized in `UUtilityActionBase`:
+| Direction | PriorityDiff | PriorityScale | Effect |
+|-----------|-------------|---------------|--------|
+| Much higher (e.g., Threat→Work, diff=+20) | +20 | 0.0 | Zero inertia — just need to outscore |
+| Somewhat higher (e.g., Talk→Work, diff=+5) | +5 | 0.75 | Reduced inertia — advantage but not free |
+| Same priority | 0 | 1.0 | Full inertia — maximum stability |
+| Somewhat lower (e.g., Work→Talk, diff=-5) | -5 | 1.25 | Amplified inertia — uphill battle |
+| Much lower (e.g., Idle→Needs, diff=-20) | -20 | 2.0 | Double inertia — nearly impossible |
 
-```cpp
-// In UUtilityActionBase:
-UPROPERTY(Transient)
-float ActionStartTime = 0.0f;
+**Concrete examples (InertiaBonus = 1.0):**
 
-UPROPERTY(Transient)
-bool bShouldExit = false;
+| Scenario | CurrentScore | Threshold | Candidate needs |
+|----------|-------------|-----------|-----------------|
+| Attack(50) → MerchantStand(30) | 0.5 | 0.5 × (1+1×0.0) = 0.5 | > 0.5 |
+| Eat(40) → MerchantStand(30) | 0.5 | 0.5 × (1+1×0.5) = 0.75 | > 0.75 |
+| Talk(35) → MerchantStand(30) | 0.5 | 0.5 × (1+1×0.75) = 0.875 | > 0.875 |
+| Sleep(40) → Eat(40) | 0.5 | 0.5 × (1+1×1.0) = 1.0 | > 1.0 |
+| MerchantStand(30) → Talk(35) | 0.5 | 0.5 × (1+1×1.25) = 1.125 | > 1.125 |
+| Patrol(10) → Eat(40) | 0.5 | 0.5 × (1+1×2.0) = 1.5 | > 1.5 |
 
-void Execute_Implementation(AAIController* Controller) override
-{
-    // 1. Duration check (unified)
-    if (ActionDuration > 0.0f)
-    {
-        float Elapsed = GetWorld()->GetTimeSeconds() - ActionStartTime;
-        if (Elapsed >= ActionDuration)
-        {
-            bShouldExit = true;
-            return;
-        }
-    }
-    
-    // 2. Exit conditions check (data-driven)
-    if (CheckExitConditions(Controller))
-    {
-        bShouldExit = true;
-        return;
-    }
-    
-    // 3. Subclass-specific logic
-    Execute_Subclass(Controller);
-}
+### Rule 3: Exit Conditions (Data-Driven)
 
-void Enter_Implementation(AAIController* Controller) override
-{
-    ActionStartTime = GetWorld()->GetTimeSeconds();
-    bShouldExit = false;
-    
-    // Animation handling (if configured)
-    if (InteractionMontage)
-    {
-        PlayMontage(Controller, InteractionMontage, bLoopAnimation);
-    }
-    
-    Enter_Subclass(Controller);
-}
+After passing inertia, the system also checks if the current action's configured ExitConditions are met (e.g., Hunger < 0.2 for Eat action). This is a supplementary signal, not a gatekeeper.
+
+## Design Rationale
+
+### Why not hard priority gates?
+
+The old system had "higher priority always wins" (Rule 5) and "lower priority never interrupts" (Rule 1 with escape clauses). This caused:
+
+1. **Ping-ponging**: Talk(Social=35) freely interrupted MerchantStand(Work=30) via priority, then MerchantStand took back via escape clause when Talk's score dropped. Inertia (Rule 3) only applied to same-priority pairs, so it never fired.
+2. **Hardcoded thresholds**: The escape clause used `bCurrentIsWeak (score < 0.4)` and `bCandidateIsOverwhelming (score > 2×current)` — magic numbers unrelated to InertiaBonus.
+3. **InertiaBonus was decorative**: Configured to 1.0 (100%) in DataTable but only applied when priorities matched exactly, which rarely happened between the actions that actually oscillated.
+
+### Why Priority-Scaled Inertia?
+
+- **Single formula**: One equation replaces 5 separate rules
+- **Priority is meaningful**: Higher priority = lower switching cost, not a binary gate
+- **InertiaBonus actually works**: The DataTable value directly controls ALL transitions
+- **Tunable**: Change `/20.0` divisor to adjust how much priority matters vs inertia
+- **Predictable**: Given two scores and two priorities, the outcome is deterministic and loggable
+
+### The `/20.0` Divisor
+
+This value means a priority difference of 20 fully cancels inertia. In the current priority scheme:
+
+- Threat(50) vs Work(30) = diff 20 → zero inertia (instant combat response)
+- Needs(40) vs Work(30) = diff 10 → half inertia
+- Social(35) vs Work(30) = diff 5 → 75% inertia (prevents Talk/Work ping-pong)
+- Same priority = diff 0 → full inertia
+
+Adjusting this value:
+- **Smaller** (e.g., `/10.0`): Priority matters more, smaller gaps cancel inertia
+- **Larger** (e.g., `/40.0`): Priority matters less, only huge gaps reduce inertia
+
+## Configuration
+
+### DataTable Columns (DT_NPC_Actions)
+
+| Column | Type | Description |
+|--------|------|-------------|
+| Priority | EActionPriority | Action priority level |
+| InertiaBonus | float | Inertia multiplier (0.0 = no inertia, 1.0 = need 2× score at same priority) |
+| CommitmentTime | float | Seconds of guaranteed execution after Enter() |
+| ExitConditions | TArray | Data-driven conditions for voluntary exit |
+| CooldownTime | float | Seconds of lockout after Exit() |
+
+### Current Values
+
+| Action | Priority | InertiaBonus | CommitmentTime |
+|--------|----------|-------------|----------------|
+| Attack | Threat(50) | 1.0 | 0s |
+| Flee | Threat(50) | 1.0 | 0s |
+| Idle | Idle(10) | 1.0 | 0s |
+| Talk | Social(35) | 1.0 | 5s |
+| Eat | Needs(40) | 1.0 | 5s |
+| Sleep | Needs(40) | 1.0 | 10s |
+| Mining | Work(30) | 2.0 | 10s |
+| Farming | Work(30) | 2.0 | 10s |
+| Guard Patrol | Work(30) | 2.0 | 10s |
+| Merchant Stand | Work(30) | 2.0 | 20s |
+| Scavenging | Work(30) | 2.0 | 5s |
+| Praying | Work(30) | 2.0 | 30s |
+| Scholarly Study | Work(30) | 2.0 | 20s |
+
+## Debug Output
+
+```
+[Transition] ⚠️ Current Action Sleep Score is low (0.05) - Forcing Yield to Patrol
+[Transition] Denied: Talk blocked by MerchantStand Commitment (12.0s left)
+[Transition] ⚡ Emergency: Attack(Threat+) breaks MerchantStand Commitment!
+[Transition] Denied: Talk(P:35, 0.70) <= MerchantStand(P:30, 0.50 * (1+2.0*0.75)=1.25)
+[Transition] Allowed: Attack(P:50, 0.80) > MerchantStand(P:30, threshold=0.50, scale=0.00)
 ```
 
-**Benefits**:
-- Duration, Animation, ExitConditions handled automatically
-- No more 80-line `ShouldExit()` overrides
+## Changelog
 
-### 6. Future Considerations (GAS Inspiration)
-
-As the system grows, we can adopt more concepts from Unreal's **Gameplay Ability System (GAS)**:
-
-1.  **Action Tasks**: Replace internal state logic with asynchronous tasks.
-    ```cpp
-    // Future: UAbilityTask_MoveTo, UAbilityTask_PlayMontage
-    auto* Task = CreateTask<UAbilityTask_MoveTo>(Target);
-    Task->OnArrived.AddDynamic(this, &ThisClass::OnArrived);
-    ```
-2.  **Execution Costs**: Define resource costs (Stamina, Mana) in config.
-3.  **Blocking Tags**: Explicitly block actions based on tags (e.g., "Status.Stunned" blocks "Action.Move").
-4.  **Instancing Policy**: Support non-instanced actions for memory optimization (flyweight pattern).
-
----
-
-## Implementation Steps
-
-### Step 1: Define Enums & Structs
-- [ ] Add `EActionPriority` enum to `UtilityActionBase.h`
-- [ ] Add `EComparisonOperator` enum (LessThan, GreaterThan, Equals)
-- [ ] Add `FActionExitCondition` struct
-- [ ] Add `Priority`, `CommitmentTime`, `ExitConditions` to `FUtilityActionConfig`
-- [ ] Add runtime fields to `UUtilityActionBase`: `Priority`, `CommitmentStartTime`, `LastScore`
-
-### Step 2: Implement CanTransition
-- [ ] Create `bool CanTransition(Current, Candidate, Score)` in `UtilityAIComponent`
-- [ ] Create `bool IsCommitted()` helper in `UUtilityActionBase`
-- [ ] Create `bool CheckExitConditions()` data-driven evaluator
-- [ ] Migrate Inertia logic from `EvaluateAndDecide()` into `CanTransition()`
-- [ ] Remove hardcoded Emergency checks (replaced by Priority gate)
-
-### Step 3: Migrate Existing Code
-- [ ] Remove `ShouldExit()` override from `Action_SmartObject` (use ExitConditions)
-- [ ] Remove `bInConversation` from `Action_TalkTo` (use Social Priority)
-- [ ] Remove `bIsInteracting` Duration checks (use CommitmentTime)
-- [ ] Update `EvaluateAndDecide()` to call `CanTransition()` before switching
-
-### Step 4: Update DataTable
-- [ ] Add Priority column to `DT_UtilityActions`
-- [ ] Configure CommitmentTime for SmartObject actions
-- [ ] Configure ExitConditions for Eat/Sleep/Work actions
-
-### Step 5 (Optional): Pending Intention System
-
-A lightweight mechanism to remember suppressed actions during dialogue or commitment locks:
-
-```cpp
-// In UUtilityAIComponent:
-UPROPERTY()
-UUtilityActionBase* PendingAction = nullptr;
-
-UPROPERTY()
-float PendingScore = 0.0f;
-
-// When CanTransition fails due to Priority (not Commitment):
-void OnTransitionDenied(UUtilityActionBase* Candidate, float Score)
-{
-    // Only store if candidate had higher priority than pending
-    if (!PendingAction || Score > PendingScore)
-    {
-        PendingAction = Candidate;
-        PendingScore = Score;
-    }
-}
-
-// When current action exits naturally:
-void OnActionExit()
-{
-    if (PendingAction)
-    {
-        // Check if pending intention is still relevant (score decay)
-        float CurrentBestScore = EvaluateBestAction();
-        if (PendingScore > CurrentBestScore * 0.8f)
-        {
-            SwitchTo(PendingAction);
-            PendingAction = nullptr;
-            return;
-        }
-        PendingAction = nullptr;  // Stale, discard
-    }
-    
-    EvaluateAndDecide();  // Normal re-evaluation
-}
-```
-
-**Use Case**: Player talks to NPC → NPC wants to Attack (denied by Social priority) → Player leaves → NPC remembers Attack intention and executes it instead of re-evaluating to Wander.
-
-- [ ] Add `PendingAction` and `PendingScore` to `UUtilityAIComponent`
-- [ ] Call `OnTransitionDenied()` when `CanTransition()` returns false
-- [ ] Call `OnActionExit()` in `Exit_Implementation()` flow
-- [ ] Add decay/expiry for pending intentions (optional: 10s timeout)
-
----
-
-## Expected Outcome
-
-| Before | After |
-|--------|-------|
-| 6 scattered locations | 1 `CanTransition()` function |
-| Hardcoded thresholds | Data-driven `ExitConditions` |
-| "Why did it switch?" → Debug 6 files | "Why?" → Check Priority + single log |
-| `bInConversation`, `bIsInteracting` flags | `Priority::Social`, `IsCommitted()` |
-
-**Debug Output Example**:
-```
-[Transition] Denied: Mining(Work:30) blocked by Sleep(Needs:40)
-[Transition] Allowed: Attack(Threat:50) breaks Sleep(Needs:40) via Priority
-[Transition] Denied: Wander(Idle:10) blocked by Mining Commitment (8s left)
-```
+| Date | Change |
+|------|--------|
+| 2026-02-05 | Original system: Priority Gate + Same-Priority Inertia + Escape Clauses |
+| 2026-02-12 | Replaced with Priority-Scaled Inertia: single formula, priority modulates threshold |
