@@ -4,6 +4,7 @@
 #include "CoreMinimal.h"
 #include "Variant_Combat/AI/CombatEnemy.h" // Inherit from CombatEnemy
 #include "Social/SocialTypes.h"
+#include "Subsystems/WorldDirectorTypes.h"
 #include "NarrativeCompanion.generated.h"
 
 class UCognitionComponent;
@@ -67,6 +68,12 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Narrative Companion|Observation")
 	void ObserveFactionPopulationChange(FName FactionID, int32 Delta);
+
+	// --- WorldDirector Hint API ---
+
+	/** Receive a narrative hint from the WorldDirector and process it via CognitionComponent */
+	UFUNCTION(BlueprintCallable, Category = "Narrative Companion|WorldDirector")
+	void ReceiveNarrativeHint(const FNarrativeHint& Hint);
 
 	// --- Follow Logic ---
 

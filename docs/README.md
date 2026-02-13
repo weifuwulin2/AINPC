@@ -23,6 +23,7 @@ Welcome to the AINPC Knowledge Base. This index serves as the central hub for al
 *   [**Universal Target Selection**](design/Universal_Target_Selection.md) - Design for Hybrid Rule-Based + LLM target acquisition.
 *   [**Neural Utility Architecture**](design/Neural_Utility_Architecture.md) - **(North Star)** "System 1" (Vector) & "System 2" (LLM) hybrid architecture design.
 *   [**Token Optimization Changelog**](design/Token_Optimization_Changelog.md) - Detailed breakdown of LLM token savings and dual-mode API refactor.
+*   [**World Director & Companion System**](design/WorldDirector_Companion_Design.md) - **(New)** Design for high-level world state management and companion control.
 
 ### 🛠️ Configuration Guides
 *   [**Single Point Config**](guides/Single_Point_Configuration_Guide.md) - How to add new mental states using the `MentalStateFields.h` macro system.

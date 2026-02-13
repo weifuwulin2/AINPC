@@ -89,4 +89,22 @@ namespace AINPCTags
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Status_Dead, "Status.Dead", "Status: Dead");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Status_Unconscious, "Status.Unconscious", "Status: Unconscious");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Status_InScene, "Status.InScene", "Status: Participating in a Narrative Scene");
+
+	// WorldDirector Tags
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(WorldDirector_Event, "WorldDirector.Event", "WorldDirector: Generic dramatic beat event");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(WorldDirector_Escalate, "WorldDirector.Escalate", "WorldDirector: Escalation beat");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(WorldDirector_Disrupt, "WorldDirector.Disrupt", "WorldDirector: Disruption beat");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(WorldDirector_Converge, "WorldDirector.Converge", "WorldDirector: Convergence beat");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(WorldDirector_Reveal, "WorldDirector.Reveal", "WorldDirector: Revelation beat");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(WorldDirector_Relieve, "WorldDirector.Relieve", "WorldDirector: Relief beat");
+
+	// Location Tags
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Location_Tavern, "Location.Tavern", "Location: Tavern / Inn");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Location_TownSquare, "Location.TownSquare", "Location: Town Square / Plaza");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Location_Market, "Location.Market", "Location: Market / Bazaar");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Location_ForestEdge, "Location.ForestEdge", "Location: Forest Edge / Wilderness");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Location_Mine, "Location.Mine", "Location: Mine / Underground");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Location_Temple, "Location.Temple", "Location: Temple / Shrine");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Location_Barracks, "Location.Barracks", "Location: Barracks / Military");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Location_Generic, "Location.Generic", "Location: Generic / Unspecified");
 }

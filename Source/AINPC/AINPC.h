@@ -15,6 +15,7 @@ DECLARE_LOG_CATEGORY_EXTERN(LogAINPCUtility, Log, All);    // Utility AI (Scorin
 DECLARE_LOG_CATEGORY_EXTERN(LogAINPCNarrative, Log, All);  // Narrative Timeline (Squad, Scene, Events)
 DECLARE_LOG_CATEGORY_EXTERN(LogAINPCTargetSelection, Log, All);  // Target Selection (Combat, Social, etc.)
 DECLARE_LOG_CATEGORY_EXTERN(LogAINPCLLM, Log, All);             // LLM Communication (Roleplay, Functional, HTTP)
+DECLARE_LOG_CATEGORY_EXTERN(LogAINPCDirector, Log, All);       // WorldDirector (Tension, Beats, Scene Generation)
 
 /**
  * Logging macros with automatic class name prefix.
@@ -67,3 +68,7 @@ DECLARE_LOG_CATEGORY_EXTERN(LogAINPCLLM, Log, All);             // LLM Communica
 /** LLM Log: API requests, responses, prompt building, token usage. */
 #define LLM_LOG(Verbosity, Format, ...) \
     UE_LOG(LogAINPCLLM, Verbosity, TEXT("[%s] " Format), *FString(__FUNCTION__).Left(FString(__FUNCTION__).Find(TEXT("::"))), ##__VA_ARGS__)
+
+/** Director Log: WorldDirector tension evaluation, dramatic beats, scene generation. */
+#define DIRECTOR_LOG(Verbosity, Format, ...) \
+    UE_LOG(LogAINPCDirector, Verbosity, TEXT("[%s] " Format), *FString(__FUNCTION__).Left(FString(__FUNCTION__).Find(TEXT("::"))), ##__VA_ARGS__)

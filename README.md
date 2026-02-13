@@ -232,6 +232,13 @@ We maintain a detailed documentation library. Please visit **[📚 Knowledge Bas
 
 ## 🎉 Latest Updates
 
+### v0.6.7 - World Director & Companion System (2026-02-13)
+
+#### 🌍 World Director Subsystem
+- **Global Orchestration**: New subsystem manages high-level world states and companion directives.
+- **Companion Integration**: Refactored `NarrativeCompanion` to work seamlessly with the World Director.
+- **Smart Queries**: Added `NPCQueryHelpers` for efficient, centralized NPC filtering (e.g., "Find nearest Medic").
+
 ### v0.6.6 - Unified Event System (2026-02-01)
 
 #### ⚡ Unified Event Bus

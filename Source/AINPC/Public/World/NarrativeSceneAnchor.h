@@ -22,6 +22,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Narrative")
 	FName SupportedSceneID;
 
+	/** Semantic location tags for WorldDirector anchor matching (e.g. Location.Tavern, Location.Market) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Narrative|Semantic")
+	FGameplayTagContainer LocationTags;
+
 	// Is this anchor currently occupied by an active scene?
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Narrative")
 	bool bIsOccupied = false;

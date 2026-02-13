@@ -5,6 +5,7 @@
 #include "TimeManager.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnHourChanged, float, NewHour);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnDayChanged, int32, NewDay);
 
 /**
  * Manages the in-game Day/Night cycle and broadcasts time events.
@@ -29,6 +30,9 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Time")
 	FOnHourChanged OnHourChanged;
 
+	UPROPERTY(BlueprintAssignable, Category = "Time")
+	FOnDayChanged OnDayChanged;
+
 public:
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	virtual void Deinitialize() override;
@@ -39,6 +43,9 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Time")
 	float GetTimeOfDay01() const { return CurrentHour / 24.0f; }
 
+	UFUNCTION(BlueprintPure, Category = "Time")
+	int32 GetCurrentDay() const { return CurrentDay; }
+
 	// Advance time manually (called by GameMode or Level Blueprint usually, or Self-Ticked)
 	UFUNCTION(BlueprintCallable, Category = "Time")
 	void AdvanceTime(float DeltaSeconds);
@@ -46,6 +53,9 @@ public:
 protected:
 	UPROPERTY(VisibleAnywhere, Category = "Time")
 	float CurrentHour = 0.0f;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Time")
+	int32 CurrentDay = 0;
 
 	// Helper to detect hour change
 	int32 LastIntegerHour = -1;

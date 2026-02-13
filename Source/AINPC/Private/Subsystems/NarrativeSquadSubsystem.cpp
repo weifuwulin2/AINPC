@@ -456,6 +456,58 @@ void UNarrativeSquadSubsystem::UnregisterAnchor(ANarrativeSceneAnchor* Anchor)
 	RegisteredAnchors.Remove(Anchor);
 }
 
+ANarrativeSceneAnchor* UNarrativeSquadSubsystem::FindAvailableAnchor(const FGameplayTagContainer& RequiredTags) const
+{
+	for (ANarrativeSceneAnchor* Anchor : RegisteredAnchors)
+	{
+		if (!IsValid(Anchor) || Anchor->bIsOccupied) continue;
+
+		if (RequiredTags.IsEmpty() || Anchor->LocationTags.HasAll(RequiredTags))
+		{
+			return Anchor;
+		}
+	}
+	return nullptr;
+}
+
+ANarrativeSceneAnchor* UNarrativeSquadSubsystem::FindAnchorByLocationType(const FString& LocationType) const
+{
+	// Construct tag name: "Location.{Type}" with first letter capitalized
+	// e.g. "tavern" -> "Location.Tavern", "town_square" -> "Location.TownSquare"
+	FString Normalized = LocationType;
+	Normalized.ReplaceInline(TEXT("_"), TEXT(""));
+
+	// Capitalize first letter
+	if (Normalized.Len() > 0)
+	{
+		Normalized[0] = FChar::ToUpper(Normalized[0]);
+	}
+
+	FString TagString = FString::Printf(TEXT("Location.%s"), *Normalized);
+	FGameplayTag LocationTag = FGameplayTag::RequestGameplayTag(FName(*TagString), false);
+
+	if (LocationTag.IsValid())
+	{
+		FGameplayTagContainer RequiredTags;
+		RequiredTags.AddTag(LocationTag);
+		ANarrativeSceneAnchor* Found = FindAvailableAnchor(RequiredTags);
+		if (Found) return Found;
+	}
+
+	// Fallback: any unoccupied anchor
+	for (ANarrativeSceneAnchor* Anchor : RegisteredAnchors)
+	{
+		if (IsValid(Anchor) && !Anchor->bIsOccupied)
+		{
+			NARRATIVE_LOG(Warning, TEXT("FindAnchorByLocationType: No anchor with tag '%s', falling back to '%s'"),
+				*TagString, *Anchor->GetName());
+			return Anchor;
+		}
+	}
+
+	return nullptr;
+}
+
 int32 UNarrativeSquadSubsystem::StartSceneGlobal(UDataTable* SceneTable, FName TemplateID, UDataTable* NPCTable)
 {
     // Deprecated or redirect to generic logic if needed. Removing for clarity as we move to Anchor-based logic.

@@ -25,6 +25,9 @@ void UTimeManager::AdvanceTime(float DeltaSeconds)
 	{
 		CurrentHour -= 24.0f;
 		LastIntegerHour = -1; // Reset to allow 0 hour trigger
+		CurrentDay++;
+		OnDayChanged.Broadcast(CurrentDay);
+		UE_LOG(LogTemp, Log, TEXT("[TimeManager] Day Changed: Day %d"), CurrentDay);
 	}
 
 	// Check for hour change

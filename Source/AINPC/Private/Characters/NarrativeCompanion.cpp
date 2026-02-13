@@ -244,6 +244,28 @@ void ANarrativeCompanion::ObserveFactionPopulationChange(FName FactionID, int32 
 	}
 }
 
+void ANarrativeCompanion::ReceiveNarrativeHint(const FNarrativeHint& Hint)
+{
+	if (UCognitionComponent* Cog = GetCognitionComp())
+	{
+		FString Prefix;
+		switch (Hint.Phase)
+		{
+		case ENarrativeHintPhase::Before:
+			Prefix = TEXT("[I have a feeling] ");
+			break;
+		case ENarrativeHintPhase::During:
+			Prefix = TEXT("[I notice] ");
+			break;
+		case ENarrativeHintPhase::After:
+			Prefix = TEXT("[Reflecting] ");
+			break;
+		}
+
+		Cog->ProcessStimulus(Prefix + Hint.HintText, false, Hint.Priority);
+	}
+}
+
 AActor* ANarrativeCompanion::GetLeader() const
 {
 	return UGameplayStatics::GetPlayerCharacter(this, 0);

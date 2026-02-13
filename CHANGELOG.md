@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased] - 2026-02-13
+
+### ✨ Features
+- **World Director System**: 
+  - Added `WorldDirectorSubsystem` for high-level world state management and companion control.
+  - Implemented `WorldDirectorTypes` for defining world states and directives.
+- **NPC Query System**:
+  - Added `NPCQueryHelpers` to centralize NPC search and filtering logic (e.g., "Find nearest ally," "Find specific profession").
+
+### 📖 Documentation
+- **Design Docs**: Added `docs/design/WorldDirector_Companion_Design.md`.
+
+### 🐛 Fixed
+- **Faction System**: Fixed Faction field loading from PersonalityTable and `GetActorFaction()` to handle Controller and Pawn inputs. Added automatic `SetFocus()` for hostile targets.
+- **Utility AI Target Value System**: Implemented immediate LLM response by using target values instead of interpolated values in decision making. Added `MentalStateInterpolator::GetTargetValue()` function.
+- **Attack Targeting**: Fixed Attack action to use only `FocusActor` as target, removing automatic enemy/player search logic to prevent incorrect Player targeting.
+
+### 🔧 Systems & Config
+- **Behavior Changes**: Warrior now attacks Zombie (immediate LLM intention) instead of fleeing (interpolation lag). NPCs attack each other (correct faction targeting) instead of both attacking Player (auto-search).
+- **Narrative Companion**: Refactored `NarrativeCompanion` to integrate with the new `WorldDirectorSubsystem`.
+- **Subsystem Integration**: Updated `NarrativeSquadSubsystem` and `TimeManager` to support World Director orchestration.
+- **Social Tags**: Expanded `SocialGameplayTags` to support World Director states.
+
 ## [Unreleased] - 2026-02-12
 
 ### 🐛 Fixed

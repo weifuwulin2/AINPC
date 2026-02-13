@@ -903,3 +903,32 @@ This file contains a log of commit messages for the AINPC project.
   - **Enhanced Tagging**: Updated `SensoryComponent::DescribeActorWithRelationship` to robustly tag actors as `(MY ALLY)` or `(MY ENEMY)` based on Faction Reputation (Friendly/Hostile), not just ID equality.
   - **Simplified Logic**: Refactored `HandleDeath` to trust these tags instead of complex manual branching.
   - **Result**: Events now read "I witnessed Player (MY ALLY) kill Slave (MY ENEMY)", correctly triggering the "Relief/Approval" response rule in the LLM.
+
+---
+
+## [2026-02-13] World Director Subsystem & Companion Integration
+**Type**: feat
+**Scope**: WorldDirector, Companion, Social
+**Description**:
+- **World Director System**: 
+  - Added `WorldDirectorSubsystem` for high-level world state management and companion control.
+  - Implemented `WorldDirectorTypes` for defining world states and directives.
+- **NPC Query System**:
+  - Added `NPCQueryHelpers` to centralize NPC search and filtering logic (e.g., "Find nearest ally," "Find specific profession").
+- **Narrative Companion**:
+  - Refactored `NarrativeCompanion` to integrate with the new `WorldDirectorSubsystem`.
+- **Subsystem Integration**:
+  - Updated `NarrativeSquadSubsystem` and `TimeManager` to support World Director orchestration.
+
+**Files Changed**:
+- `Source/AINPC/Private/Subsystems/WorldDirectorSubsystem.cpp` (New)
+- `Source/AINPC/Public/Subsystems/WorldDirectorSubsystem.h` (New)
+- `Source/AINPC/Public/Subsystems/WorldDirectorTypes.h` (New)
+- `Source/AINPC/Private/Utilities/NPCQueryHelpers.cpp` (New)
+- `Source/AINPC/Public/Utilities/NPCQueryHelpers.h` (New)
+- `Source/AINPC/Private/Characters/NarrativeCompanion.cpp`
+- `Source/AINPC/Private/Subsystems/NarrativeSquadSubsystem.cpp`
+- `Source/AINPC/Private/Subsystems/TimeManager.cpp`
+- `Source/AINPC/Public/Social/SocialGameplayTags.h`
+- `docs/design/WorldDirector_Companion_Design.md` (New)
+

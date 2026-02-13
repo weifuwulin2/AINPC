@@ -299,6 +299,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Narrative Squad")
 	void UnregisterAnchor(class ANarrativeSceneAnchor* Anchor);
 
+	/** Find an unoccupied anchor whose LocationTags contain all RequiredTags. Returns nullptr if none found. */
+	UFUNCTION(BlueprintCallable, Category = "Narrative Squad")
+	class ANarrativeSceneAnchor* FindAvailableAnchor(const FGameplayTagContainer& RequiredTags) const;
+
+	/** Find an unoccupied anchor matching a location type string (e.g. "tavern" -> Location.Tavern). Falls back to any free anchor. */
+	UFUNCTION(BlueprintCallable, Category = "Narrative Squad")
+	class ANarrativeSceneAnchor* FindAnchorByLocationType(const FString& LocationType) const;
+
 	/**
 	 * Applies a GameplayTag to all squad members with a specific Role (e.g., "Slave", "Guard").
 	 * Useful for triggering state changes like combat or behavior overrides.
