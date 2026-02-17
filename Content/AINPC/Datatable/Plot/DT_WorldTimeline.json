@@ -1,0 +1,42 @@
+[
+	{
+		"Name": "Day1_StrangerArrives",
+		"TriggerDay": 1,
+		"TriggerHour": 9.0,
+		"EventName": "Mysterious Stranger",
+		"EventDescription": "A hooded stranger arrives at the tavern, asking about ancient ruins nearby. He seems to know more than he lets on.",
+		"ForcedAction": "DISRUPT",
+		"SceneTemplateID": "None",
+		"bHasFired": false
+	},
+	{
+		"Name": "Day2_FactionNegotiation",
+		"TriggerDay": 2,
+		"TriggerHour": 14.0,
+		"EventName": "Faction Peace Talk",
+		"EventDescription": "Representatives from Human and Orc factions meet at the town square to negotiate a fragile ceasefire after recent border skirmishes.",
+		"ForcedAction": "CONVERGE",
+		"SceneTemplateID": "None",
+		"bHasFired": false
+	},
+	{
+		"Name": "Day3_BetrayalRevealed",
+		"TriggerDay": 3,
+		"TriggerHour": 20.0,
+		"EventName": "The Traitor Unmasked",
+		"EventDescription": "Evidence surfaces that a trusted guard has been feeding information to the enemy. Tensions boil over as accusations fly.",
+		"ForcedAction": "REVEAL",
+		"SceneTemplateID": "None",
+		"bHasFired": false
+	},
+	{
+		"Name": "Day5_HarvestCelebration",
+		"TriggerDay": 5,
+		"TriggerHour": 12.0,
+		"EventName": "Harvest Festival",
+		"EventDescription": "The town gathers in the square for a rare moment of peace - music, food, and a temporary truce between factions.",
+		"ForcedAction": "RELIEVE",
+		"SceneTemplateID": "None",
+		"bHasFired": false
+	}
+]

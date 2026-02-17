@@ -2,7 +2,7 @@
 
 #include "AINPC.h"
 #include "Subsystems/NarrativeSquadSubsystem.h"
-#include "Subsystems/NarrativeDirectorSubsystem.h"
+#include "Subsystems/NarrativeHistorySubsystem.h"
 #include "Components/SphereComponent.h"
 #include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerController.h"
@@ -131,7 +131,7 @@ void ANarrativeSceneAnchor::OnEventTriggerOverlap(UPrimitiveComponent* Overlappe
 	
 	if (UWorld* World = GetWorld())
 	{
-		if (UNarrativeDirectorSubsystem* Director = World->GetSubsystem<UNarrativeDirectorSubsystem>())
+		if (UNarrativeHistorySubsystem* Director = World->GetSubsystem<UNarrativeHistorySubsystem>())
 		{
 			// ✅ RecordEvent takes (Description, Tags), not FNarrativeEvent
 			FString Description = FString::Printf(TEXT("Player entered %s event trigger zone"), *SupportedSceneID.ToString());

@@ -932,3 +932,13 @@ This file contains a log of commit messages for the AINPC project.
 - `Source/AINPC/Public/Social/SocialGameplayTags.h`
 - `docs/design/WorldDirector_Companion_Design.md` (New)
 
+
+## [2026-02-17] Add NPC-to-NPC Social Bonds MVP and Maintenance Review
+**Type**: feat/fix/docs
+**Scope**: Social Relationship, FactionReputationComponent, CognitionComponent
+**Description**:
+- Added qualitative relationship model with ESocialBondType + FSocialBond, and stable identity lookup via GetNameID().
+- Extended UFactionReputationComponent with SocialBonds, GetStableSocialID, GetRelationshipSummaryTowards, and OnRelationshipChanged delegate.
+- Updated ModifyReputation to persist semantic bond transitions, emit reflection events on threshold crossing, and record history.
+- Injected current focus-target relationship summary into CognitionComponent prompt context.
+- Per maintenance protocol, added test guide docs/guides/Social_Relationship_System_Test_Guide.md and updated docs index/changelog.

@@ -107,6 +107,9 @@ public:
 	// Getters
 	UFUNCTION(BlueprintCallable, Category = "NPC Profile | Modular")
 	bool GetNameDef(FNPCNameDef& OutDef) const;
+
+	UFUNCTION(BlueprintCallable, Category = "NPC Profile | Modular")
+	FName GetNameID() const { return NameID; }
     
 	UFUNCTION(BlueprintCallable, Category = "NPC Profile | Modular")
 	bool GetPastEventDef(FPastEventDef& OutDef) const;

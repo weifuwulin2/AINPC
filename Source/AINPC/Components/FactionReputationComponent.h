@@ -4,7 +4,18 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "Social/FactionTypes.h"
+#include "Social/SocialTypes.h"
 #include "FactionReputationComponent.generated.h"
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_SevenParams(
+	FOnRelationshipChanged,
+	AActor*, SourceActor,
+	AActor*, TargetActor,
+	FName, SourceID,
+	FName, TargetID,
+	float, OldAttitude,
+	float, NewAttitude,
+	bool, bCrossedBondThreshold);
 
 /**
  * Manages "Personal Micro" relationships.
@@ -35,14 +46,26 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Faction")
 	TMap<AActor*, float> PersonalReputations;
 
+	/**
+	 * Semantic social bonds keyed by stable actor identity (NameID when available).
+	 * Complements PersonalReputations numeric overrides.
+	 */
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Faction|Social")
+	TMap<FName, FSocialBond> SocialBonds;
+
+	/** Broadcast when relationship attitude changes (useful for reflection hooks/UI/debug). */
+	UPROPERTY(BlueprintAssignable, Category = "Faction|Social")
+	FOnRelationshipChanged OnRelationshipChanged;
+
 	// --- API ---
 
 	/**
 	 * Get Attitude towards a target (0-100).
 	 * Logic:
 	 * 1. Check PersonalReputations (Override).
-	 * 2. If none, check Global Faction Relations (Subsystem).
-	 * 3. Return result.
+	 * 2. Check SocialBonds (semantic override mapped to attitude).
+	 * 3. If none, check Global Faction Relations (Subsystem).
+	 * 4. Return result.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Faction")
 	float GetAttitudeTowards(AActor* Target) const;
@@ -61,6 +84,14 @@ public:
 	/** Modify personal reputation towards an actor */
 	UFUNCTION(BlueprintCallable, Category = "Faction")
 	void ModifyReputation(AActor* Target, float Delta);
+
+	/** Get stable relationship key for actor (prefers NPCDefinition NameID). */
+	UFUNCTION(BlueprintCallable, Category = "Faction|Social")
+	FName GetStableSocialID(AActor* Target) const;
+
+	/** Get semantic relationship summary toward target for prompt/context injection. */
+	UFUNCTION(BlueprintCallable, Category = "Faction|Social")
+	FString GetRelationshipSummaryTowards(AActor* Target) const;
 
 	/**
 	 * Helper to find FactionID of any actor (tries Component -> Tag -> Default)

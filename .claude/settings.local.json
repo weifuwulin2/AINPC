@@ -4,7 +4,12 @@
       "Bash(Select-String -Pattern \"\\\\.json|\\\\.csv|\\\\.uasset\")",
       "Bash(Select-Object -First 10)",
       "Bash(python -c:*)",
-      "Bash(grep -rn \"CommitEvent\\\\|OnSemanticEventSensed\" \"D:\\\\CombatDemos\\\\AINPC\\\\Source\\\\AINPC\"\" --include=\"*.cpp\" | grep -v \"^Binary \")"
+      "Bash(grep -rn \"CommitEvent\\\\|OnSemanticEventSensed\" \"D:\\\\CombatDemos\\\\AINPC\\\\Source\\\\AINPC\"\" --include=\"*.cpp\" | grep -v \"^Binary \")",
+      "Bash(git checkout:*)",
+      "Bash(\"C:\\\\Program Files\\\\Epic Games\\\\UE_5.5\\\\Engine\\\\Build\\\\BatchFiles\\\\Build.bat\" AINPCEditor Win64 Development \"D:\\\\UnrealProject\\\\AINPC\\\\AINPC.uproject\" -WaitMutex)",
+      "Bash(cmd.exe:*)",
+      "Bash(git -C \"D:\\\\UnrealProject\\\\AINPC\" status --short)",
+      "Bash(git -C \"D:\\\\UnrealProject\\\\AINPC\" diff Source/AINPC/Components/FactionReputationComponent.h Source/AINPC/Components/FactionReputationComponent.cpp Source/AINPC/Public/Social/SocialTypes.h Source/AINPC/Components/NPCDefinitionComponent.h Source/AINPC/Components/NPCDefinitionComponent.cpp)"
     ]
   }
 }

@@ -105,6 +105,15 @@ namespace AINPCTags
 	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(WorldDirector_Reveal);
 	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(WorldDirector_Relieve);
 
+	// WorldEvent Tags (Major world events)
+	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(WorldEvent_BeastTide);
+	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(WorldEvent_DemonInvasion);
+	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(WorldEvent_FactionWar);
+	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(WorldEvent_NaturalDisaster);
+	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(WorldEvent_Festival);
+	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(WorldEvent_Plague);
+	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(WorldEvent_Custom);
+
 	// Location Tags (Semantic anchor classification)
 	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Location_Tavern);
 	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Location_TownSquare);

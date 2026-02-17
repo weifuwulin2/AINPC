@@ -36,6 +36,7 @@ Welcome to the AINPC Knowledge Base. This index serves as the central hub for al
 *   [**Bug Fixes Patch**](guides/BugFixes_Patch.md) - Guide for applying recent fixes
 *   [**Faction Not Loading**](troubleshooting/Faction_Not_Loading_Fix.md) - Troubleshooting Faction initialization issues.
 *   [**Dreaming System Test**](guides/Dreaming_Test_Guide.md) - Validating the memory consolidation system.
+*   [**Social Relationship Test Guide**](guides/Social_Relationship_System_Test_Guide.md) - Test scenarios for NPC-to-NPC relationship and reflection behavior.
 *   [**Commit Log**](../GIT_COMMIT_MESSAGES.md) - History of git commit messages.
 *   [**Changelog**](../CHANGELOG.md) - Version history.
 
@@ -53,4 +54,4 @@ Welcome to the AINPC Knowledge Base. This index serves as the central hub for al
 *   [**Concurrent Request Fix**](reports/Bug4_Fix_Report.md)
 
 ---
-*Last Updated: 2026-02-03*
+*Last Updated: 2026-02-17*

@@ -1,7 +1,7 @@
-#include "Characters/NarrativeCompanion.h"
+﻿#include "Characters/NarrativeCompanion.h"
 #include "Components/CognitionComponent.h"
 #include "Components/SensoryComponent.h"
-#include "Subsystems/NarrativeDirectorSubsystem.h"
+#include "Subsystems/NarrativeHistorySubsystem.h"
 #include "Subsystems/PlayerSquadSubsystem.h"
 #include "Kismet/GameplayStatics.h"
 #include "AIController.h"
@@ -158,7 +158,7 @@ void ANarrativeCompanion::ObserveEvent(FString Description, TArray<FName> EventT
 {
 	if (UWorld* World = GetWorld())
 	{
-		if (UNarrativeDirectorSubsystem* Director = World->GetSubsystem<UNarrativeDirectorSubsystem>())
+		if (UNarrativeHistorySubsystem* Director = World->GetSubsystem<UNarrativeHistorySubsystem>())
 		{
 			FString FinalDesc = FString::Printf(TEXT("[Witnessed] %s"), *Description);
 			Director->RecordEvent(FinalDesc, EventTags);
@@ -176,7 +176,7 @@ void ANarrativeCompanion::ObserveNPCDeath(AActor* Victim, AActor* Killer)
 {
 	if (UWorld* World = GetWorld())
 	{
-		if (UNarrativeDirectorSubsystem* Director = World->GetSubsystem<UNarrativeDirectorSubsystem>())
+		if (UNarrativeHistorySubsystem* Director = World->GetSubsystem<UNarrativeHistorySubsystem>())
 		{
 			Director->RecordNPCDeath(Victim, Killer);
 
@@ -194,7 +194,7 @@ void ANarrativeCompanion::ObservePlayerAction(FString ActionDescription, TArray<
 {
 	if (UWorld* World = GetWorld())
 	{
-		if (UNarrativeDirectorSubsystem* Director = World->GetSubsystem<UNarrativeDirectorSubsystem>())
+		if (UNarrativeHistorySubsystem* Director = World->GetSubsystem<UNarrativeHistorySubsystem>())
 		{
 			Director->RecordPlayerAction(ActionDescription, ActionTags);
 		}
@@ -205,7 +205,7 @@ void ANarrativeCompanion::ObserveRelationshipChange(FName SourceActor, FName Tar
 {
 	if (UWorld* World = GetWorld())
 	{
-		if (UNarrativeDirectorSubsystem* Director = World->GetSubsystem<UNarrativeDirectorSubsystem>())
+		if (UNarrativeHistorySubsystem* Director = World->GetSubsystem<UNarrativeHistorySubsystem>())
 		{
 			Director->RecordRelationshipChange(SourceActor, TargetActor, OldValue, NewValue);
 		}
@@ -216,7 +216,7 @@ void ANarrativeCompanion::ObserveFactionReputationChange(FName FactionID, float 
 {
 	if (UWorld* World = GetWorld())
 	{
-		if (UNarrativeDirectorSubsystem* Director = World->GetSubsystem<UNarrativeDirectorSubsystem>())
+		if (UNarrativeHistorySubsystem* Director = World->GetSubsystem<UNarrativeHistorySubsystem>())
 		{
 			Director->RecordFactionReputationChange(FactionID, Delta, Reason);
 
@@ -237,7 +237,7 @@ void ANarrativeCompanion::ObserveFactionPopulationChange(FName FactionID, int32 
 {
 	if (UWorld* World = GetWorld())
 	{
-		if (UNarrativeDirectorSubsystem* Director = World->GetSubsystem<UNarrativeDirectorSubsystem>())
+		if (UNarrativeHistorySubsystem* Director = World->GetSubsystem<UNarrativeHistorySubsystem>())
 		{
 			Director->UpdateFactionPopulation(FactionID, Delta);
 		}
@@ -270,3 +270,4 @@ AActor* ANarrativeCompanion::GetLeader() const
 {
 	return UGameplayStatics::GetPlayerCharacter(this, 0);
 }
+

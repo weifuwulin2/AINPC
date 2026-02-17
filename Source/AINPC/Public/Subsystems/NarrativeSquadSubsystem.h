@@ -1,7 +1,7 @@
 #pragma once
 #include "CoreMinimal.h"
 #include "Subsystems/WorldSubsystem.h"
-#include "Subsystems/NarrativeDirectorSubsystem.h" // For FNarrativeEvent
+#include "Subsystems/NarrativeHistorySubsystem.h" // For FNarrativeEvent
 #include "GameplayTagContainer.h" // For FGameplayTag
 #include "NarrativeSquadSubsystem.generated.h"
 

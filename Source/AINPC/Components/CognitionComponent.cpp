@@ -13,7 +13,7 @@
 #include "Components/NPCDefinitionComponent.h"
 #include "Social/FactionSubsystem.h"
 #include "UtilityAI/SentimentMapping.h"
-#include "Subsystems/NarrativeDirectorSubsystem.h"
+#include "Subsystems/NarrativeHistorySubsystem.h"
 #include "Subsystems/NarrativeSquadSubsystem.h"
 #include "UtilityAI/MentalStateInterpolation.h"
 #include "Components/MemoryComponent.h" // ✅ Added
@@ -275,7 +275,7 @@ void UCognitionComponent::ProcessStimulus(FString SituationDescription, bool bFo
 	if (bFullDetail)
 	{
 		if (UWorld* World = GetWorld())
-			if (UNarrativeDirectorSubsystem* Dir = World->GetSubsystem<UNarrativeDirectorSubsystem>())
+			if (UNarrativeHistorySubsystem* Dir = World->GetSubsystem<UNarrativeHistorySubsystem>())
 				GlobalHistory = Dir->GetWorldStateDescription(3);
 	}
 
@@ -286,6 +286,36 @@ void UCognitionComponent::ProcessStimulus(FString SituationDescription, bool bFo
 		TArray<FMemoryItem> Memories = MemoryComp->RetrieveRelevantMemories(SituationDescription, 5);
 		ContextMemory = "";
 		for (const FMemoryItem& Item : Memories) ContextMemory += FString::Printf(TEXT("- %s\n"), *MemoryComp->GetFormattedDescription(Item, CurrentGameTime));
+	}
+
+	// Inject current social relationship summary (focus target first)
+	FString RelationshipContext;
+	if (AAIController* AICon = Cast<AAIController>(GetOwner()))
+	{
+		if (AActor* FocusTarget = AICon->GetFocusActor())
+		{
+			UFactionReputationComponent* FactionComp = nullptr;
+			if (APawn* ControlledPawn = AICon->GetPawn())
+			{
+				FactionComp = ControlledPawn->FindComponentByClass<UFactionReputationComponent>();
+			}
+			if (!FactionComp)
+			{
+				FactionComp = AICon->FindComponentByClass<UFactionReputationComponent>();
+			}
+
+			if (FactionComp)
+			{
+				RelationshipContext = FString::Printf(
+					TEXT("Relationship: %s\n"),
+					*FactionComp->GetRelationshipSummaryTowards(FocusTarget));
+			}
+		}
+	}
+
+	if (!RelationshipContext.IsEmpty())
+	{
+		ContextMemory = RelationshipContext + ContextMemory;
 	}
 
 	FString VolatileBlock = BuildVolatileBlock(SituationDescription, ContextMemory, GlobalHistory);

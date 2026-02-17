@@ -1,0 +1,62 @@
+[
+	{
+		"Name": "Day1_BeastTide",
+		"TriggerDay": 1,
+		"TriggerHour": 18.0,
+		"EventType": "BeastTide",
+		"EventName": "Dusk Beast Tide",
+		"EventDescription": "As the sun sets, waves of corrupted beasts pour from the Dark Forest. Villagers barricade their homes while guards scramble to hold the perimeter.",
+		"DurationDays": 2.0,
+		"TensionBoost": 0.25,
+		"ForcedStartAction": "ESCALATE",
+		"bHasStarted": false
+	},
+	{
+		"Name": "Day4_Festival",
+		"TriggerDay": 4,
+		"TriggerHour": 10.0,
+		"EventType": "Festival",
+		"EventName": "Victory Celebration",
+		"EventDescription": "The beast tide has passed. Survivors gather to celebrate, mourn the fallen, and share stories of bravery.",
+		"DurationDays": 1.0,
+		"TensionBoost": 0.0,
+		"ForcedStartAction": "RELIEVE",
+		"bHasStarted": false
+	},
+	{
+		"Name": "Day7_DemonInvasion",
+		"TriggerDay": 7,
+		"TriggerHour": 0.0,
+		"EventType": "DemonInvasion",
+		"EventName": "Demon Lord Awakens",
+		"EventDescription": "The earth trembles as a demon lord awakens beneath the mountain. Dark energy corrupts nearby wildlife and drives weaker NPCs mad with fear.",
+		"DurationDays": 3.0,
+		"TensionBoost": 0.4,
+		"ForcedStartAction": "ESCALATE",
+		"bHasStarted": false
+	},
+	{
+		"Name": "Day6_Plague",
+		"TriggerDay": 6,
+		"TriggerHour": 6.0,
+		"EventType": "Plague",
+		"EventName": "Rotting Sickness",
+		"EventDescription": "A mysterious plague spreads through the market district. Merchants close shops, healers are overwhelmed, and the temple priest blames dark magic.",
+		"DurationDays": 2.5,
+		"TensionBoost": 0.2,
+		"ForcedStartAction": "DISRUPT",
+		"bHasStarted": false
+	},
+	{
+		"Name": "Day10_FactionWar",
+		"TriggerDay": 10,
+		"TriggerHour": 8.0,
+		"EventType": "FactionWar",
+		"EventName": "Orc-Human Border War",
+		"EventDescription": "Peace negotiations collapse. Orc and Human factions mobilize for open warfare along the river border. Civilians flee to neutral ground.",
+		"DurationDays": 4.0,
+		"TensionBoost": 0.35,
+		"ForcedStartAction": "ESCALATE",
+		"bHasStarted": false
+	}
+]

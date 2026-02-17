@@ -141,13 +141,37 @@ void UAction_TalkTo::Execute_Implementation(AAIController* Controller)
 		{
 			if (UAICon->MentalState && !UAICon->MentalState->Speech.IsEmpty())
 			{
+				FString SpokenMessage = UAICon->MentalState->Speech;
+				UAICon->MentalState->Speech = "";
+
+				// Show speech bubble on self (visual only)
 				if (UAICon->SensoryComp)
 				{
-					UAICon->SensoryComp->ReceiveSpeech(ControlledPawn, UAICon->MentalState->Speech);
+					UAICon->SensoryComp->ReceiveSpeech(ControlledPawn, SpokenMessage);
 				}
 
-				UE_LOG(LogTemp, Log, TEXT("[Action_TalkTo] Said: %s"), *UAICon->MentalState->Speech);
-				UAICon->MentalState->Speech = "";
+				// Deliver speech to conversation target so they can hear and respond
+				if (CurrentTarget)
+				{
+					// Try target's controller first (NPC case)
+					if (APawn* TargetPawn = Cast<APawn>(CurrentTarget))
+					{
+						if (AUtilityAIController* TargetAI = Cast<AUtilityAIController>(TargetPawn->GetController()))
+						{
+							TargetAI->ReceiveSpeech(ControlledPawn, SpokenMessage);
+						}
+					}
+					// Fallback: target might be a controller directly
+					else if (AUtilityAIController* TargetAI = Cast<AUtilityAIController>(CurrentTarget))
+					{
+						TargetAI->ReceiveSpeech(ControlledPawn, SpokenMessage);
+					}
+				}
+
+				UE_LOG(LogTemp, Log, TEXT("[Action_TalkTo] %s said to %s: %s"),
+					*ControlledPawn->GetName(),
+					CurrentTarget ? *CurrentTarget->GetName() : TEXT("nobody"),
+					*SpokenMessage);
 			}
 		}
 	}

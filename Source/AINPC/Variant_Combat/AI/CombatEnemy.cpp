@@ -21,7 +21,7 @@
 #include "Components/SensoryComponent.h"
 #include "Components/FactionReputationComponent.h"
 #include "Kismet/GameplayStatics.h"
-#include "Subsystems/NarrativeDirectorSubsystem.h"
+#include "Subsystems/NarrativeHistorySubsystem.h"
 
 ACombatEnemy::ACombatEnemy()
 {
@@ -253,7 +253,7 @@ void ACombatEnemy::HandleDeath()
 	// ✅ REPORT TO NARRATIVE DIRECTOR
 	if (UWorld* World = GetWorld())
 	{
-		if (auto* Director = World->GetSubsystem<UNarrativeDirectorSubsystem>())
+		if (auto* Director = World->GetSubsystem<UNarrativeHistorySubsystem>())
 		{
 			Director->RecordNPCDeath(this, LastDamageCauser);
 		}

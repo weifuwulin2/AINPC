@@ -21,6 +21,49 @@ enum class EOCEANTrait : uint8
     Neuroticism         UMETA(DisplayName = "Neuroticism")
 };
 
+/**
+ * Qualitative social relationship layer on top of numeric attitude.
+ */
+UENUM(BlueprintType)
+enum class ESocialBondType : uint8
+{
+    None          UMETA(DisplayName = "None"),
+    Acquaintance  UMETA(DisplayName = "Acquaintance"),
+    Friend        UMETA(DisplayName = "Friend"),
+    CloseFriend   UMETA(DisplayName = "Close Friend"),
+    BestFriend    UMETA(DisplayName = "Best Friend"),
+    Lover         UMETA(DisplayName = "Lover"),
+    Family        UMETA(DisplayName = "Family"),
+    Rival         UMETA(DisplayName = "Rival"),
+    Enemy         UMETA(DisplayName = "Enemy"),
+    Nemesis       UMETA(DisplayName = "Nemesis")
+};
+
+USTRUCT(BlueprintType)
+struct AINPC_API FSocialBond
+{
+    GENERATED_BODY()
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Social Bond")
+    ESocialBondType Type = ESocialBondType::None;
+
+    /** 0-10 scale of how prominent this relationship is in memory. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Social Bond")
+    int32 BondSalience = 0;
+
+    /** Memory IDs pinned as relationship-defining moments. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Social Bond")
+    TArray<FGuid> FoundationalMemories;
+
+    /** Natural language summary injected into cognition context. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Social Bond")
+    FString RelationshipSummary;
+
+    /** Last interaction/reflection time in world seconds. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Social Bond")
+    float LastInteractionTime = 0.0f;
+};
+
 // ============================================================================
 // REMOVED: EFactionType (Legacy 3-value enum)
 // ============================================================================

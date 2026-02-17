@@ -98,6 +98,15 @@ namespace AINPCTags
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(WorldDirector_Reveal, "WorldDirector.Reveal", "WorldDirector: Revelation beat");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(WorldDirector_Relieve, "WorldDirector.Relieve", "WorldDirector: Relief beat");
 
+	// WorldEvent Tags
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(WorldEvent_BeastTide, "WorldEvent.BeastTide", "World Event: Beast Tide");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(WorldEvent_DemonInvasion, "WorldEvent.DemonInvasion", "World Event: Demon Invasion");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(WorldEvent_FactionWar, "WorldEvent.FactionWar", "World Event: Faction War");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(WorldEvent_NaturalDisaster, "WorldEvent.NaturalDisaster", "World Event: Natural Disaster");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(WorldEvent_Festival, "WorldEvent.Festival", "World Event: Festival");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(WorldEvent_Plague, "WorldEvent.Plague", "World Event: Plague");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(WorldEvent_Custom, "WorldEvent.Custom", "World Event: Custom");
+
 	// Location Tags
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Location_Tavern, "Location.Tavern", "Location: Tavern / Inn");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Location_TownSquare, "Location.TownSquare", "Location: Town Square / Plaza");

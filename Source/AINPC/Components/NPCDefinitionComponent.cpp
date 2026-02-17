@@ -1,4 +1,4 @@
-#include "Components/NPCDefinitionComponent.h"
+﻿#include "Components/NPCDefinitionComponent.h"
 #include "Components/UtilityAIComponent.h"
 #include "Components/PersonalityComponent.h"
 #include "Components/FactionReputationComponent.h"
@@ -271,7 +271,7 @@ void UNPCDefinitionComponent::ApplyProfession(AAIController* Controller)
 		Owner->Tags.AddUnique(ProfessionID);
 
 		// Auto-Tag VIPs based on Profession
-		// Narrative Director listens for "VIP" deaths
+		// Narrative History listens for "VIP" deaths
 		static const TSet<FName> VIPProfessions = {
 			FName("King"), FName("Queen"), 
 			FName("Leader"), FName("Boss"), 
@@ -286,3 +286,4 @@ void UNPCDefinitionComponent::ApplyProfession(AAIController* Controller)
 		}
 	}
 }
+

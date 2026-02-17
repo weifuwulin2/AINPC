@@ -1,6 +1,6 @@
-#include "Subsystems/WorldDirectorSubsystem.h"
+﻿#include "Subsystems/WorldDirectorSubsystem.h"
 #include "AINPC.h"
-#include "Subsystems/NarrativeDirectorSubsystem.h"
+#include "Subsystems/NarrativeHistorySubsystem.h"
 #include "Subsystems/NarrativeSquadSubsystem.h"
 #include "Social/FactionSubsystem.h"
 #include "Subsystems/PlayerSquadSubsystem.h"
@@ -27,7 +27,7 @@ void UWorldDirectorSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	Super::Initialize(Collection);
 
 	// Ensure dependencies initialize first
-	Collection.InitializeDependency<UNarrativeDirectorSubsystem>();
+	Collection.InitializeDependency<UNarrativeHistorySubsystem>();
 	Collection.InitializeDependency<UNarrativeSquadSubsystem>();
 	Collection.InitializeDependency<UFactionSubsystem>();
 	Collection.InitializeDependency<UPlayerSquadSubsystem>();
@@ -36,7 +36,7 @@ void UWorldDirectorSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	if (!World) return;
 
 	// Cache subsystem pointers
-	NarrativeDirector = World->GetSubsystem<UNarrativeDirectorSubsystem>();
+	NarrativeHistory = World->GetSubsystem<UNarrativeHistorySubsystem>();
 	SquadSubsystem = World->GetSubsystem<UNarrativeSquadSubsystem>();
 	FactionSub = World->GetSubsystem<UFactionSubsystem>();
 	PlayerSquad = World->GetSubsystem<UPlayerSquadSubsystem>();
@@ -68,10 +68,16 @@ void UWorldDirectorSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 		DIRECTOR_LOG(Log, TEXT("LLM Service initialized for WorldDirector."));
 	}
 
-	// Bind to NarrativeDirector events (for tracking scene completion)
-	if (NarrativeDirector)
+	// Bind to NarrativeHistory events (for tracking scene completion)
+	if (NarrativeHistory)
 	{
-		NarrativeDirector->OnEventRecorded.AddDynamic(this, &UWorldDirectorSubsystem::OnDirectorEventRecorded);
+		NarrativeHistory->OnEventRecorded.AddDynamic(this, &UWorldDirectorSubsystem::OnDirectorEventRecorded);
+	}
+
+	// Bind to day change for world prediction
+	if (TimeMgr)
+	{
+		TimeMgr->OnDayChanged.AddDynamic(this, &UWorldDirectorSubsystem::OnDayChanged);
 	}
 
 	DIRECTOR_LOG(Log, TEXT("WorldDirectorSubsystem initialized."));
@@ -84,9 +90,14 @@ void UWorldDirectorSubsystem::Deinitialize()
 		World->GetTimerManager().ClearTimer(EvaluationTimerHandle);
 		World->GetTimerManager().ClearTimer(DuringHintTimerHandle);
 
-		if (NarrativeDirector)
+		if (NarrativeHistory)
 		{
-			NarrativeDirector->OnEventRecorded.RemoveDynamic(this, &UWorldDirectorSubsystem::OnDirectorEventRecorded);
+			NarrativeHistory->OnEventRecorded.RemoveDynamic(this, &UWorldDirectorSubsystem::OnDirectorEventRecorded);
+		}
+
+		if (TimeMgr)
+		{
+			TimeMgr->OnDayChanged.RemoveDynamic(this, &UWorldDirectorSubsystem::OnDayChanged);
 		}
 	}
 
@@ -118,6 +129,10 @@ void UWorldDirectorSubsystem::PeriodicEvaluation()
 {
 	UWorld* World = GetWorld();
 	if (!World) return;
+
+	// Always tick major events (not gated by cooldown)
+	CheckMajorEvents();
+	TickActiveEvents();
 
 	float GameTime = World->GetTimeSeconds();
 
@@ -183,32 +198,30 @@ void UWorldDirectorSubsystem::ForceEvaluation()
 
 bool UWorldDirectorSubsystem::CheckWorldTimeline(EDramaticAction& OutAction, FString& OutContext)
 {
-	if (!WorldTimelineTable || !TimeMgr) return false;
+	if (!TimeMgr) return false;
 
 	int32 Day = TimeMgr->GetCurrentDay();
 	float Hour = TimeMgr->GetCurrentHour();
 
-	TArray<FWorldTimelineEvent*> AllRows;
-	WorldTimelineTable->GetAllRows<FWorldTimelineEvent>(TEXT("WorldDirector_Timeline"), AllRows);
-
-	for (FWorldTimelineEvent* Event : AllRows)
+	// Helper lambda to check and fire a timeline event
+	auto TryFireEvent = [&](FWorldTimelineEvent* Event, bool bFromDataTable) -> bool
 	{
-		if (!Event || Event->bHasFired) continue;
+		if (!Event || Event->bHasFired) return false;
 
 		if (Event->TriggerDay <= Day)
 		{
-			// Same day: check hour. Past day: always fire.
 			if (Event->TriggerDay < Day || Hour >= Event->TriggerHour)
 			{
 				Event->bHasFired = true;
 				OutAction = Event->ForcedAction;
 				OutContext = FString::Printf(TEXT("[TIMELINE EVENT: %s] %s"), *Event->EventName, *Event->EventDescription);
 
-				DIRECTOR_LOG(Warning, TEXT("Timeline event fired: '%s' (Day %d, Hour %.1f)"),
-					*Event->EventName, Event->TriggerDay, Event->TriggerHour);
+				FString Source = bFromDataTable ? TEXT("DataTable") : TEXT("LLM-Predicted");
+				DIRECTOR_LOG(Warning, TEXT("Timeline event fired (%s): '%s' (Day %d, Hour %.1f)"),
+					*Source, *Event->EventName, Event->TriggerDay, Event->TriggerHour);
 
 				// If it has a pre-authored scene template, use that directly
-				if (!Event->SceneTemplateID.IsNone() && SceneTemplateTable && SquadSubsystem)
+				if (bFromDataTable && !Event->SceneTemplateID.IsNone() && SceneTemplateTable && SquadSubsystem)
 				{
 					int32 SquadID = SquadSubsystem->StartSceneGlobal(SceneTemplateTable, Event->SceneTemplateID, NPCDefinitionTable);
 					if (SquadID != -1)
@@ -217,13 +230,12 @@ bool UWorldDirectorSubsystem::CheckWorldTimeline(EDramaticAction& OutAction, FSt
 						ActiveDirectorScenes++;
 						LastBeatGameTime = GetWorld()->GetTimeSeconds();
 
-						// Record to history
-						if (NarrativeDirector)
+						if (NarrativeHistory)
 						{
 							FGameplayTagContainer Tags;
 							Tags.AddTag(AINPCTags::WorldDirector_Event);
 							Tags.AddTag(GetTagForAction(OutAction));
-							NarrativeDirector->RecordEvent(
+							NarrativeHistory->RecordEvent(
 								FString::Printf(TEXT("[WorldDirector] %s"), *Event->EventName), Tags);
 						}
 
@@ -235,7 +247,31 @@ bool UWorldDirectorSubsystem::CheckWorldTimeline(EDramaticAction& OutAction, FSt
 				return true; // Use LLM with timeline context
 			}
 		}
+		return false;
+	};
+
+	// Check DataTable events first (anchor priority)
+	if (WorldTimelineTable)
+	{
+		TArray<FWorldTimelineEvent*> AllRows;
+		WorldTimelineTable->GetAllRows<FWorldTimelineEvent>(TEXT("WorldDirector_Timeline"), AllRows);
+
+		for (FWorldTimelineEvent* Event : AllRows)
+		{
+			bool bResult = TryFireEvent(Event, true);
+			if (bResult || Event && Event->bHasFired) return bResult;
+		}
 	}
+
+	// Check Dynamic Timeline events (LLM-generated)
+	for (FWorldTimelineEvent& DynEvent : DynamicTimeline)
+	{
+		bool bResult = TryFireEvent(&DynEvent, false);
+		if (bResult || DynEvent.bHasFired) return bResult;
+	}
+
+	// Clean up fired dynamic events
+	DynamicTimeline.RemoveAll([](const FWorldTimelineEvent& E) { return E.bHasFired; });
 
 	return false;
 }
@@ -249,10 +285,10 @@ FTensionSnapshot UWorldDirectorSubsystem::EvaluateTension() const
 	FTensionSnapshot T;
 
 	// --- DeathPressure: based on DeadVIPs count ---
-	if (NarrativeDirector)
+	if (NarrativeHistory)
 	{
 		// Access HistoryLog indirectly: count death-tagged events in world state
-		FString WorldState = NarrativeDirector->GetWorldStateDescription(20);
+		FString WorldState = NarrativeHistory->GetWorldStateDescription(20);
 		int32 DeathMentions = 0;
 		int32 SearchFrom = 0;
 		while (true)
@@ -292,9 +328,9 @@ FTensionSnapshot UWorldDirectorSubsystem::EvaluateTension() const
 	}
 
 	// --- PlayerActivity: recent player-tagged events ---
-	if (NarrativeDirector)
+	if (NarrativeHistory)
 	{
-		FString WorldState = NarrativeDirector->GetWorldStateDescription(20);
+		FString WorldState = NarrativeHistory->GetWorldStateDescription(20);
 		int32 PlayerMentions = 0;
 		int32 SearchFrom = 0;
 		while (true)
@@ -308,16 +344,16 @@ FTensionSnapshot UWorldDirectorSubsystem::EvaluateTension() const
 	}
 
 	// --- PopulationStress: absolute population deltas from starting values ---
-	if (NarrativeDirector)
+	if (NarrativeHistory)
 	{
-		// Use the faction population tracking from NarrativeDirector
+		// Use the faction population tracking from NarrativeHistory
 		// Large swings (deaths, migrations) increase stress
 		int32 TotalDelta = 0;
 		// We can approximate by checking common factions
 		TArray<FName> Factions = {FName("Human"), FName("Orc"), FName("Zombie")};
 		for (const FName& F : Factions)
 		{
-			int32 Pop = NarrativeDirector->GetFactionPopulation(F);
+			int32 Pop = NarrativeHistory->GetFactionPopulation(F);
 			// Negative population means deaths; use abs
 			TotalDelta += FMath::Abs(Pop);
 		}
@@ -368,6 +404,12 @@ FTensionSnapshot UWorldDirectorSubsystem::EvaluateTension() const
 		0.10f * T.PopulationStress +
 		0.15f * T.TimelinePressure +
 		0.15f * T.Monotony;
+
+	// Add tension boost from active major events
+	for (const FActiveWorldEvent& ActiveEvt : ActiveMajorEvents)
+	{
+		T.OverallTension += ActiveEvt.TensionBoost;
+	}
 
 	T.OverallTension = FMath::Clamp(T.OverallTension, 0.0f, 1.0f);
 
@@ -426,6 +468,325 @@ EDramaticAction UWorldDirectorSubsystem::SelectDramaticAction(const FTensionSnap
 }
 
 // ============================================================================
+// World Prediction (Dynamic Timeline Generation)
+// ============================================================================
+
+void UWorldDirectorSubsystem::OnDayChanged(int32 NewDay)
+{
+	DIRECTOR_LOG(Log, TEXT("Day changed to %d. Requesting world prediction."), NewDay);
+	RequestWorldPrediction();
+}
+
+void UWorldDirectorSubsystem::ForcePrediction()
+{
+	RequestWorldPrediction();
+}
+
+void UWorldDirectorSubsystem::RequestWorldPrediction()
+{
+	if (!LLMService)
+	{
+		DIRECTOR_LOG(Warning, TEXT("LLM Service not available. Skipping world prediction."));
+		return;
+	}
+
+	if (bPredictionInFlight)
+	{
+		DIRECTOR_LOG(Warning, TEXT("World prediction already in flight. Skipping."));
+		return;
+	}
+
+	bPredictionInFlight = true;
+
+	int32 CurrentDay = TimeMgr ? TimeMgr->GetCurrentDay() : 0;
+
+	// --- System Prompt ---
+	FString SystemPrompt = TEXT(
+		"You are a world simulation AI for a medieval fantasy RPG.\n"
+		"Based on the world state provided, predict 1-3 events that should happen in the next 1-3 game days.\n\n"
+		"Output EXACTLY this JSON schema (no extra keys, no markdown):\n"
+		"{\n"
+		"  \"predicted_events\": [\n"
+		"    {\n"
+		"      \"trigger_day\": <integer, must be > current day>,\n"
+		"      \"trigger_hour\": <float 0-23>,\n"
+		"      \"event_name\": \"short name\",\n"
+		"      \"event_description\": \"what happens and why\",\n"
+		"      \"dramatic_action\": \"ESCALATE|DISRUPT|CONVERGE|REVEAL|RELIEVE\"\n"
+		"    }\n"
+		"  ]\n"
+		"}\n\n"
+		"HARD RULES:\n"
+		"- NEVER use NPCs listed in [DEAD NPCs] - they are permanently dead\n"
+		"- NEVER contradict events in [CRITICAL EVENTS] or [RECENT EVENTS]\n"
+		"- NEVER repeat plots from [RECENT PLOT THREADS]\n"
+		"- Events must logically follow from the current world state\n"
+		"- trigger_day MUST be greater than the current day\n"
+		"- Keep events grounded in the existing factions and NPC types\n"
+	);
+
+	// --- User Prompt ---
+	FString UserPrompt = FString::Printf(TEXT("[CURRENT DAY]: %d\n\n"), CurrentDay);
+
+	if (NarrativeHistory)
+	{
+		UserPrompt += NarrativeHistory->GetStructuredWorldSnapshot(10);
+		UserPrompt += TEXT("\n");
+	}
+
+	// Add tension
+	UserPrompt += FString::Printf(
+		TEXT("[TENSION VALUES]: Death=%.2f, Faction=%.2f, Player=%.2f, Pop=%.2f, Overall=%.2f\n\n"),
+		LatestTension.DeathPressure, LatestTension.FactionVolatility,
+		LatestTension.PlayerActivity, LatestTension.PopulationStress,
+		LatestTension.OverallTension);
+
+	// Add active world events
+	FString EventsDesc = GetActiveEventsDescription();
+	if (!EventsDesc.IsEmpty())
+	{
+		UserPrompt += FString::Printf(TEXT("[ACTIVE WORLD EVENTS]:\n%s\n"), *EventsDesc);
+	}
+
+	// Add pending dynamic events so LLM doesn't duplicate them
+	if (DynamicTimeline.Num() > 0)
+	{
+		UserPrompt += TEXT("[ALREADY SCHEDULED DYNAMIC EVENTS]:\n");
+		for (const FWorldTimelineEvent& DynEvt : DynamicTimeline)
+		{
+			UserPrompt += FString::Printf(TEXT("- Day %d Hour %.0f: %s\n"), DynEvt.TriggerDay, DynEvt.TriggerHour, *DynEvt.EventName);
+		}
+		UserPrompt += TEXT("\n");
+	}
+
+	DIRECTOR_LOG(Log, TEXT("=== World Prediction Request ===\n%s"), *UserPrompt);
+
+	FOnLLMResponseRaw Callback;
+	Callback.BindLambda([this](bool bSuccess, const FString& Response)
+	{
+		OnWorldPredictionResponse(bSuccess, Response);
+	});
+
+	LLMService->SendFunctionalRequest(
+		SystemPrompt,
+		UserPrompt,
+		Callback,
+		0.6f,   // Slightly higher temperature for creative prediction
+		true,   // JSON mode
+		512     // MaxTokens
+	);
+}
+
+void UWorldDirectorSubsystem::OnWorldPredictionResponse(bool bSuccess, const FString& Response)
+{
+	bPredictionInFlight = false;
+
+	if (!bSuccess || Response.IsEmpty())
+	{
+		DIRECTOR_LOG(Warning, TEXT("World prediction LLM call failed."));
+		return;
+	}
+
+	DIRECTOR_LOG(Log, TEXT("=== World Prediction Response ===\n%s"), *Response);
+
+	TArray<FWorldTimelineEvent> NewEvents;
+	if (!ParsePredictionEvents(Response, NewEvents))
+	{
+		DIRECTOR_LOG(Warning, TEXT("Failed to parse world prediction response."));
+		return;
+	}
+
+	int32 CurrentDay = TimeMgr ? TimeMgr->GetCurrentDay() : 0;
+
+	// Validate and add events
+	for (FWorldTimelineEvent& Evt : NewEvents)
+	{
+		// Sanity check: must be in the future
+		if (Evt.TriggerDay <= CurrentDay)
+		{
+			DIRECTOR_LOG(Warning, TEXT("Predicted event '%s' has invalid day %d (current: %d). Skipping."),
+				*Evt.EventName, Evt.TriggerDay, CurrentDay);
+			continue;
+		}
+
+		// Clamp hour
+		Evt.TriggerHour = FMath::Clamp(Evt.TriggerHour, 0.0f, 23.99f);
+
+		DynamicTimeline.Add(Evt);
+		DIRECTOR_LOG(Log, TEXT("Dynamic event added: '%s' (Day %d, Hour %.1f, Action: %s)"),
+			*Evt.EventName, Evt.TriggerDay, Evt.TriggerHour, *Evt.EventDescription);
+	}
+
+	DIRECTOR_LOG(Warning, TEXT("World prediction complete: %d new events added. Total dynamic: %d"),
+		NewEvents.Num(), DynamicTimeline.Num());
+}
+
+bool UWorldDirectorSubsystem::ParsePredictionEvents(const FString& JsonString, TArray<FWorldTimelineEvent>& OutEvents) const
+{
+	TSharedPtr<FJsonObject> JsonObject;
+	TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(JsonString);
+
+	if (!FJsonSerializer::Deserialize(Reader, JsonObject) || !JsonObject.IsValid())
+	{
+		return false;
+	}
+
+	const TArray<TSharedPtr<FJsonValue>>* EventsArray;
+	if (!JsonObject->TryGetArrayField(TEXT("predicted_events"), EventsArray))
+	{
+		return false;
+	}
+
+	for (const TSharedPtr<FJsonValue>& Val : *EventsArray)
+	{
+		const TSharedPtr<FJsonObject>* EventObj;
+		if (!Val->TryGetObject(EventObj)) continue;
+
+		FWorldTimelineEvent Evt;
+		double DayVal = 0;
+		if ((*EventObj)->TryGetNumberField(TEXT("trigger_day"), DayVal))
+		{
+			Evt.TriggerDay = (int32)DayVal;
+		}
+
+		double HourVal = 12.0;
+		(*EventObj)->TryGetNumberField(TEXT("trigger_hour"), HourVal);
+		Evt.TriggerHour = (float)HourVal;
+
+		(*EventObj)->TryGetStringField(TEXT("event_name"), Evt.EventName);
+		(*EventObj)->TryGetStringField(TEXT("event_description"), Evt.EventDescription);
+
+		// Parse dramatic action
+		FString ActionStr;
+		if ((*EventObj)->TryGetStringField(TEXT("dramatic_action"), ActionStr))
+		{
+			if (ActionStr == TEXT("ESCALATE"))      Evt.ForcedAction = EDramaticAction::ESCALATE;
+			else if (ActionStr == TEXT("DISRUPT"))   Evt.ForcedAction = EDramaticAction::DISRUPT;
+			else if (ActionStr == TEXT("CONVERGE"))  Evt.ForcedAction = EDramaticAction::CONVERGE;
+			else if (ActionStr == TEXT("REVEAL"))    Evt.ForcedAction = EDramaticAction::REVEAL;
+			else if (ActionStr == TEXT("RELIEVE"))   Evt.ForcedAction = EDramaticAction::RELIEVE;
+		}
+
+		if (!Evt.EventName.IsEmpty())
+		{
+			OutEvents.Add(Evt);
+		}
+	}
+
+	return OutEvents.Num() > 0;
+}
+
+// ============================================================================
+// Scene Validation
+// ============================================================================
+
+bool UWorldDirectorSubsystem::ValidateSceneBlueprint(const FLLMSceneBlueprint& Blueprint, EDramaticAction Action) const
+{
+	if (!NarrativeHistory) return true; // No history = no constraints
+
+	// 1. Dead NPC check: ensure cast doesn't reference dead NPCs
+	FString DeadList = NarrativeHistory->GetDeadNPCList();
+	if (!DeadList.IsEmpty())
+	{
+		for (const FString& CastDesc : Blueprint.CastDescriptions)
+		{
+			FString LowerDesc = CastDesc.ToLower();
+			// Check each dead NPC name against cast
+			TArray<FString> DeadNames;
+			DeadList.ParseIntoArray(DeadNames, TEXT(", "));
+			for (const FString& DeadName : DeadNames)
+			{
+				if (LowerDesc.Contains(DeadName.ToLower()))
+				{
+					DIRECTOR_LOG(Warning, TEXT("Scene validation FAILED: Cast '%s' references dead NPC '%s'"),
+						*CastDesc, *DeadName);
+					return false;
+				}
+			}
+		}
+	}
+
+	// 2. Plot deduplication: check against recent plot threads
+	FString RecentPlots = NarrativeHistory->GetRecentPlotThreads(5);
+	FString LowerOutline = Blueprint.PlotOutline.ToLower();
+
+	// Simple keyword overlap check for plot similarity
+	// Extract words from plot outline and check how many appear in recent plots
+	TArray<FString> OutlineWords;
+	LowerOutline.ParseIntoArray(OutlineWords, TEXT(" "));
+
+	FString LowerRecentPlots = RecentPlots.ToLower();
+	int32 MatchingWords = 0;
+	for (const FString& Word : OutlineWords)
+	{
+		if (Word.Len() > 4 && LowerRecentPlots.Contains(Word)) // Only count significant words
+		{
+			MatchingWords++;
+		}
+	}
+
+	// If more than 60% of significant words match recent plots, it's too similar
+	int32 SignificantWords = 0;
+	for (const FString& Word : OutlineWords)
+	{
+		if (Word.Len() > 4) SignificantWords++;
+	}
+
+	if (SignificantWords > 0 && MatchingWords > 0)
+	{
+		float SimilarityRatio = (float)MatchingWords / (float)SignificantWords;
+		if (SimilarityRatio > 0.6f)
+		{
+			DIRECTOR_LOG(Warning, TEXT("Scene validation FAILED: Plot too similar to recent threads (%.0f%% overlap). Plot: %s"),
+				SimilarityRatio * 100.0f, *Blueprint.PlotOutline);
+			return false;
+		}
+	}
+
+	// 3. Faction logic: hostile factions cooperating requires CONVERGE
+	if (Action != EDramaticAction::CONVERGE && FactionSub && Blueprint.CastDescriptions.Num() >= 2)
+	{
+		// Extract faction keywords from cast descriptions and check if they're hostile
+		TArray<FName> MentionedFactions;
+		for (const FString& CastDesc : Blueprint.CastDescriptions)
+		{
+			FString LowerDesc = CastDesc.ToLower();
+			for (const auto& Pair : FactionSub->RuntimeFactionMatrix)
+			{
+				if (LowerDesc.Contains(Pair.Key.ToString().ToLower()))
+				{
+					MentionedFactions.AddUnique(Pair.Key);
+				}
+			}
+		}
+
+		// Check if any pair of mentioned factions is hostile but plot suggests cooperation
+		FString LowerPlot = Blueprint.PlotOutline.ToLower();
+		bool bPlotSuggestsCooperation = LowerPlot.Contains(TEXT("together")) ||
+			LowerPlot.Contains(TEXT("alliance")) || LowerPlot.Contains(TEXT("cooperat")) ||
+			LowerPlot.Contains(TEXT("negotiate")) || LowerPlot.Contains(TEXT("peace"));
+
+		if (bPlotSuggestsCooperation)
+		{
+			for (int32 i = 0; i < MentionedFactions.Num(); i++)
+			{
+				for (int32 j = i + 1; j < MentionedFactions.Num(); j++)
+				{
+					if (FactionSub->AreFactionsHostile(MentionedFactions[i], MentionedFactions[j]))
+					{
+						DIRECTOR_LOG(Warning, TEXT("Scene validation FAILED: Hostile factions %s and %s cooperating without CONVERGE action"),
+							*MentionedFactions[i].ToString(), *MentionedFactions[j].ToString());
+						return false;
+					}
+				}
+			}
+		}
+	}
+
+	return true;
+}
+
+// ============================================================================
 // LLM Integration
 // ============================================================================
 
@@ -451,9 +812,13 @@ void UWorldDirectorSubsystem::RequestLLMSceneGeneration(EDramaticAction Action, 
 		"  \"companion_hint_during\": \"What the companion observes mid-scene\",\n"
 		"  \"companion_hint_after\": \"What the companion reflects on after\"\n"
 		"}\n\n"
-		"Rules:\n"
-		"- Cast descriptions should be generic enough to match existing NPCs (e.g. 'an orc merchant', 'a human guard')\n"
-		"- Keep cast to 2-4 NPCs maximum\n"
+		"HARD RULES:\n"
+		"- NEVER use NPCs listed in [DEAD NPCs] - they are permanently dead and cannot appear\n"
+		"- NEVER contradict events in [CRITICAL EVENTS] or [RECENT EVENTS]\n"
+		"- NEVER repeat plots from [RECENT PLOT THREADS] - every scene must be unique\n"
+		"- Cast descriptions MUST match NPC types from [LIVING NPCs] (e.g. 'an orc merchant', 'a human guard')\n"
+		"- Hostile factions should NOT cooperate unless the dramatic action is CONVERGE\n"
+		"- Keep cast to 2-4 NPCs maximum, only use NPCs marked as available (not IN SCENE)\n"
 		"- Plot should be self-contained and completable within a few minutes\n"
 		"- Companion hints should be short (1-2 sentences), in-character as a curious fairy companion\n"
 	);
@@ -477,11 +842,11 @@ void UWorldDirectorSubsystem::RequestLLMSceneGeneration(EDramaticAction Action, 
 		UserPrompt += FString::Printf(TEXT("[TIMELINE CONTEXT]: %s\n\n"), *TimelineContext);
 	}
 
-	// Add world state from NarrativeDirector
-	if (NarrativeDirector)
+	// Add structured world snapshot (replaces old GetWorldStateDescription)
+	if (NarrativeHistory)
 	{
-		UserPrompt += FString::Printf(TEXT("[WORLD STATE (recent events)]:\n%s\n\n"),
-			*NarrativeDirector->GetWorldStateDescription(10));
+		UserPrompt += NarrativeHistory->GetStructuredWorldSnapshot(10);
+		UserPrompt += TEXT("\n");
 	}
 
 	// Add tension values
@@ -492,16 +857,31 @@ void UWorldDirectorSubsystem::RequestLLMSceneGeneration(EDramaticAction Action, 
 		LatestTension.TimelinePressure, LatestTension.Monotony,
 		LatestTension.OverallTension);
 
-	// Add available factions
+	// Add available factions with relationships
 	if (FactionSub)
 	{
-		FString Factions;
-		for (const auto& Pair : FactionSub->RuntimeFactionMatrix)
+		UserPrompt += TEXT("[FACTION RELATIONSHIPS]:\n");
+		for (const auto& OuterPair : FactionSub->RuntimeFactionMatrix)
 		{
-			if (!Factions.IsEmpty()) Factions += TEXT(", ");
-			Factions += Pair.Key.ToString();
+			for (const auto& InnerPair : OuterPair.Value)
+			{
+				if (OuterPair.Key != InnerPair.Key)
+				{
+					FString Attitude = InnerPair.Value < 30.0f ? TEXT("Hostile") :
+						InnerPair.Value > 70.0f ? TEXT("Friendly") : TEXT("Neutral");
+					UserPrompt += FString::Printf(TEXT("- %s -> %s: %.0f (%s)\n"),
+						*OuterPair.Key.ToString(), *InnerPair.Key.ToString(), InnerPair.Value, *Attitude);
+				}
+			}
 		}
-		UserPrompt += FString::Printf(TEXT("[AVAILABLE FACTIONS]: %s\n"), *Factions);
+		UserPrompt += TEXT("\n");
+	}
+
+	// Add active world events context
+	FString EventsDesc = GetActiveEventsDescription();
+	if (!EventsDesc.IsEmpty())
+	{
+		UserPrompt += FString::Printf(TEXT("[ACTIVE WORLD EVENTS]:\n%s\n"), *EventsDesc);
 	}
 
 	DIRECTOR_LOG(Log, TEXT("=== LLM Scene Request ===\nAction: %s\n%s"), *ActionName, *UserPrompt);
@@ -541,8 +921,30 @@ void UWorldDirectorSubsystem::OnLLMSceneResponse(bool bSuccess, const FString& R
 		return;
 	}
 
+	// Validate before assembly
+	if (!ValidateSceneBlueprint(Blueprint, Action))
+	{
+		DIRECTOR_LOG(Warning, TEXT("Scene blueprint failed validation. Aborting beat."));
+		return;
+	}
+
 	// Assemble scene
 	AssembleAndSubmitScene(Blueprint, Action);
+
+	// Record plot thread for deduplication
+	if (NarrativeHistory)
+	{
+		FString ActionStr;
+		switch (Action)
+		{
+		case EDramaticAction::ESCALATE: ActionStr = TEXT("ESCALATE"); break;
+		case EDramaticAction::DISRUPT:  ActionStr = TEXT("DISRUPT"); break;
+		case EDramaticAction::CONVERGE: ActionStr = TEXT("CONVERGE"); break;
+		case EDramaticAction::REVEAL:   ActionStr = TEXT("REVEAL"); break;
+		case EDramaticAction::RELIEVE:  ActionStr = TEXT("RELIEVE"); break;
+		}
+		NarrativeHistory->RecordPlotThread(Blueprint.PlotOutline, ActionStr);
+	}
 
 	// Deliver companion hints
 	DeliverCompanionHints(Blueprint);
@@ -701,14 +1103,14 @@ void UWorldDirectorSubsystem::AssembleAndSubmitScene(const FLLMSceneBlueprint& B
 	ActiveDirectorScenes++;
 
 	// 8. Record event to history
-	if (NarrativeDirector)
+	if (NarrativeHistory)
 	{
 		FGameplayTagContainer Tags;
 		Tags.AddTag(AINPCTags::WorldDirector_Event);
 		Tags.AddTag(GetTagForAction(Action));
 
 		FString EventDesc = FString::Printf(TEXT("[WorldDirector Beat] %s"), *Blueprint.PlotOutline);
-		NarrativeDirector->RecordEvent(EventDesc, Tags);
+		NarrativeHistory->RecordEvent(EventDesc, Tags);
 	}
 
 	// 9. Broadcast delegate
@@ -863,3 +1265,147 @@ FGameplayTag UWorldDirectorSubsystem::GetTagForAction(EDramaticAction Action) co
 	default:                        return AINPCTags::WorldDirector_Event;
 	}
 }
+
+// ============================================================================
+// World Major Events
+// ============================================================================
+
+void UWorldDirectorSubsystem::CheckMajorEvents()
+{
+	if (!MajorEventsTable || !TimeMgr) return;
+
+	int32 Day = TimeMgr->GetCurrentDay();
+	float Hour = TimeMgr->GetCurrentHour();
+
+	TArray<FName> RowNames = MajorEventsTable->GetRowNames();
+	for (const FName& RowName : RowNames)
+	{
+		FWorldMajorEventRow* Row = MajorEventsTable->FindRow<FWorldMajorEventRow>(RowName, TEXT("WorldDirector_MajorEvents"));
+		if (!Row || Row->bHasStarted) continue;
+
+		bool bShouldTrigger = false;
+		if (Row->TriggerDay < Day)
+		{
+			bShouldTrigger = true;
+		}
+		else if (Row->TriggerDay == Day && Hour >= Row->TriggerHour)
+		{
+			bShouldTrigger = true;
+		}
+
+		if (!bShouldTrigger) continue;
+
+		Row->bHasStarted = true;
+
+		// Build FActiveWorldEvent with pre-computed end time
+		FActiveWorldEvent Active;
+		Active.RowName = RowName;
+		Active.EventType = Row->EventType;
+		Active.EventName = Row->EventName;
+		Active.EventDescription = Row->EventDescription;
+		Active.StartDay = Day;
+		Active.StartHour = Hour;
+		Active.TensionBoost = Row->TensionBoost;
+		Active.EventTag = GetTagForEventType(Row->EventType);
+
+		// Pre-compute end time
+		float TotalEndHours = Hour + Row->DurationDays * 24.0f;
+		Active.EndDay = Day + FMath::FloorToInt32(TotalEndHours / 24.0f);
+		Active.EndHour = FMath::Fmod(TotalEndHours, 24.0f);
+
+		ActiveMajorEvents.Add(Active);
+
+		// Record to history
+		if (NarrativeHistory)
+		{
+			FGameplayTagContainer Tags;
+			Tags.AddTag(AINPCTags::WorldDirector_Event);
+			Tags.AddTag(Active.EventTag);
+			NarrativeHistory->RecordEvent(
+				FString::Printf(TEXT("[WorldDirector] Major Event Started: %s - %s"), *Active.EventName, *Active.EventDescription), Tags);
+		}
+
+		// Broadcast delegate
+		OnWorldMajorEventStarted.Broadcast(Active.EventType, Active);
+
+		// Broadcast dramatic beat with the forced action
+		OnDramaticBeat.Broadcast(Row->ForcedStartAction, Active.EventName);
+
+		DIRECTOR_LOG(Warning, TEXT("Major Event STARTED: '%s' (Type=%d, Day %d Hour %.1f, Duration %.1f days, EndDay %d EndHour %.1f)"),
+			*Active.EventName, (int32)Active.EventType, Day, Hour, Row->DurationDays, Active.EndDay, Active.EndHour);
+	}
+}
+
+void UWorldDirectorSubsystem::TickActiveEvents()
+{
+	if (!TimeMgr || ActiveMajorEvents.Num() == 0) return;
+
+	int32 Day = TimeMgr->GetCurrentDay();
+	float Hour = TimeMgr->GetCurrentHour();
+
+	// Reverse iterate for safe removal
+	for (int32 i = ActiveMajorEvents.Num() - 1; i >= 0; --i)
+	{
+		const FActiveWorldEvent& Active = ActiveMajorEvents[i];
+
+		bool bExpired = false;
+		if (Day > Active.EndDay)
+		{
+			bExpired = true;
+		}
+		else if (Day == Active.EndDay && Hour >= Active.EndHour)
+		{
+			bExpired = true;
+		}
+
+		if (!bExpired) continue;
+
+		// Record to history
+		if (NarrativeHistory)
+		{
+			FGameplayTagContainer Tags;
+			Tags.AddTag(AINPCTags::WorldDirector_Event);
+			Tags.AddTag(Active.EventTag);
+			NarrativeHistory->RecordEvent(
+				FString::Printf(TEXT("[WorldDirector] Major Event Ended: %s"), *Active.EventName), Tags);
+		}
+
+		// Broadcast ended delegate
+		OnWorldMajorEventEnded.Broadcast(Active.EventType, Active);
+
+		DIRECTOR_LOG(Warning, TEXT("Major Event ENDED: '%s' (Day %d Hour %.1f)"),
+			*Active.EventName, Day, Hour);
+
+		ActiveMajorEvents.RemoveAt(i);
+	}
+}
+
+FString UWorldDirectorSubsystem::GetActiveEventsDescription() const
+{
+	if (ActiveMajorEvents.Num() == 0) return FString();
+
+	FString Result;
+	for (const FActiveWorldEvent& Active : ActiveMajorEvents)
+	{
+		Result += FString::Printf(TEXT("- [Day %d-Day %d] %s: %s\n"),
+			Active.StartDay, Active.EndDay, *Active.EventName, *Active.EventDescription);
+	}
+	return Result;
+}
+
+FGameplayTag UWorldDirectorSubsystem::GetTagForEventType(EWorldMajorEventType EventType) const
+{
+	switch (EventType)
+	{
+	case EWorldMajorEventType::BeastTide:       return AINPCTags::WorldEvent_BeastTide;
+	case EWorldMajorEventType::DemonInvasion:   return AINPCTags::WorldEvent_DemonInvasion;
+	case EWorldMajorEventType::FactionWar:      return AINPCTags::WorldEvent_FactionWar;
+	case EWorldMajorEventType::NaturalDisaster: return AINPCTags::WorldEvent_NaturalDisaster;
+	case EWorldMajorEventType::Festival:        return AINPCTags::WorldEvent_Festival;
+	case EWorldMajorEventType::Plague:          return AINPCTags::WorldEvent_Plague;
+	case EWorldMajorEventType::Custom:          return AINPCTags::WorldEvent_Custom;
+	default:                                    return AINPCTags::WorldEvent_Custom;
+	}
+}
+
+

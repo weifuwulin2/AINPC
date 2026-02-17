@@ -1,6 +1,6 @@
 #include "Subsystems/NarrativeSquadSubsystem.h"
 #include "AINPC.h"
-#include "Subsystems/NarrativeDirectorSubsystem.h"
+#include "Subsystems/NarrativeHistorySubsystem.h"
 #include "Components/CognitionComponent.h"
 #include "Engine/EngineTypes.h"
 #include "Engine/OverlapResult.h" // Required for FOverlapResult
@@ -23,18 +23,18 @@ void UNarrativeSquadSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
 
-	// Ensure NarrativeDirectorSubsystem is initialized before us
-	Collection.InitializeDependency<UNarrativeDirectorSubsystem>();
+	// Ensure NarrativeHistorySubsystem is initialized before us
+	Collection.InitializeDependency<UNarrativeHistorySubsystem>();
 
 	// Bind to Director
-	if (UNarrativeDirectorSubsystem* Director = GetWorld()->GetSubsystem<UNarrativeDirectorSubsystem>())
+	if (UNarrativeHistorySubsystem* Director = GetWorld()->GetSubsystem<UNarrativeHistorySubsystem>())
 	{
 		Director->OnEventRecorded.AddDynamic(this, &UNarrativeSquadSubsystem::OnNarrativeEventRecorded);
-		NARRATIVE_LOG(Warning, TEXT("✅ [NarrativeSquadSubsystem] Successfully bound to NarrativeDirectorSubsystem::OnEventRecorded"));
+		NARRATIVE_LOG(Warning, TEXT("✅ [NarrativeSquadSubsystem] Successfully bound to NarrativeHistorySubsystem::OnEventRecorded"));
 	}
 	else
 	{
-		NARRATIVE_LOG(Error, TEXT("❌ [NarrativeSquadSubsystem] Failed to find NarrativeDirectorSubsystem!"));
+		NARRATIVE_LOG(Error, TEXT("❌ [NarrativeSquadSubsystem] Failed to find NarrativeHistorySubsystem!"));
 	}
 }
 
@@ -42,7 +42,7 @@ void UNarrativeSquadSubsystem::Deinitialize()
 {
 	if (UWorld* World = GetWorld()) 
 	{
-		if (UNarrativeDirectorSubsystem* Director = World->GetSubsystem<UNarrativeDirectorSubsystem>())
+		if (UNarrativeHistorySubsystem* Director = World->GetSubsystem<UNarrativeHistorySubsystem>())
 		{
 			Director->OnEventRecorded.RemoveDynamic(this, &UNarrativeSquadSubsystem::OnNarrativeEventRecorded);
 		}

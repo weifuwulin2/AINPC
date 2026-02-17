@@ -6,7 +6,57 @@
 #include "Kismet/GameplayStatics.h"
 #include "AINPC.h"
 #include "NPCDefinitionComponent.h"
+#include "Social/SocialGameplayTags.h"
+#include "Subsystems/NarrativeHistorySubsystem.h"
 #include "Utilities/FactionHelpers.h"
+
+namespace
+{
+	float BondTypeToAttitude(ESocialBondType BondType)
+	{
+		switch (BondType)
+		{
+		case ESocialBondType::BestFriend:   return 95.0f;
+		case ESocialBondType::CloseFriend:  return 85.0f;
+		case ESocialBondType::Friend:       return 70.0f;
+		case ESocialBondType::Acquaintance: return 55.0f;
+		case ESocialBondType::Lover:        return 92.0f;
+		case ESocialBondType::Family:       return 90.0f;
+		case ESocialBondType::Rival:        return 35.0f;
+		case ESocialBondType::Enemy:        return 15.0f;
+		case ESocialBondType::Nemesis:      return 5.0f;
+		default:                            return 50.0f;
+		}
+	}
+
+	ESocialBondType AttitudeToBondType(float Attitude)
+	{
+		if (Attitude >= 95.0f) return ESocialBondType::BestFriend;
+		if (Attitude >= 85.0f) return ESocialBondType::CloseFriend;
+		if (Attitude >= 70.0f) return ESocialBondType::Friend;
+		if (Attitude >= 55.0f) return ESocialBondType::Acquaintance;
+		if (Attitude >= 35.0f) return ESocialBondType::Rival;
+		if (Attitude >= 15.0f) return ESocialBondType::Enemy;
+		return ESocialBondType::Nemesis;
+	}
+
+	const TCHAR* BondTypeToText(ESocialBondType BondType)
+	{
+		switch (BondType)
+		{
+		case ESocialBondType::Acquaintance: return TEXT("Acquaintance");
+		case ESocialBondType::Friend:       return TEXT("Friend");
+		case ESocialBondType::CloseFriend:  return TEXT("Close Friend");
+		case ESocialBondType::BestFriend:   return TEXT("Best Friend");
+		case ESocialBondType::Lover:        return TEXT("Lover");
+		case ESocialBondType::Family:       return TEXT("Family");
+		case ESocialBondType::Rival:        return TEXT("Rival");
+		case ESocialBondType::Enemy:        return TEXT("Enemy");
+		case ESocialBondType::Nemesis:      return TEXT("Nemesis");
+		default:                            return TEXT("None");
+		}
+	}
+}
 
 UFactionReputationComponent::UFactionReputationComponent()
 {
@@ -147,6 +197,16 @@ float UFactionReputationComponent::GetAttitudeTowards(AActor* Target) const
 		return *PersonalVal;
 	}
 
+	// 1b. Semantic social bond fallback
+	const FName StableTargetID = GetStableSocialID(Target);
+	if (!StableTargetID.IsNone())
+	{
+		if (const FSocialBond* Bond = SocialBonds.Find(StableTargetID))
+		{
+			return BondTypeToAttitude(Bond->Type);
+		}
+	}
+
 	// 2. Global Faction Baseline
 	UWorld* World = GetWorld();
 	if (World)
@@ -159,6 +219,96 @@ float UFactionReputationComponent::GetAttitudeTowards(AActor* Target) const
 	}
 
 	return 50.0f; // Default Neutral
+}
+
+FName UFactionReputationComponent::GetStableSocialID(AActor* Target) const
+{
+	if (!Target)
+	{
+		return NAME_None;
+	}
+
+	auto ResolveFromActor = [](AActor* Actor) -> FName
+	{
+		if (!Actor)
+		{
+			return NAME_None;
+		}
+
+		if (const UNPCDefinitionComponent* DefComp = Actor->FindComponentByClass<UNPCDefinitionComponent>())
+		{
+			const FName NameID = DefComp->GetNameID();
+			if (!NameID.IsNone() && NameID != "None")
+			{
+				return NameID;
+			}
+		}
+
+		return NAME_None;
+	};
+
+	FName StableID = ResolveFromActor(Target);
+	if (!StableID.IsNone())
+	{
+		return StableID;
+	}
+
+	if (AAIController* AsController = Cast<AAIController>(Target))
+	{
+		StableID = ResolveFromActor(AsController->GetPawn());
+		if (!StableID.IsNone())
+		{
+			return StableID;
+		}
+	}
+
+	if (APawn* AsPawn = Cast<APawn>(Target))
+	{
+		StableID = ResolveFromActor(AsPawn->GetController());
+		if (!StableID.IsNone())
+		{
+			return StableID;
+		}
+	}
+
+	return Target->GetFName();
+}
+
+FString UFactionReputationComponent::GetRelationshipSummaryTowards(AActor* Target) const
+{
+	if (!Target)
+	{
+		return TEXT("No target.");
+	}
+
+	const FName StableID = GetStableSocialID(Target);
+	if (!StableID.IsNone())
+	{
+		if (const FSocialBond* Bond = SocialBonds.Find(StableID))
+		{
+			if (!Bond->RelationshipSummary.IsEmpty())
+			{
+				return Bond->RelationshipSummary;
+			}
+
+			return UEnum::GetValueAsString(Bond->Type);
+		}
+	}
+
+	float Attitude = 50.0f;
+	if (const float* PersonalVal = PersonalReputations.Find(Target))
+	{
+		Attitude = *PersonalVal;
+	}
+	else if (UWorld* World = GetWorld())
+	{
+		if (UFactionSubsystem* Subsystem = World->GetSubsystem<UFactionSubsystem>())
+		{
+			Attitude = Subsystem->GetBaseAttitude(FactionID, GetFactionID(Target));
+		}
+	}
+
+	return FString::Printf(TEXT("%s (%s)"), *FactionHelpers::GetAttitudeDescription(Attitude), *Target->GetName());
 }
 
 float UFactionReputationComponent::GetReputationWith(FName TargetFactionID) const
@@ -188,10 +338,105 @@ void UFactionReputationComponent::ModifyReputation(AActor* Target, float Delta)
 {
 	if (!Target) return;
 
-	float Current = GetAttitudeTowards(Target);
+	const FName TargetID = GetStableSocialID(Target);
+	const FName FinalTargetID = TargetID.IsNone() ? Target->GetFName() : TargetID;
+
+	// Persistent relationship attitude should NOT be affected by temporary combat policy overrides.
+	float Current = 50.0f;
+	if (const float* PersonalVal = PersonalReputations.Find(Target))
+	{
+		Current = *PersonalVal;
+	}
+	else if (!TargetID.IsNone())
+	{
+		if (const FSocialBond* ExistingBond = SocialBonds.Find(TargetID))
+		{
+			Current = BondTypeToAttitude(ExistingBond->Type);
+		}
+		else if (UWorld* World = GetWorld())
+		{
+			if (UFactionSubsystem* Subsystem = World->GetSubsystem<UFactionSubsystem>())
+			{
+				Current = Subsystem->GetBaseAttitude(FactionID, GetFactionID(Target));
+			}
+		}
+	}
+	else if (UWorld* World = GetWorld())
+	{
+		if (UFactionSubsystem* Subsystem = World->GetSubsystem<UFactionSubsystem>())
+		{
+			Current = Subsystem->GetBaseAttitude(FactionID, GetFactionID(Target));
+		}
+	}
+
 	float NewVal = FMath::Clamp(Current + Delta, 0.0f, 100.0f);
+	if (FMath::IsNearlyEqual(Current, NewVal))
+	{
+		return;
+	}
+
+	const ESocialBondType OldBondType = AttitudeToBondType(Current);
+	const ESocialBondType NewBondType = AttitudeToBondType(NewVal);
+	const bool bCrossedBondThreshold = (OldBondType != NewBondType);
 	
 	PersonalReputations.Add(Target, NewVal);
+
+	FName SourceID = GetStableSocialID(GetOwner());
+	if (SourceID.IsNone() && GetOwner())
+	{
+		SourceID = GetOwner()->GetFName();
+	}
+
+	if (!TargetID.IsNone())
+	{
+		FSocialBond& Bond = SocialBonds.FindOrAdd(TargetID);
+		Bond.Type = NewBondType;
+		Bond.BondSalience = FMath::Clamp(Bond.BondSalience + (bCrossedBondThreshold ? 2 : 1), 0, 10);
+		Bond.LastInteractionTime = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f;
+
+		if (bCrossedBondThreshold)
+		{
+			Bond.RelationshipSummary = FString::Printf(
+				TEXT("After recent interactions, %s shifted from %s to %s in my eyes."),
+				*Target->GetName(),
+				BondTypeToText(OldBondType),
+				BondTypeToText(NewBondType));
+		}
+		else if (Bond.RelationshipSummary.IsEmpty())
+		{
+			Bond.RelationshipSummary = FString::Printf(
+				TEXT("My relationship with %s is %s (%.0f/100)."),
+				*Target->GetName(),
+				*FactionHelpers::GetAttitudeDescription(NewVal),
+				NewVal
+			);
+		}
+	}
+
+	if (UWorld* World = GetWorld())
+	{
+		if (UNarrativeHistorySubsystem* History = World->GetSubsystem<UNarrativeHistorySubsystem>())
+		{
+			History->RecordRelationshipChange(SourceID, FinalTargetID, Current, NewVal);
+
+			// Lightweight reflection: only emit semantic reflection log when bond tier changes.
+			if (bCrossedBondThreshold)
+			{
+				FGameplayTagContainer Tags;
+				Tags.AddTag(AINPCTags::Social_Relationship);
+				History->RecordEvent(
+					FString::Printf(
+						TEXT("[Reflection] %s now sees %s as %s (was %s)."),
+						GetOwner() ? *GetOwner()->GetName() : TEXT("Unknown"),
+						*Target->GetName(),
+						BondTypeToText(NewBondType),
+						BondTypeToText(OldBondType)),
+					Tags);
+			}
+		}
+	}
+
+	OnRelationshipChanged.Broadcast(GetOwner(), Target, SourceID, FinalTargetID, Current, NewVal, bCrossedBondThreshold);
 	
 	AINPC_LOG(Log, "Reputation Modified for %s: %.1f -> %.1f", *Target->GetName(), Current, NewVal);
 }

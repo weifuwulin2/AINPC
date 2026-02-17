@@ -16,6 +16,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **NPC Query System**:
   - Added `NPCQueryHelpers` to centralize NPC search and filtering logic (e.g., "Find nearest ally," "Find specific profession").
 
+### Relationship System (MVP)
+- Added: Introduced `ESocialBondType` and `FSocialBond` in `SocialTypes` (enables qualitative NPC-to-NPC relationship state).
+- Added: Exposed stable social identity getter `UNPCDefinitionComponent::GetNameID()` (supports persistent bond keys).
+- Changed: `UFactionReputationComponent` now supports `SocialBonds`, stable social IDs, and relationship summary query APIs (integrates semantic relationship layer).
+- Changed: `ModifyReputation()` now updates bond state, emits `OnRelationshipChanged`, and records threshold-crossing reflection events (improves observability and narrative tracking).
+- Changed: `CognitionComponent` prompt now injects current focus target relationship summary (improves context-aware dialogue output).
+- Docs: Added social relationship test guide `docs/guides/Social_Relationship_System_Test_Guide.md`.
+
 ### 📖 Documentation
 - **Design Docs**: Added `docs/design/WorldDirector_Companion_Design.md`.
 
