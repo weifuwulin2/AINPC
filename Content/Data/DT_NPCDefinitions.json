@@ -47,5 +47,37 @@
 		"ProfessionID": "Slave",
 		"FactionID": "Orcs",
 		"PawnClass": "/Script/Engine.BlueprintGeneratedClass'/Game/AINPC/NPCBP/BP_NPC_Orc_Base.BP_NPC_Orc_Base_C'"
+	},
+	{
+		"Name": "Village_Human_Lord",
+		"PersonalityID": "Ambitious",
+		"ProfessionID": "Leader",
+		"FactionID": "Humans",
+		"VillageID": "Village.Demo",
+		"PawnClass": "/Script/Engine.BlueprintGeneratedClass'/Game/AINPC/NPCBP/BP_NPC_Human_Base.BP_NPC_Human_Base_C'"
+	},
+	{
+		"Name": "Village_Human_Guard",
+		"PersonalityID": "Brave",
+		"ProfessionID": "Guard",
+		"FactionID": "Humans",
+		"VillageID": "Village.Demo",
+		"PawnClass": "/Script/Engine.BlueprintGeneratedClass'/Game/AINPC/NPCBP/BP_NPC_Human_Base.BP_NPC_Human_Base_C'"
+	},
+	{
+		"Name": "Village_Human_Commoner",
+		"PersonalityID": "Friendly",
+		"ProfessionID": "Citizen",
+		"FactionID": "Humans",
+		"VillageID": "Village.Demo",
+		"PawnClass": "/Script/Engine.BlueprintGeneratedClass'/Game/AINPC/NPCBP/BP_NPC_Human_Base.BP_NPC_Human_Base_C'"
+	},
+	{
+		"Name": "Village_Human_Merchant",
+		"PersonalityID": "Cunning",
+		"ProfessionID": "Merchant",
+		"FactionID": "Humans",
+		"VillageID": "Village.Demo",
+		"PawnClass": "/Script/Engine.BlueprintGeneratedClass'/Game/AINPC/NPCBP/BP_NPC_Human_Base.BP_NPC_Human_Base_C'"
 	}
 ]

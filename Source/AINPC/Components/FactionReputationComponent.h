@@ -64,8 +64,9 @@ public:
 	 * Logic:
 	 * 1. Check PersonalReputations (Override).
 	 * 2. Check SocialBonds (semantic override mapped to attitude).
-	 * 3. If none, check Global Faction Relations (Subsystem).
-	 * 4. Return result.
+	 * 3. Check Relationship Seeds (fixed social bootstrap, lazy initialized).
+	 * 4. If none, check Global Faction Relations (Subsystem).
+	 * 5. Return result.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Faction")
 	float GetAttitudeTowards(AActor* Target) const;
@@ -94,6 +95,12 @@ public:
 	FString GetRelationshipSummaryTowards(AActor* Target) const;
 
 	/**
+	 * Ensure an initial social bond exists toward target.
+	 * Priority: explicit seed -> fallback from suggested attitude/summary.
+	 */
+	void EnsureInitialRelationshipWith(AActor* Target, float SuggestedAttitude, const FString& SuggestedSummary);
+
+	/**
 	 * Helper to find FactionID of any actor (tries Component -> Tag -> Default)
 	 * @deprecated Use FactionHelpers::GetFactionID() instead
 	 */
@@ -107,4 +114,8 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Faction")
 	bool EvaluateCombatPolicy(const AActor* Source, const AActor* Target) const;
+
+private:
+	/** Try resolve fixed initial relationship seed between owner and target. */
+	bool TryResolveSeedRelationship(AActor* Target, float& OutAttitude, FSocialBond& OutBond) const;
 };

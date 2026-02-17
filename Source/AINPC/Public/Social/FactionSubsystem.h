@@ -4,7 +4,26 @@
 #include "CoreMinimal.h"
 #include "Subsystems/WorldSubsystem.h"
 #include "Social/FactionTypes.h"
+#include "Social/SocialTypes.h"
 #include "FactionSubsystem.generated.h"
+
+USTRUCT()
+struct AINPC_API FRelationshipSeedRuntime
+{
+	GENERATED_BODY()
+
+	UPROPERTY()
+	float Attitude = 50.0f;
+
+	UPROPERTY()
+	ESocialBondType BondType = ESocialBondType::None;
+
+	UPROPERTY()
+	FString Summary;
+
+	UPROPERTY()
+	int32 Salience = 1;
+};
 
 /**
  * Manages Global Faction Relationships (Macro Layer).
@@ -23,6 +42,10 @@ public:
 	/** Load initial relationships from the Faction DataTable */
 	UFUNCTION(BlueprintCallable, Category = "Faction System")
 	void InitializeFactions(UDataTable* FactionTable);
+
+	/** Load fixed NPC-to-NPC relationship seeds from DataTable (FRelationshipSeedRow). */
+	UFUNCTION(BlueprintCallable, Category = "Faction System")
+	void InitializeRelationshipSeeds(UDataTable* SeedTable);
 
 	// --- Runtime API ---
 
@@ -46,9 +69,30 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Faction System")
 	bool AreFactionsHostile(FName SourceFaction, FName TargetFaction) const;
 
+	/**
+	 * Query fixed initial relationship seed by stable IDs.
+	 * Returns true if a seeded relationship exists.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Faction System")
+	bool TryGetSeedRelationship(
+		FName SourceNameID,
+		FName TargetNameID,
+		float& OutAttitude,
+		ESocialBondType& OutBondType,
+		FString& OutSummary,
+		int32& OutSalience) const;
+
 	// --- Debug ---
 	UFUNCTION(BlueprintCallable, Category = "Faction System")
 	void DebugPrintRelations() const;
+
+	/** Optional Relationship Seed table reference (FRelationshipSeedRow). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Faction System")
+	UDataTable* RelationshipSeedTable = nullptr;
+
+	/** Default same-faction attitude when no explicit self-entry exists in table. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Faction System")
+	float DefaultIntraFactionAttitude = 60.0f;
 
 	/** 
 		 * Runtime Matrix: [SourceFaction] -> [TargetFaction] -> Attitude
@@ -60,4 +104,7 @@ private:
 
 	/** Cached pointers for thresholds */
 	TMap<FName, float> HostilityThresholds;
+
+	/** Runtime fixed relationship matrix keyed by SourceNameID -> TargetNameID. */
+	TMap<FName, TMap<FName, FRelationshipSeedRuntime>> RelationshipSeedMatrix;
 };

@@ -26,6 +26,10 @@ struct FNPCDefinitionRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "NPC Profile")
 	FName FactionID;
 
+	// Optional village/group identity for social bootstrap
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "NPC Profile")
+	FName VillageID;
+
 	// The Actor Class to spawn for this template (e.g. BP_Orc_Warrior)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "NPC Profile")
 	TSubclassOf<APawn> PawnClass;
@@ -59,6 +63,13 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "NPC Profile | Template")
 	UDataTable* DefinitionTable;
 
+	/**
+	 * If true, BeginPlay will not auto-call LoadFromTemplate().
+	 * Useful for deferred runtime spawners that manually assign template fields first.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "NPC Profile | Template")
+	bool bSkipTemplateLoadOnBeginPlay = false;
+
 	// --- Configuration IDs (Auto-populated from Template or set manually) ---
 
 	/** Personality ID (e.g., "Zombie", "Merchant"). Maps to DT_Personalities. */
@@ -72,6 +83,10 @@ public:
 	/** Faction ID. Maps to DT_Factions. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "NPC Profile")
 	FName FactionID;
+
+	/** Optional village/group identity. Used by NPCVillageSubsystem social bootstrap. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "NPC Profile")
+	FName VillageID;
 
 	/** Data Table for Factions. Should be set to DT_Factions. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "NPC Profile")
@@ -110,6 +125,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "NPC Profile | Modular")
 	FName GetNameID() const { return NameID; }
+
+	UFUNCTION(BlueprintCallable, Category = "NPC Profile | Modular")
+	void SetNameIDOverride(FName InNameID);
     
 	UFUNCTION(BlueprintCallable, Category = "NPC Profile | Modular")
 	bool GetPastEventDef(FPastEventDef& OutDef) const;

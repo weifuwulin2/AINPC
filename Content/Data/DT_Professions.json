@@ -6,46 +6,56 @@
 		"Schedule": [
 			{
 				"StartTime": 6,
-				"TaskTag": {
+				"TaskTag":
+				{
 					"TagName": "Directive.Work"
 				},
-				"ActivityTag": {
+				"ActivityTag":
+				{
 					"TagName": "Interaction.Work.Farm"
 				}
 			},
 			{
 				"StartTime": 12,
-				"TaskTag": {
+				"TaskTag":
+				{
 					"TagName": "Directive.Survival"
 				},
-				"ActivityTag": {
+				"ActivityTag":
+				{
 					"TagName": "Interaction.Eat"
 				}
 			},
 			{
 				"StartTime": 13,
-				"TaskTag": {
+				"TaskTag":
+				{
 					"TagName": "Directive.Work"
 				},
-				"ActivityTag": {
+				"ActivityTag":
+				{
 					"TagName": "Interaction.Work.Farm"
 				}
 			},
 			{
 				"StartTime": 18,
-				"TaskTag": {
+				"TaskTag":
+				{
 					"TagName": "Directive.Social"
 				},
-				"ActivityTag": {
+				"ActivityTag":
+				{
 					"TagName": "Interaction.Social"
 				}
 			},
 			{
 				"StartTime": 21,
-				"TaskTag": {
+				"TaskTag":
+				{
 					"TagName": "Directive.Rest"
 				},
-				"ActivityTag": {
+				"ActivityTag":
+				{
 					"TagName": "Interaction.Rest"
 				}
 			}
@@ -58,37 +68,45 @@
 		"Schedule": [
 			{
 				"StartTime": 8,
-				"TaskTag": {
+				"TaskTag":
+				{
 					"TagName": "Directive.Work"
 				},
-				"ActivityTag": {
+				"ActivityTag":
+				{
 					"TagName": "Interaction.Work.Mine"
 				}
 			},
 			{
 				"StartTime": 12,
-				"TaskTag": {
+				"TaskTag":
+				{
 					"TagName": "Directive.Survival"
 				},
-				"ActivityTag": {
+				"ActivityTag":
+				{
 					"TagName": "Interaction.Eat"
 				}
 			},
 			{
 				"StartTime": 13,
-				"TaskTag": {
+				"TaskTag":
+				{
 					"TagName": "Directive.Work"
 				},
-				"ActivityTag": {
+				"ActivityTag":
+				{
 					"TagName": "Interaction.Work.Mine"
 				}
 			},
 			{
 				"StartTime": 19,
-				"TaskTag": {
+				"TaskTag":
+				{
 					"TagName": "Directive.Rest"
 				},
-				"ActivityTag": {
+				"ActivityTag":
+				{
 					"TagName": "Interaction.Rest"
 				}
 			}
@@ -101,19 +119,23 @@
 		"Schedule": [
 			{
 				"StartTime": 7,
-				"TaskTag": {
+				"TaskTag":
+				{
 					"TagName": "Directive.Work"
 				},
-				"ActivityTag": {
+				"ActivityTag":
+				{
 					"TagName": "Interaction.Work.Guard"
 				}
 			},
 			{
 				"StartTime": 19,
-				"TaskTag": {
+				"TaskTag":
+				{
 					"TagName": "Directive.Rest"
 				},
-				"ActivityTag": {
+				"ActivityTag":
+				{
 					"TagName": "Interaction.Rest"
 				}
 			}
@@ -126,28 +148,34 @@
 		"Schedule": [
 			{
 				"StartTime": 0,
-				"TaskTag": {
+				"TaskTag":
+				{
 					"TagName": "Directive.Work"
 				},
-				"ActivityTag": {
+				"ActivityTag":
+				{
 					"TagName": "Interaction.Work.Guard"
 				}
 			},
 			{
 				"StartTime": 7,
-				"TaskTag": {
+				"TaskTag":
+				{
 					"TagName": "Directive.Rest"
 				},
-				"ActivityTag": {
+				"ActivityTag":
+				{
 					"TagName": "Interaction.Rest"
 				}
 			},
 			{
 				"StartTime": 20,
-				"TaskTag": {
+				"TaskTag":
+				{
 					"TagName": "Directive.Work"
 				},
-				"ActivityTag": {
+				"ActivityTag":
+				{
 					"TagName": "Interaction.Work.Guard"
 				}
 			}
@@ -160,46 +188,56 @@
 		"Schedule": [
 			{
 				"StartTime": 8,
-				"TaskTag": {
+				"TaskTag":
+				{
 					"TagName": "Directive.Work"
 				},
-				"ActivityTag": {
+				"ActivityTag":
+				{
 					"TagName": "Interaction.Work.Trade"
 				}
 			},
 			{
 				"StartTime": 12,
-				"TaskTag": {
+				"TaskTag":
+				{
 					"TagName": "Directive.Survival"
 				},
-				"ActivityTag": {
+				"ActivityTag":
+				{
 					"TagName": "Interaction.Eat"
 				}
 			},
 			{
 				"StartTime": 13,
-				"TaskTag": {
+				"TaskTag":
+				{
 					"TagName": "Directive.Work"
 				},
-				"ActivityTag": {
+				"ActivityTag":
+				{
 					"TagName": "Interaction.Work.Trade"
 				}
 			},
 			{
 				"StartTime": 18,
-				"TaskTag": {
+				"TaskTag":
+				{
 					"TagName": "Directive.Social"
 				},
-				"ActivityTag": {
+				"ActivityTag":
+				{
 					"TagName": "Interaction.Social"
 				}
 			},
 			{
 				"StartTime": 22,
-				"TaskTag": {
+				"TaskTag":
+				{
 					"TagName": "Directive.Rest"
 				},
-				"ActivityTag": {
+				"ActivityTag":
+				{
 					"TagName": "Interaction.Rest"
 				}
 			}
@@ -212,37 +250,45 @@
 		"Schedule": [
 			{
 				"StartTime": 10,
-				"TaskTag": {
+				"TaskTag":
+				{
 					"TagName": "Directive.Work"
 				},
-				"ActivityTag": {
+				"ActivityTag":
+				{
 					"TagName": "Interaction.Work.Study"
 				}
 			},
 			{
 				"StartTime": 14,
-				"TaskTag": {
+				"TaskTag":
+				{
 					"TagName": "Directive.Idle"
 				},
-				"ActivityTag": {
+				"ActivityTag":
+				{
 					"TagName": "Interaction.Investigate"
 				}
 			},
 			{
 				"StartTime": 20,
-				"TaskTag": {
+				"TaskTag":
+				{
 					"TagName": "Directive.Work"
 				},
-				"ActivityTag": {
+				"ActivityTag":
+				{
 					"TagName": "Interaction.Work.Study"
 				}
 			},
 			{
 				"StartTime": 2,
-				"TaskTag": {
+				"TaskTag":
+				{
 					"TagName": "Directive.Rest"
 				},
-				"ActivityTag": {
+				"ActivityTag":
+				{
 					"TagName": "Interaction.Rest"
 				}
 			}
@@ -255,37 +301,45 @@
 		"Schedule": [
 			{
 				"StartTime": 5,
-				"TaskTag": {
+				"TaskTag":
+				{
 					"TagName": "Directive.Work"
 				},
-				"ActivityTag": {
+				"ActivityTag":
+				{
 					"TagName": "Interaction.Work.Pray"
 				}
 			},
 			{
 				"StartTime": 9,
-				"TaskTag": {
+				"TaskTag":
+				{
 					"TagName": "Directive.Social"
 				},
-				"ActivityTag": {
+				"ActivityTag":
+				{
 					"TagName": "Interaction.Social"
 				}
 			},
 			{
 				"StartTime": 18,
-				"TaskTag": {
+				"TaskTag":
+				{
 					"TagName": "Directive.Work"
 				},
-				"ActivityTag": {
+				"ActivityTag":
+				{
 					"TagName": "Interaction.Work.Pray"
 				}
 			},
 			{
 				"StartTime": 22,
-				"TaskTag": {
+				"TaskTag":
+				{
 					"TagName": "Directive.Rest"
 				},
-				"ActivityTag": {
+				"ActivityTag":
+				{
 					"TagName": "Interaction.Rest"
 				}
 			}
@@ -298,28 +352,34 @@
 		"Schedule": [
 			{
 				"StartTime": 0,
-				"TaskTag": {
+				"TaskTag":
+				{
 					"TagName": "Directive.Work"
 				},
-				"ActivityTag": {
+				"ActivityTag":
+				{
 					"TagName": "Interaction.Work.Scavenge"
 				}
 			},
 			{
 				"StartTime": 6,
-				"TaskTag": {
+				"TaskTag":
+				{
 					"TagName": "Directive.Rest"
 				},
-				"ActivityTag": {
+				"ActivityTag":
+				{
 					"TagName": "Interaction.Rest"
 				}
 			},
 			{
 				"StartTime": 18,
-				"TaskTag": {
+				"TaskTag":
+				{
 					"TagName": "Directive.Work"
 				},
-				"ActivityTag": {
+				"ActivityTag":
+				{
 					"TagName": "Interaction.Work.Scavenge"
 				}
 			}
@@ -332,55 +392,67 @@
 		"Schedule": [
 			{
 				"StartTime": 7,
-				"TaskTag": {
+				"TaskTag":
+				{
 					"TagName": "Directive.Survival"
 				},
-				"ActivityTag": {
+				"ActivityTag":
+				{
 					"TagName": "Interaction.Eat"
 				}
 			},
 			{
 				"StartTime": 8,
-				"TaskTag": {
+				"TaskTag":
+				{
 					"TagName": "Directive.Social"
 				},
-				"ActivityTag": {
+				"ActivityTag":
+				{
 					"TagName": "Interaction.Social"
 				}
 			},
 			{
 				"StartTime": 12,
-				"TaskTag": {
+				"TaskTag":
+				{
 					"TagName": "Directive.Survival"
 				},
-				"ActivityTag": {
+				"ActivityTag":
+				{
 					"TagName": "Interaction.Eat"
 				}
 			},
 			{
 				"StartTime": 13,
-				"TaskTag": {
+				"TaskTag":
+				{
 					"TagName": "Directive.Idle"
 				},
-				"ActivityTag": {
+				"ActivityTag":
+				{
 					"TagName": "Interaction.Investigate"
 				}
 			},
 			{
 				"StartTime": 18,
-				"TaskTag": {
+				"TaskTag":
+				{
 					"TagName": "Directive.Rest"
 				},
-				"ActivityTag": {
+				"ActivityTag":
+				{
 					"TagName": "Interaction.Rest"
 				}
 			},
 			{
 				"StartTime": 22,
-				"TaskTag": {
+				"TaskTag":
+				{
 					"TagName": "Directive.Rest"
 				},
-				"ActivityTag": {
+				"ActivityTag":
+				{
 					"TagName": "Interaction.Rest"
 				}
 			}
@@ -393,19 +465,23 @@
 		"Schedule": [
 			{
 				"StartTime": 8,
-				"TaskTag": {
+				"TaskTag":
+				{
 					"TagName": "Directive.Work"
 				},
-				"ActivityTag": {
+				"ActivityTag":
+				{
 					"TagName": "Interaction.Work.Command"
 				}
 			},
 			{
 				"StartTime": 18,
-				"TaskTag": {
+				"TaskTag":
+				{
 					"TagName": "Directive.Rest"
 				},
-				"ActivityTag": {
+				"ActivityTag":
+				{
 					"TagName": "Interaction.Rest"
 				}
 			}
@@ -418,19 +494,23 @@
 		"Schedule": [
 			{
 				"StartTime": 6,
-				"TaskTag": {
+				"TaskTag":
+				{
 					"TagName": "Directive.Work"
 				},
-				"ActivityTag": {
+				"ActivityTag":
+				{
 					"TagName": "Interaction.Work.Guard"
 				}
 			},
 			{
 				"StartTime": 18,
-				"TaskTag": {
+				"TaskTag":
+				{
 					"TagName": "Directive.Rest"
 				},
-				"ActivityTag": {
+				"ActivityTag":
+				{
 					"TagName": "Interaction.Rest"
 				}
 			}
@@ -443,19 +523,23 @@
 		"Schedule": [
 			{
 				"StartTime": 5,
-				"TaskTag": {
+				"TaskTag":
+				{
 					"TagName": "Directive.Work"
 				},
-				"ActivityTag": {
+				"ActivityTag":
+				{
 					"TagName": "Interaction.Work.Mine"
 				}
 			},
 			{
 				"StartTime": 22,
-				"TaskTag": {
+				"TaskTag":
+				{
 					"TagName": "Directive.Rest"
 				},
-				"ActivityTag": {
+				"ActivityTag":
+				{
 					"TagName": "Interaction.Rest"
 				}
 			}

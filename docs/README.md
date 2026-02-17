@@ -24,6 +24,7 @@ Welcome to the AINPC Knowledge Base. This index serves as the central hub for al
 *   [**Neural Utility Architecture**](design/Neural_Utility_Architecture.md) - **(North Star)** "System 1" (Vector) & "System 2" (LLM) hybrid architecture design.
 *   [**Token Optimization Changelog**](design/Token_Optimization_Changelog.md) - Detailed breakdown of LLM token savings and dual-mode API refactor.
 *   [**World Director & Companion System**](design/WorldDirector_Companion_Design.md) - **(New)** Design for high-level world state management and companion control.
+*   [**Social Relationship Seed MVP**](design/Social_Relationship_Seed_MVP_Design.md) - Lightweight fixed-seed social bootstrap for NPC-to-NPC relations.
 
 ### 🛠️ Configuration Guides
 *   [**Single Point Config**](guides/Single_Point_Configuration_Guide.md) - How to add new mental states using the `MentalStateFields.h` macro system.
@@ -37,6 +38,8 @@ Welcome to the AINPC Knowledge Base. This index serves as the central hub for al
 *   [**Faction Not Loading**](troubleshooting/Faction_Not_Loading_Fix.md) - Troubleshooting Faction initialization issues.
 *   [**Dreaming System Test**](guides/Dreaming_Test_Guide.md) - Validating the memory consolidation system.
 *   [**Social Relationship Test Guide**](guides/Social_Relationship_System_Test_Guide.md) - Test scenarios for NPC-to-NPC relationship and reflection behavior.
+*   [**Village Social Init Test Guide**](guides/Village_Social_Initialization_Test_Guide.md) - Validation checklist for village NPC registry and initial relationship bootstrap.
+*   [**Village Scenario Spawner Test Guide**](guides/Village_Scenario_Spawner_Test_Guide.md) - End-to-end validation for scenario templates, spawn pipeline, seed relationships, and profession diagnostics.
 *   [**Commit Log**](../GIT_COMMIT_MESSAGES.md) - History of git commit messages.
 *   [**Changelog**](../CHANGELOG.md) - Version history.
 

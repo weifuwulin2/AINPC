@@ -2,8 +2,13 @@
 
 This guide validates the NPC-to-NPC relationship MVP introduced in:
 - `SocialTypes` (`ESocialBondType`, `FSocialBond`)
+- `SocialTypes` (`FRelationshipSeedRow`)
 - `FactionReputationComponent` (social bond map + threshold reflection + delegate)
+- `FactionSubsystem` (seed matrix + seeded lookup)
 - `CognitionComponent` (relationship context prompt injection)
+
+For village-level registration/bootstrap validation, see:
+- `docs/guides/Village_Social_Initialization_Test_Guide.md`
 
 ## Scope
 
@@ -42,6 +47,9 @@ Out of scope:
 | T9 | Cognition prompt relationship injection | 1. Ensure A controller focus points to B.<br>2. Trigger `ProcessStimulus` on A.<br>3. Check logged prompt block. | Prompt contains `Relationship: ...` line derived from `GetRelationshipSummaryTowards(B)`. |
 | T10 | Null safety | 1. Call `GetAttitudeTowards(nullptr)`, `GetRelationshipSummaryTowards(nullptr)`, `ModifyReputation(nullptr, +10)`. | No crash; returns safe defaults / no-op behavior. |
 | T11 | Rapid updates stress | 1. Run loop `ModifyReputation(B, +1)` 10 times quickly.<br>2. Monitor logs and event count. | System remains stable; no crash; reflection events only appear on tier boundaries, not every call. |
+| T12 | Fixed seed is applied on first query | 1. Add seed row A->B in relationship seed table.<br>2. Ensure no personal relation exists.<br>3. Call `GetAttitudeTowards(B)` from A. | Returned attitude equals seed value; bond can be observed in `SocialBonds` after first query. |
+| T13 | Bidirectional seed behavior | 1. Add one row with `bBidirectional=true` for A->B.<br>2. Query A->B and B->A. | Both directions resolve to seeded values. |
+| T14 | Same-faction default fallback | 1. Ensure same-faction pair has no explicit seed and no personal relation.<br>2. Query attitude. | Value matches `DefaultIntraFactionAttitude` (default `60`) or explicit self-entry if authored. |
 
 ## Suggested Debug Checks
 
@@ -56,8 +64,7 @@ Out of scope:
 
 ## Pass Criteria
 
-- All test cases T1-T11 pass.
+- All test cases T1-T14 pass.
 - No runtime crash or invalid pointer access.
 - Reflection event frequency matches threshold crossing rules.
 - Prompt relationship line appears when focus target exists.
-

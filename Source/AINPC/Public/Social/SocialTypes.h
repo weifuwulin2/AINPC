@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Engine/DataTable.h"
 #include "GameplayTagContainer.h"
 #include "Events/EventTypes.h"
 #include "SocialTypes.generated.h"
@@ -62,6 +63,44 @@ struct AINPC_API FSocialBond
     /** Last interaction/reflection time in world seconds. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Social Bond")
     float LastInteractionTime = 0.0f;
+};
+
+/**
+ * Fixed relationship seed row for initial NPC-to-NPC social state.
+ * Used by UFactionSubsystem as a lightweight village/social bootstrap layer.
+ */
+USTRUCT(BlueprintType)
+struct AINPC_API FRelationshipSeedRow : public FTableRowBase
+{
+	GENERATED_BODY()
+
+	/** Stable source identity (prefer NPCDefinition NameID). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Relationship Seed")
+	FName SourceNameID;
+
+	/** Stable target identity (prefer NPCDefinition NameID). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Relationship Seed")
+	FName TargetNameID;
+
+	/** Initial numeric attitude (0-100). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Relationship Seed", meta = (ClampMin = "0.0", ClampMax = "100.0"))
+	float InitialAttitude = 50.0f;
+
+	/** Initial semantic bond type. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Relationship Seed")
+	ESocialBondType InitialBondType = ESocialBondType::None;
+
+	/** Initial narrative summary injected to prompts when available. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Relationship Seed")
+	FString InitialSummary;
+
+	/** Initial salience (0-10). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Relationship Seed", meta = (ClampMin = "0", ClampMax = "10"))
+	int32 InitialSalience = 1;
+
+	/** If true, auto-generate reverse direction with the same values. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Relationship Seed")
+	bool bBidirectional = true;
 };
 
 // ============================================================================

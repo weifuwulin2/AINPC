@@ -207,6 +207,22 @@ float UFactionReputationComponent::GetAttitudeTowards(AActor* Target) const
 		}
 	}
 
+	// 1c. Fixed relationship seed (lazy cache to SocialBonds)
+	float SeedAttitude = 50.0f;
+	FSocialBond SeedBond;
+	if (TryResolveSeedRelationship(Target, SeedAttitude, SeedBond))
+	{
+		if (!StableTargetID.IsNone())
+		{
+			UFactionReputationComponent* MutableThis = const_cast<UFactionReputationComponent*>(this);
+			if (MutableThis && !MutableThis->SocialBonds.Contains(StableTargetID))
+			{
+				MutableThis->SocialBonds.Add(StableTargetID, SeedBond);
+			}
+		}
+		return SeedAttitude;
+	}
+
 	// 2. Global Faction Baseline
 	UWorld* World = GetWorld();
 	if (World)
@@ -274,6 +290,95 @@ FName UFactionReputationComponent::GetStableSocialID(AActor* Target) const
 	return Target->GetFName();
 }
 
+bool UFactionReputationComponent::TryResolveSeedRelationship(AActor* Target, float& OutAttitude, FSocialBond& OutBond) const
+{
+	OutAttitude = 50.0f;
+	OutBond = FSocialBond();
+
+	if (!Target)
+	{
+		return false;
+	}
+
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return false;
+	}
+
+	UFactionSubsystem* FactionSubsystem = World->GetSubsystem<UFactionSubsystem>();
+	if (!FactionSubsystem)
+	{
+		return false;
+	}
+
+	FName SourceID = GetStableSocialID(GetOwner());
+	FName TargetID = GetStableSocialID(Target);
+	if (SourceID.IsNone() || TargetID.IsNone())
+	{
+		return false;
+	}
+
+	ESocialBondType SeedBondType = ESocialBondType::None;
+	FString SeedSummary;
+	int32 SeedSalience = 1;
+	float SeedAttitude = 50.0f;
+
+	if (!FactionSubsystem->TryGetSeedRelationship(
+		SourceID,
+		TargetID,
+		SeedAttitude,
+		SeedBondType,
+		SeedSummary,
+		SeedSalience))
+	{
+		return false;
+	}
+
+	OutAttitude = FMath::Clamp(SeedAttitude, 0.0f, 100.0f);
+	OutBond.Type = SeedBondType;
+	OutBond.BondSalience = FMath::Clamp(SeedSalience, 0, 10);
+	OutBond.RelationshipSummary = SeedSummary;
+	OutBond.LastInteractionTime = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f;
+	return true;
+}
+
+void UFactionReputationComponent::EnsureInitialRelationshipWith(AActor* Target, float SuggestedAttitude, const FString& SuggestedSummary)
+{
+	if (!Target || Target == GetOwner())
+	{
+		return;
+	}
+
+	const FName StableTargetID = GetStableSocialID(Target);
+	if (StableTargetID.IsNone() || SocialBonds.Contains(StableTargetID))
+	{
+		return;
+	}
+
+	float SeedAttitude = 50.0f;
+	FSocialBond SeedBond;
+	if (TryResolveSeedRelationship(Target, SeedAttitude, SeedBond))
+	{
+		SocialBonds.Add(StableTargetID, SeedBond);
+		return;
+	}
+
+	const float ClampedAttitude = FMath::Clamp(SuggestedAttitude, 0.0f, 100.0f);
+	FSocialBond InitialBond;
+	InitialBond.Type = AttitudeToBondType(ClampedAttitude);
+	InitialBond.BondSalience = 1;
+	InitialBond.RelationshipSummary = SuggestedSummary.IsEmpty()
+		? FString::Printf(TEXT("My initial impression of %s is %s (%.0f/100)."),
+			*Target->GetName(),
+			*FactionHelpers::GetAttitudeDescription(ClampedAttitude),
+			ClampedAttitude)
+		: SuggestedSummary;
+	InitialBond.LastInteractionTime = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f;
+
+	SocialBonds.Add(StableTargetID, InitialBond);
+}
+
 FString UFactionReputationComponent::GetRelationshipSummaryTowards(AActor* Target) const
 {
 	if (!Target)
@@ -293,6 +398,17 @@ FString UFactionReputationComponent::GetRelationshipSummaryTowards(AActor* Targe
 
 			return UEnum::GetValueAsString(Bond->Type);
 		}
+	}
+
+	float SeedAttitude = 50.0f;
+	FSocialBond SeedBond;
+	if (TryResolveSeedRelationship(Target, SeedAttitude, SeedBond))
+	{
+		if (!SeedBond.RelationshipSummary.IsEmpty())
+		{
+			return SeedBond.RelationshipSummary;
+		}
+		return UEnum::GetValueAsString(SeedBond.Type);
 	}
 
 	float Attitude = 50.0f;
@@ -353,19 +469,37 @@ void UFactionReputationComponent::ModifyReputation(AActor* Target, float Delta)
 		{
 			Current = BondTypeToAttitude(ExistingBond->Type);
 		}
+		else
+		{
+			float SeedAttitude = 50.0f;
+			FSocialBond SeedBond;
+			if (TryResolveSeedRelationship(Target, SeedAttitude, SeedBond))
+			{
+				Current = SeedAttitude;
+			}
+			else if (UWorld* World = GetWorld())
+			{
+				if (UFactionSubsystem* Subsystem = World->GetSubsystem<UFactionSubsystem>())
+				{
+					Current = Subsystem->GetBaseAttitude(FactionID, GetFactionID(Target));
+				}
+			}
+		}
+	}
+	else
+	{
+		float SeedAttitude = 50.0f;
+		FSocialBond SeedBond;
+		if (TryResolveSeedRelationship(Target, SeedAttitude, SeedBond))
+		{
+			Current = SeedAttitude;
+		}
 		else if (UWorld* World = GetWorld())
 		{
 			if (UFactionSubsystem* Subsystem = World->GetSubsystem<UFactionSubsystem>())
 			{
 				Current = Subsystem->GetBaseAttitude(FactionID, GetFactionID(Target));
 			}
-		}
-	}
-	else if (UWorld* World = GetWorld())
-	{
-		if (UFactionSubsystem* Subsystem = World->GetSubsystem<UFactionSubsystem>())
-		{
-			Current = Subsystem->GetBaseAttitude(FactionID, GetFactionID(Target));
 		}
 	}
 
@@ -385,6 +519,16 @@ void UFactionReputationComponent::ModifyReputation(AActor* Target, float Delta)
 	if (SourceID.IsNone() && GetOwner())
 	{
 		SourceID = GetOwner()->GetFName();
+	}
+
+	if (!TargetID.IsNone() && !SocialBonds.Contains(TargetID))
+	{
+		float InitSeedAttitude = 50.0f;
+		FSocialBond InitSeedBond;
+		if (TryResolveSeedRelationship(Target, InitSeedAttitude, InitSeedBond))
+		{
+			SocialBonds.Add(TargetID, InitSeedBond);
+		}
 	}
 
 	if (!TargetID.IsNone())

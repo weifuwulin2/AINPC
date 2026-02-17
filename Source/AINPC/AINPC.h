@@ -16,6 +16,8 @@ DECLARE_LOG_CATEGORY_EXTERN(LogAINPCNarrative, Log, All);  // Narrative Timeline
 DECLARE_LOG_CATEGORY_EXTERN(LogAINPCTargetSelection, Log, All);  // Target Selection (Combat, Social, etc.)
 DECLARE_LOG_CATEGORY_EXTERN(LogAINPCLLM, Log, All);             // LLM Communication (Roleplay, Functional, HTTP)
 DECLARE_LOG_CATEGORY_EXTERN(LogAINPCDirector, Log, All);       // WorldDirector (Tension, Beats, Scene Generation)
+DECLARE_LOG_CATEGORY_EXTERN(LogAINPCVillage, Log, All);        // Village systems (territory, registry, bootstrap)
+DECLARE_LOG_CATEGORY_EXTERN(LogAINPCBuilding, Log, All);       // Building systems (binding, placement, lifecycle)
 
 /**
  * Logging macros with automatic class name prefix.
@@ -72,3 +74,35 @@ DECLARE_LOG_CATEGORY_EXTERN(LogAINPCDirector, Log, All);       // WorldDirector 
 /** Director Log: WorldDirector tension evaluation, dramatic beats, scene generation. */
 #define DIRECTOR_LOG(Verbosity, Format, ...) \
     UE_LOG(LogAINPCDirector, Verbosity, TEXT("[%s] " Format), *FString(__FUNCTION__).Left(FString(__FUNCTION__).Find(TEXT("::"))), ##__VA_ARGS__)
+
+/** Village Log: village membership, territory claims, social bootstrap. */
+#define AINPC_VILLAGE_LOG(Verbosity, Format, ...) \
+    UE_LOG(LogAINPCVillage, Verbosity, TEXT("[%s] " Format), *FString(__FUNCTION__).Left(FString(__FUNCTION__).Find(TEXT("::"))), ##__VA_ARGS__)
+
+/** Village Log Verbose helper. */
+#define AINPC_VILLAGE_LOG_VERBOSE(Format, ...) \
+    UE_LOG(LogAINPCVillage, Verbose, TEXT("[%s] " Format), *FString(__FUNCTION__).Left(FString(__FUNCTION__).Find(TEXT("::"))), ##__VA_ARGS__)
+
+/** Village Log Warning helper. */
+#define AINPC_VILLAGE_LOG_WARNING(Format, ...) \
+    UE_LOG(LogAINPCVillage, Warning, TEXT("[%s] " Format), *FString(__FUNCTION__).Left(FString(__FUNCTION__).Find(TEXT("::"))), ##__VA_ARGS__)
+
+/** Village Log Error helper. */
+#define AINPC_VILLAGE_LOG_ERROR(Format, ...) \
+    UE_LOG(LogAINPCVillage, Error, TEXT("[%s] " Format), *FString(__FUNCTION__).Left(FString(__FUNCTION__).Find(TEXT("::"))), ##__VA_ARGS__)
+
+/** Building Log: building to village binding and lifecycle notifications. */
+#define AINPC_BUILDING_LOG(Verbosity, Format, ...) \
+    UE_LOG(LogAINPCBuilding, Verbosity, TEXT("[%s] " Format), *FString(__FUNCTION__).Left(FString(__FUNCTION__).Find(TEXT("::"))), ##__VA_ARGS__)
+
+/** Building Log Verbose helper. */
+#define AINPC_BUILDING_LOG_VERBOSE(Format, ...) \
+    UE_LOG(LogAINPCBuilding, Verbose, TEXT("[%s] " Format), *FString(__FUNCTION__).Left(FString(__FUNCTION__).Find(TEXT("::"))), ##__VA_ARGS__)
+
+/** Building Log Warning helper. */
+#define AINPC_BUILDING_LOG_WARNING(Format, ...) \
+    UE_LOG(LogAINPCBuilding, Warning, TEXT("[%s] " Format), *FString(__FUNCTION__).Left(FString(__FUNCTION__).Find(TEXT("::"))), ##__VA_ARGS__)
+
+/** Building Log Error helper. */
+#define AINPC_BUILDING_LOG_ERROR(Format, ...) \
+    UE_LOG(LogAINPCBuilding, Error, TEXT("[%s] " Format), *FString(__FUNCTION__).Left(FString(__FUNCTION__).Find(TEXT("::"))), ##__VA_ARGS__)

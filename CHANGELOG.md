@@ -22,7 +22,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Changed: `UFactionReputationComponent` now supports `SocialBonds`, stable social IDs, and relationship summary query APIs (integrates semantic relationship layer).
 - Changed: `ModifyReputation()` now updates bond state, emits `OnRelationshipChanged`, and records threshold-crossing reflection events (improves observability and narrative tracking).
 - Changed: `CognitionComponent` prompt now injects current focus target relationship summary (improves context-aware dialogue output).
+- Added: Introduced fixed relationship seed row `FRelationshipSeedRow` and `UFactionSubsystem` runtime seed matrix lookup.
+- Changed: `GetAttitudeTowards()` now supports lazy seed resolution and seed-to-bond cache for first-contact relationships.
+- Changed: Same-faction fallback attitude is now configurable (`DefaultIntraFactionAttitude`, default `60`) instead of hardcoded `100` when no explicit self-entry exists.
+- Added: `UNPCVillageSubsystem` for village-level NPC registry and same-village initial relationship bootstrap.
+- Changed: `UNPCDefinitionComponent` now supports `VillageID` (template + runtime) and auto-registers into village subsystem after modular identity randomization.
+- Changed: Initial village relationship bootstrap now applies `seed > deterministic fallback` policy (faction baseline + tier bias + deterministic noise).
+- Changed: `VillageID` empty now skips village social bootstrap by default (`bUseDefaultVillageIDWhenMissing=false`) to preserve anchor/script-first scene behavior.
+- Changed: Village social tier mapping now uses explicit existing `ProfessionID` lists (from `DT_Professions` row names), removing keyword-based pseudo profession parsing.
+- Added: Dynamic village territory claim APIs (`ClaimTerritory`, `ClaimTerritoryFromActor`, `RevokeTerritoryBySource`) for building-driven village expansion.
+- Added: Location-based village resolution/refresh APIs (`ResolveVillageByLocation`, `RefreshNPCVillageByLocation`, `RefreshAllNPCVillageAssignments`) to support moving NPCs and dynamic borders.
+- Added: `FVillageScenarioRow` data model (`DT_VillageScenarios`) for required/optional role spawning, fixed names, and key relationship seeds.
+- Added: `AVillageSpawner` runtime pipeline to spawn village residents from scenario templates and apply key seed relationships after village fallback bootstrap.
+- Added: Profession startup diagnostics in `AVillageSpawner` to print `ProfessionID`, current goal directive/activity, utility action count, and current action.
+- Docs: Added `docs/guides/Village_Scenario_Spawner_Test_Guide.md`.
 - Docs: Added social relationship test guide `docs/guides/Social_Relationship_System_Test_Guide.md`.
+- Docs: Added design doc `docs/design/Social_Relationship_Seed_MVP_Design.md`.
+- Docs: Added village initialization test guide `docs/guides/Village_Social_Initialization_Test_Guide.md`.
 
 ### 📖 Documentation
 - **Design Docs**: Added `docs/design/WorldDirector_Companion_Design.md`.

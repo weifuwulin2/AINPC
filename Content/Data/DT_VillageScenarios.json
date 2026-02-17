@@ -1,0 +1,80 @@
+[
+	{
+		"Name": "Village_Demo_Scenario",
+		"VillageID": "Village.Demo",
+		"SpawnRadius": 2200.0,
+		"MinSpawnDistance": 180.0,
+		"RequiredRoles": [
+			{
+				"SlotID": "Lord",
+				"DefinitionTemplateID": "Village_Human_Lord",
+				"Count": 1,
+				"FixedNameIDs": []
+			},
+			{
+				"SlotID": "Guard",
+				"DefinitionTemplateID": "Village_Human_Guard",
+				"Count": 2,
+				"FixedNameIDs": []
+			},
+			{
+				"SlotID": "Commoner",
+				"DefinitionTemplateID": "Village_Human_Commoner",
+				"Count": 4,
+				"FixedNameIDs": []
+			}
+		],
+		"OptionalRoles": [
+			{
+				"SlotID": "Merchant",
+				"CandidateTemplateIDs": [
+					"Village_Human_Merchant",
+					"Village_Human_Commoner"
+				],
+				"MinCount": 0,
+				"MaxCount": 1,
+				"SpawnChance": 0.75,
+				"FixedNameIDs": []
+			}
+		],
+		"RelationshipSeeds": [
+			{
+				"SourceSlotID": "Lord",
+				"TargetSlotID": "Guard",
+				"InitialAttitude": 78.0,
+				"InitialBondType": "Friend",
+				"InitialSummary": "The lord trusts the village guards to keep order.",
+				"InitialSalience": 6,
+				"bBidirectional": false
+			},
+			{
+				"SourceSlotID": "Lord",
+				"TargetSlotID": "Merchant",
+				"InitialAttitude": 42.0,
+				"InitialBondType": "Rival",
+				"InitialSummary": "The lord keeps a wary eye on the merchant's influence.",
+				"InitialSalience": 5,
+				"bBidirectional": true
+			},
+			{
+				"SourceSlotID": "Guard",
+				"TargetSlotID": "Commoner",
+				"InitialAttitude": 60.0,
+				"InitialBondType": "Acquaintance",
+				"InitialSummary": "Guards and commoners know each other through daily patrols.",
+				"InitialSalience": 3,
+				"bBidirectional": true
+			},
+			{
+				"SourceSlotID": "Commoner_01",
+				"TargetSlotID": "Commoner_02",
+				"InitialAttitude": 90.0,
+				"InitialBondType": "Family",
+				"InitialSummary": "These two commoners are close family.",
+				"InitialSalience": 8,
+				"bBidirectional": true
+			}
+		]
+	}
+]
+

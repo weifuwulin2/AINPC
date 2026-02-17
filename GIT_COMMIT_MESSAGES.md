@@ -4,6 +4,16 @@ This file contains a log of commit messages for the AINPC project.
 
 ---
 
+## [2026-02-17] Add Village Scenario Spawner Pipeline and Test Guide
+**Type**: feat/docs
+**Scope**: VillageSpawner, VillageScenarioTypes, NPCDefinitionComponent, Documentation
+**Description**:
+- Added `FVillageScenarioRow` + role/seed structs for `DT_VillageScenarios` authoring (required roles, optional roles, fixed names, key relationship seeds).
+- Added `AVillageSpawner` for Play-time batch spawn from scenario templates, including village assignment, key seed application, and fallback village relationship rebuild.
+- Added startup profession sanity diagnostics (`ProfessionID`, goal directive/activity, utility action count, current action) for spawned NPCs.
+- Added `bSkipTemplateLoadOnBeginPlay` and `SetNameIDOverride` to `UNPCDefinitionComponent` for deferred spawner-safe initialization.
+- Added `docs/guides/Village_Scenario_Spawner_Test_Guide.md` and linked it in `docs/README.md`.
+
 ## [2026-02-12] Fix Eat Action Premature Interruption (Self-Score Undermining)
 **Type**: fix
 **Scope**: Action_SmartObject
@@ -942,3 +952,43 @@ This file contains a log of commit messages for the AINPC project.
 - Updated ModifyReputation to persist semantic bond transitions, emit reflection events on threshold crossing, and record history.
 - Injected current focus-target relationship summary into CognitionComponent prompt context.
 - Per maintenance protocol, added test guide docs/guides/Social_Relationship_System_Test_Guide.md and updated docs index/changelog.
+
+## [2026-02-17] Implement Relationship Seed MVP (Lazy Initialization)
+**Type**: feat/docs
+**Scope**: FactionSubsystem, FactionReputationComponent, SocialTypes
+**Description**:
+- Added `FRelationshipSeedRow` DataTable schema for fixed NPC-to-NPC bootstrap relationships.
+- Extended `UFactionSubsystem` with runtime relationship seed matrix and `TryGetSeedRelationship()` query API.
+- Updated `UFactionReputationComponent::GetAttitudeTowards()` to resolve seed relationships before faction baseline and lazily cache them into `SocialBonds`.
+- Updated `ModifyReputation()` to use seed-derived initial attitude when available and preserve seeded summaries on first update.
+- Replaced hardcoded same-faction `100` fallback with configurable `DefaultIntraFactionAttitude` (default `60`) when no explicit self-entry exists.
+- Added design doc `docs/design/Social_Relationship_Seed_MVP_Design.md` and updated docs index/test guide.
+
+## [2026-02-17] Add Village NPC Registry & Initial Social Bootstrap
+**Type**: feat/docs
+**Scope**: NPCVillageSubsystem, NPCDefinitionComponent, FactionReputationComponent
+**Description**:
+- Added `UNPCVillageSubsystem` to maintain village-level NPC membership and bootstrap initial same-village social bonds.
+- Added `VillageID` to `FNPCDefinitionRow` and `UNPCDefinitionComponent`, and auto-registration to village subsystem after modular identity initialization.
+- Added `UFactionReputationComponent::EnsureInitialRelationshipWith` so initial bootstrap can prefer fixed seeds and fall back to deterministic generated attitudes.
+- Implemented deterministic village fallback attitude model (faction baseline + profession tier bias + stable-hash noise).
+- Added test document `docs/guides/Village_Social_Initialization_Test_Guide.md` and linked it in docs index.
+
+## [2026-02-17] Refine Village Bootstrap Policy (Empty VillageID + Profession Mapping)
+**Type**: fix/docs
+**Scope**: NPCVillageSubsystem, NPCDefinitionComponent
+**Description**:
+- Changed policy so empty `VillageID` skips village registration/bootstrap by default, preventing non-village NPCs from getting village social edges.
+- Added optional compatibility switch `bUseDefaultVillageIDWhenMissing` to enable fallback to `DefaultVillageID` when desired.
+- Replaced keyword-based social tier inference with explicit `LeaderProfessionIDs` / `NobleProfessionIDs` (existing `DT_Professions` row names).
+- Updated village test guide and design doc to cover empty `VillageID` behavior and optional fallback mode.
+
+## [2026-02-17] Add Dynamic Village Territory Claims (Building-Driven)
+**Type**: feat/docs
+**Scope**: NPCVillageSubsystem
+**Description**:
+- Added territory claim model (`FVillageTerritoryClaim`) with VillageID, center/radius, priority, and optional source actor.
+- Added runtime APIs: `ClaimTerritory`, `ClaimTerritoryFromActor`, `RevokeTerritoryBySource`.
+- Added location-based village resolution and reassignment APIs: `ResolveVillageByLocation`, `RefreshNPCVillageByLocation`, `RefreshAllNPCVillageAssignments`.
+- Added automatic claim cleanup/revoke via source actor destruction callback.
+- Updated design/test docs with dynamic territory scenarios (house built -> territory claimed -> NPC reassigned).

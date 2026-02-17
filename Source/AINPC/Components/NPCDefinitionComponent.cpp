@@ -5,6 +5,7 @@
 #include "Components/GoalComponent.h"
 #include "AIController.h"
 #include "AINPC.h"
+#include "Subsystems/NPCVillageSubsystem.h"
 
 UNPCDefinitionComponent::UNPCDefinitionComponent()
 {
@@ -18,6 +19,7 @@ UNPCDefinitionComponent::UNPCDefinitionComponent()
 	NameID = NAME_None;
 	PastEventID = NAME_None;
 	FactionID = NAME_None;
+	VillageID = NAME_None;
 	DefinitionTemplateID = NAME_None;
 }
 
@@ -43,12 +45,14 @@ void UNPCDefinitionComponent::LoadFromTemplate()
 	PersonalityID = Row->PersonalityID;
 	ProfessionID = Row->ProfessionID;
 	FactionID = Row->FactionID;
+	VillageID = Row->VillageID;
 
-	AINPC_LOG(Log, "Loaded NPC Definition from template '%s': Personality=%s, Profession=%s, Faction=%s",
+	AINPC_LOG(Log, "Loaded NPC Definition from template '%s': Personality=%s, Profession=%s, Faction=%s, Village=%s",
 		*DefinitionTemplateID.ToString(),
 		*PersonalityID.ToString(),
 		*ProfessionID.ToString(),
-		*FactionID.ToString());
+		*FactionID.ToString(),
+		*VillageID.ToString());
 }
 
 void UNPCDefinitionComponent::RandomizeModularIdentity()
@@ -168,14 +172,34 @@ void UNPCDefinitionComponent::BeginPlay()
 {
 	Super::BeginPlay();
 	
-	// Load from template if specified
-	LoadFromTemplate();
+	// Load from template if specified (unless deferred spawner has already injected fields).
+	if (!bSkipTemplateLoadOnBeginPlay)
+	{
+		LoadFromTemplate();
+	}
 	
 	// Auto-randomize Name, Backstory, Past Event if not set
 	RandomizeModularIdentity();
+
+	// Register into village registry after identity is ready.
+	if (UWorld* World = GetWorld())
+	{
+		if (UNPCVillageSubsystem* VillageSubsystem = World->GetSubsystem<UNPCVillageSubsystem>())
+		{
+			VillageSubsystem->RegisterNPC(GetOwner(), VillageID);
+		}
+	}
 	
 	// Optional: Auto-apply if Owner is defined? 
 	// Usually better to let the Owner call this when Controller is ready.
+}
+
+void UNPCDefinitionComponent::SetNameIDOverride(FName InNameID)
+{
+	if (!InNameID.IsNone())
+	{
+		NameID = InNameID;
+	}
 }
 
 void UNPCDefinitionComponent::ApplyDefinition(AAIController* Controller)
