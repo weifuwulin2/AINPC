@@ -453,7 +453,7 @@ void AVillageSpawner::RegisterSpawnedNPC(FName InstanceSlotID, APawn* SpawnedPaw
 	}
 
 	SpawnedNPCs.Add(SpawnedPawn);
-	SpawnedSlotMap.FindOrAdd(InstanceSlotID).Add(SpawnedPawn);
+	SpawnedSlotMap.FindOrAdd(InstanceSlotID).Pawns.Add(SpawnedPawn);
 }
 
 void AVillageSpawner::CollectActorsBySlotKey(FName SlotKey, TArray<APawn*>& OutActors) const
@@ -464,9 +464,9 @@ void AVillageSpawner::CollectActorsBySlotKey(FName SlotKey, TArray<APawn*>& OutA
 		return;
 	}
 
-	if (const TArray<TObjectPtr<APawn>>* ExactActors = SpawnedSlotMap.Find(SlotKey))
+	if (const FSpawnedPawnList* ExactActors = SpawnedSlotMap.Find(SlotKey))
 	{
-		for (const TObjectPtr<APawn> Pawn : *ExactActors)
+		for (const TObjectPtr<APawn> Pawn : ExactActors->Pawns)
 		{
 			if (IsValid(Pawn))
 			{
@@ -476,14 +476,14 @@ void AVillageSpawner::CollectActorsBySlotKey(FName SlotKey, TArray<APawn*>& OutA
 	}
 
 	const FString Prefix = SlotKey.ToString() + TEXT("_");
-	for (const TPair<FName, TArray<TObjectPtr<APawn>>>& Pair : SpawnedSlotMap)
+	for (const TPair<FName, FSpawnedPawnList>& Pair : SpawnedSlotMap)
 	{
 		if (!Pair.Key.ToString().StartsWith(Prefix))
 		{
 			continue;
 		}
 
-		for (const TObjectPtr<APawn> Pawn : Pair.Value)
+		for (const TObjectPtr<APawn> Pawn : Pair.Value.Pawns)
 		{
 			if (IsValid(Pawn))
 			{

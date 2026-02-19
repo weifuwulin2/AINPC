@@ -992,3 +992,11 @@ This file contains a log of commit messages for the AINPC project.
 - Added location-based village resolution and reassignment APIs: `ResolveVillageByLocation`, `RefreshNPCVillageByLocation`, `RefreshAllNPCVillageAssignments`.
 - Added automatic claim cleanup/revoke via source actor destruction callback.
 - Updated design/test docs with dynamic territory scenarios (house built -> territory claimed -> NPC reassigned).
+
+## [2026-02-19] Add Dedicated Combat StateTree Log Category
+**Type**: chore/docs
+**Scope**: CombatStateTreeUtility, Logging
+**Description**:
+- Added new global log category `LogAINPCCombatStateTree` in `AINPC.h/.cpp`.
+- Added helper macro `COMBAT_ST_LOG` for consistent StateTree combat debug output.
+- Migrated `CombatStateTreeUtility.cpp` debug logs from `LogTemp` to `COMBAT_ST_LOG` so logs can be filtered independently in Output Log.

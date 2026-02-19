@@ -6,6 +6,7 @@
 #include "LLM/LLMCommunicator.h"
 #include "Actions/Action_SmartObject.h"
 #include "Actions/Action_Attack.h"
+#include "StateTree.h"
 #include "AINPC.h"
 
 UUtilityAIComponent::UUtilityAIComponent()
@@ -125,10 +126,18 @@ void UUtilityAIComponent::LoadActionsFromTable()
                 SmartObjectAction->bLoopAnimation = Row->bLoopAnimation;
                 // NOTE: ActionDuration is now loaded via InitFromConfig() for all actions
             }
-            // ✅ 如果是 Action_Attack，传递攻击动画
+            // ✅ 如果是 Action_Attack，传递 StateTree 配置
             else if (UAction_Attack* AttackAction = Cast<UAction_Attack>(NewAction))
             {
-                AttackAction->AttackMontage = Row->InteractionMontage;
+                AttackAction->bUseCombatStateTree = Row->bUseCombatStateTree;
+                AttackAction->bStopCombatStateTreeOnExit = Row->bStopCombatStateTreeOnExit;
+                AttackAction->bAllowReplacingRunningStateTree = Row->bAllowReplacingRunningStateTree;
+                AttackAction->CombatStateTreeAsset = Row->CombatStateTreeAsset.LoadSynchronous();
+
+                UE_LOG(LogTemp, Warning, TEXT("[ST-DBG] LoadActionsFromTable: Attack config loaded. bUseCombatStateTree=%s, SoftPtr=%s, LoadedAsset=%s"),
+                    Row->bUseCombatStateTree ? TEXT("TRUE") : TEXT("FALSE"),
+                    *Row->CombatStateTreeAsset.ToString(),
+                    AttackAction->CombatStateTreeAsset ? *AttackAction->CombatStateTreeAsset->GetName() : TEXT("NULL (load failed)"));
             }
 
             AvailableActions.Add(NewAction);

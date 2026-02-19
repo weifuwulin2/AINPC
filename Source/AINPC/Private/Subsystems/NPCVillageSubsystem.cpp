@@ -110,8 +110,8 @@ void UNPCVillageSubsystem::RegisterNPC(AActor* NPC, FName VillageID)
 		return;
 	}
 
-	TArray<AActor*>& Members = VillageMembers.FindOrAdd(FinalVillageID);
-	Members.AddUnique(NPC);
+	FVillageMemberList& Members = VillageMembers.FindOrAdd(FinalVillageID);
+	Members.Members.AddUnique(NPC);
 	ActorVillageMap.Add(NPC, FinalVillageID);
 	NPC->OnDestroyed.RemoveDynamic(this, &UNPCVillageSubsystem::OnVillageNPCDestroyed);
 	NPC->OnDestroyed.AddDynamic(this, &UNPCVillageSubsystem::OnVillageNPCDestroyed);
@@ -138,10 +138,10 @@ void UNPCVillageSubsystem::UnregisterNPC(AActor* NPC)
 		return;
 	}
 
-	if (TArray<AActor*>* Members = VillageMembers.Find(*ExistingVillage))
+	if (FVillageMemberList* Members = VillageMembers.Find(*ExistingVillage))
 	{
-		Members->Remove(NPC);
-		if (Members->Num() == 0)
+		Members->Members.Remove(NPC);
+		if (Members->Members.Num() == 0)
 		{
 			VillageMembers.Remove(*ExistingVillage);
 		}
@@ -185,13 +185,13 @@ void UNPCVillageSubsystem::GetVillageMembers(FName VillageID, TArray<AActor*>& O
 		return;
 	}
 
-	const TArray<AActor*>* Members = VillageMembers.Find(FinalVillageID);
+	const FVillageMemberList* Members = VillageMembers.Find(FinalVillageID);
 	if (!Members)
 	{
 		return;
 	}
 
-	for (AActor* Member : *Members)
+	for (AActor* Member : Members->Members)
 	{
 		if (IsValid(Member))
 		{
@@ -510,25 +510,25 @@ void UNPCVillageSubsystem::CleanupInvalidTerritoryClaims()
 
 void UNPCVillageSubsystem::CleanupInvalidMembers(FName VillageID)
 {
-	TArray<AActor*>* Members = VillageMembers.Find(VillageID);
+	FVillageMemberList* Members = VillageMembers.Find(VillageID);
 	if (!Members)
 	{
 		return;
 	}
 
 	int32 Removed = 0;
-	for (int32 Index = Members->Num() - 1; Index >= 0; --Index)
+	for (int32 Index = Members->Members.Num() - 1; Index >= 0; --Index)
 	{
-		AActor* Member = (*Members)[Index];
+		AActor* Member = Members->Members[Index];
 		if (!IsValid(Member))
 		{
-			Members->RemoveAtSwap(Index);
+			Members->Members.RemoveAtSwap(Index);
 			ActorVillageMap.Remove(Member);
 			++Removed;
 		}
 	}
 
-	if (Members->Num() == 0)
+	if (Members->Members.Num() == 0)
 	{
 		VillageMembers.Remove(VillageID);
 	}
@@ -559,7 +559,7 @@ void UNPCVillageSubsystem::BootstrapRelationshipsFor(AActor* NPC, FName VillageI
 		return;
 	}
 
-	TArray<AActor*>* Members = VillageMembers.Find(VillageID);
+	FVillageMemberList* Members = VillageMembers.Find(VillageID);
 	if (!Members)
 	{
 		AINPC_VILLAGE_LOG_VERBOSE("[NPCVillage] Bootstrap skipped: Village has no members array. Village=%s",
@@ -568,7 +568,7 @@ void UNPCVillageSubsystem::BootstrapRelationshipsFor(AActor* NPC, FName VillageI
 	}
 
 	int32 AppliedPairCount = 0;
-	for (AActor* Other : *Members)
+	for (AActor* Other : Members->Members)
 	{
 		if (!IsValid(Other) || Other == NPC)
 		{

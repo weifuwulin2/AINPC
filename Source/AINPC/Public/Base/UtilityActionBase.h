@@ -15,6 +15,7 @@
 class UPersonalityComponent;
 enum class ETargetSelectionContext : uint8;
 class UUtilityActionBase;
+class UStateTree;
 // 前置声明
 class AAIController;
 class UNPCMentalState;
@@ -227,6 +228,19 @@ struct FUtilityActionConfig : public FTableRowBase
     // 0 = Infinite duration, until Utility AI switches to another action
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
     float ActionDuration = 0.0f;
+
+    // Attack StateTree configuration (for UAction_Attack)
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Combat|StateTree")
+    bool bUseCombatStateTree = false;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Combat|StateTree", meta = (EditCondition = "bUseCombatStateTree", EditConditionHides))
+    TSoftObjectPtr<UStateTree> CombatStateTreeAsset;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Combat|StateTree", meta = (EditCondition = "bUseCombatStateTree", EditConditionHides))
+    bool bStopCombatStateTreeOnExit = true;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Combat|StateTree", meta = (EditCondition = "bUseCombatStateTree", EditConditionHides))
+    bool bAllowReplacingRunningStateTree = false;
 
     // === Emotion Matrix 配置 ===
 

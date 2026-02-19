@@ -8,6 +8,15 @@
 class APawn;
 class UDataTable;
 
+USTRUCT(BlueprintType)
+struct AINPC_API FSpawnedPawnList
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Village Spawner|Runtime")
+	TArray<TObjectPtr<APawn>> Pawns;
+};
+
 /**
  * Data-driven village bootstrap spawner.
  * Spawns residents from DT_VillageScenarios + DT_NPCDefinitions and applies key relationship seeds.
@@ -83,7 +92,7 @@ public:
 	TArray<TObjectPtr<APawn>> SpawnedNPCs;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Village Spawner|Runtime")
-	TMap<FName, TArray<TObjectPtr<APawn>>> SpawnedSlotMap;
+	TMap<FName, FSpawnedPawnList> SpawnedSlotMap;
 
 private:
 	APawn* SpawnNPCFromTemplate(
@@ -103,4 +112,3 @@ private:
 
 	FTimerHandle ProfessionDiagnosticsTimerHandle;
 };
-

@@ -9,6 +9,7 @@
 #include "Components/MetabolismComponent.h"
 #include "Components/GoalComponent.h"
 #include "Components/FactionReputationComponent.h"
+#include "Components/StateTreeAIComponent.h"
 #include "UtilityAI/UNPCMentalState.h" 
 #include "UtilityAI/EmotionEvaluator.h" // Add this 
 #include "Components/NPCDefinitionComponent.h" // Add this
@@ -37,6 +38,13 @@ AUtilityAIController::AUtilityAIController()
     EmotionDisplayComp = CreateDefaultSubobject<UEmotionDisplayComponent>(TEXT("EmotionDisplayComponent"));
     MetabolismComp = CreateDefaultSubobject<UMetabolismComponent>(TEXT("MetabolismComponent"));
     GoalComp = CreateDefaultSubobject<UGoalComponent>(TEXT("GoalComponent"));
+
+    // 战斗 StateTree 组件 (idle until Action_Attack activates it)
+    CombatStateTreeComp = CreateDefaultSubobject<UStateTreeAIComponent>(TEXT("CombatStateTreeComponent"));
+    if (CombatStateTreeComp)
+    {
+        CombatStateTreeComp->SetStartLogicAutomatically(false);
+    }
 
     // =========================================================
     // 2. ✅ 配置 Detour Crowd 避让系统 (SUPERIOR to RVO!)

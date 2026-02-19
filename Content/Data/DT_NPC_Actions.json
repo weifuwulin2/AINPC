@@ -25,6 +25,11 @@
 		"InteractionMontage": "/Script/Engine.AnimMontage'/Game/AINPC/Animations/Montages/Sleep.Sleep'",
 		"bLoopAnimation": false,
 		"ActionDuration": 1,
+		"bUseCombatStateTree": false,
+		"CombatStateTreeAsset": "None",
+		"bAutoCreateStateTreeComponentIfMissing": true,
+		"bStopCombatStateTreeOnExit": true,
+		"bAllowReplacingRunningStateTree": false,
 		"ActivityTag": {
 			"TagName": "Interaction.Combat"
 		},

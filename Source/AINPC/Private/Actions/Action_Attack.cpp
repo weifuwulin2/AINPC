@@ -1,38 +1,33 @@
-
 #include "Actions/Action_Attack.h"
 #include "AIController.h"
+#include "Components/StateTreeAIComponent.h"
 #include "GameFramework/Character.h"
-#include "Kismet/GameplayStatics.h"
-#include "Navigation/PathFollowingComponent.h"
 #include "Social/SocialGameplayTags.h"
-#include "UtilityAI/UNPCMentalState.h"
+#include "StateTree.h"
 #include "AINPC.h"
 
-#include "Subsystems/TargetSelectionSubsystem.h" // ✅ Added include
+#include "Subsystems/TargetSelectionSubsystem.h"
 
 UAction_Attack::UAction_Attack()
 {
 	ActionName = "Attack";
-	bIsAttacking = false;
-	bHasDealtDamage = false;
 	OwningController = nullptr;
-	
+	ActiveStateTreeComponent.Reset();
+	bCombatStateTreeActivated = false;
+
 	// Default Target Config (Can be overwritten by DataTable)
 	bNeedsTarget = true;
 	TargetContext = ETargetSelectionContext::Combat;
-	
-	// ✅ Override Threshold for Combat Actions
+
+	// Override threshold for combat actions
 	// Ensure Neutrals (50) are safe from attack. Threshold must be < 50.
 	TargetConfigOverride.FriendlyReputationThreshold = 45.0f;
-	
-	// ✅ Increase default range to prevent collision blocking
-	AttackRange = 250.0f;
 }
 
 void UAction_Attack::Enter_Implementation(AAIController* Controller)
 {
 	Super::Enter_Implementation(Controller);
-	
+
 	if (!Controller)
 	{
 		AINPC_LOG_ERROR("Action_Attack: Controller is null!");
@@ -40,40 +35,38 @@ void UAction_Attack::Enter_Implementation(AAIController* Controller)
 	}
 
 	OwningController = Controller;
-	bIsAttacking = false;
-	bHasDealtDamage = false;
-	
-	AINPC_LOG(Warning, "🎯 Action_Attack::Enter called - bNeedsTarget: %s, Controller: %s", 
-		bNeedsTarget ? TEXT("TRUE") : TEXT("FALSE"), 
+
+	AINPC_LOG(Warning, "Action_Attack::Enter called - bNeedsTarget: %s, Controller: %s",
+		bNeedsTarget ? TEXT("TRUE") : TEXT("FALSE"),
 		Controller ? *Controller->GetName() : TEXT("NULL"));
-	
-	// ✅ Target Selection via Subsystem (Single Source of Truth)
+
+	// Target Selection via Subsystem (single source of truth)
 	// -----------------------------------------------------
 	AActor* SelectedTarget = nullptr;
-	
+
 	if (bNeedsTarget)
 	{
 		if (UTargetSelectionSubsystem* TargetSystem = GetWorld()->GetSubsystem<UTargetSelectionSubsystem>())
 		{
 			// Merge Action config with Override
 			FTargetSelectionConfig Config = TargetConfigOverride;
-			
+
 			// Select best target (Cached, Rule-Based, or LLM)
 			SelectedTarget = TargetSystem->SelectTarget(Controller, TargetContext, Config);
-			
-			// ✅ Bind to invalidation event
+
+			// Bind to invalidation event
 			// Explicitly remove first to ensure no stale bindings (Fix Bug #2)
 			TargetSystem->OnTargetInvalidated.RemoveDynamic(this, &UAction_Attack::OnTargetInvalidated);
 			TargetSystem->OnTargetInvalidated.AddDynamic(this, &UAction_Attack::OnTargetInvalidated);
 
 			if (SelectedTarget)
 			{
-				AINPC_LOG(Log, "Action_Attack: ✅ Selected target '%s' via Subsystem (Context: %d)", 
+				AINPC_LOG(Log, "Action_Attack: Selected target '%s' via Subsystem (Context: %d)",
 					*SelectedTarget->GetName(), (int32)TargetContext);
 			}
 			else
 			{
-				AINPC_LOG_WARNING("Action_Attack: ❌ Target Selection failed! No valid target found");
+				AINPC_LOG_WARNING("Action_Attack: Target selection failed, no valid target found");
 			}
 		}
 		else
@@ -81,7 +74,7 @@ void UAction_Attack::Enter_Implementation(AAIController* Controller)
 			AINPC_LOG_ERROR("Action_Attack: TargetSelectionSubsystem not found!");
 		}
 	}
-	
+
 	// Fallback to legacy behavior if Subsystem failed
 	if (!SelectedTarget)
 	{
@@ -95,17 +88,18 @@ void UAction_Attack::Enter_Implementation(AAIController* Controller)
 			AINPC_LOG_WARNING("Action_Attack: Fallback FocusActor is also null!");
 		}
 	}
-	
+
 	if (!SelectedTarget)
 	{
-		AINPC_LOG_WARNING("Action_Attack: ⚠️ No target available - Action will be inactive!");
+		AINPC_LOG_WARNING("Action_Attack: No target available - action will be inactive");
 		return;
 	}
-	
-	// ✅ SET FOCUS - This is now the ONLY source of truth for target
+
+	// Set focus as the single source of truth for target
 	Controller->SetFocus(SelectedTarget);
 
-	AINPC_LOG(Log, "⚔️ ATTACK ACTION ENTERED - Target: %s", *SelectedTarget->GetName());
+	AINPC_LOG(Log, "ATTACK ACTION ENTERED - Target: %s", *SelectedTarget->GetName());
+	StartCombatStateTree(Controller);
 }
 
 void UAction_Attack::Execute_Implementation(AAIController* Controller)
@@ -117,17 +111,15 @@ void UAction_Attack::Execute_Implementation(AAIController* Controller)
 		AINPC_LOG_WARNING("Action_Attack: Invalid Controller during Execute");
 		return;
 	}
-	
+
 	OwningController = Controller;
-	
-	// ✅ Get target from Focus (single source of truth)
+
+	// Get target from focus (single source of truth)
 	AActor* Target = Controller->GetFocusActor();
-	
-	// ... (Target Recovery Logic Omitted for Brevity) ...
-	
+
+	// Target recovery: if focus lost, try to reacquire via subsystem
 	if (!Target)
 	{
-		// ... (Recovery Logic) ...
 		if (UTargetSelectionSubsystem* TargetSystem = GetWorld()->GetSubsystem<UTargetSelectionSubsystem>())
 		{
 			FTargetSelectionConfig Config = TargetConfigOverride;
@@ -139,7 +131,6 @@ void UAction_Attack::Execute_Implementation(AAIController* Controller)
 		{
 			AINPC_LOG_WARNING("Action_Attack: No FocusActor and Recovery Failed - clearing action state");
 			Controller->ClearFocus(EAIFocusPriority::Gameplay);
-			bIsAttacking = false;
 			return;
 		}
 	}
@@ -153,80 +144,17 @@ void UAction_Attack::Execute_Implementation(AAIController* Controller)
 		return;
 	}
 
-	// Check distance to target
-	APawn* Pawn = Controller->GetPawn();
-	if (!Pawn)
-	{
-		AINPC_LOG_WARNING("Action_Attack: No pawn for controller");
-		return;
-	}
-
-	float DistSq = FVector::DistSquared(Pawn->GetActorLocation(), Target->GetActorLocation());
-	float RangeSq = AttackRange * AttackRange;
-	
-	// Debug Distance Log
-	// AINPC_LOG(Log, "Action_Attack: Execute Tick. Dist: %.1f / Range: %.1f. bIsAttacking: %d", FMath::Sqrt(DistSq), AttackRange, bIsAttacking);
-
-	// Safety timeout: force-reset bIsAttacking if stuck (e.g., anim callback never fired)
-	if (bIsAttacking && AttackStartTime > 0.0f)
-	{
-		float TimeSinceAttack = GetWorld()->GetTimeSeconds() - AttackStartTime;
-		if (TimeSinceAttack > 5.0f)
-		{
-			AINPC_LOG_WARNING("Action_Attack: bIsAttacking stuck for %.1fs - force resetting", TimeSinceAttack);
-			bIsAttacking = false;
-		}
-	}
-
-	if (DistSq <= RangeSq)
-	{
-		// In range - perform attack
-		PerformAttack(Controller);
-	}
-	else
-	{
-		// Out of range - pursue target
-		FAIMoveRequest MoveReq(Target);
-		MoveReq.SetAcceptanceRadius(50.0f);
-		MoveReq.SetAllowPartialPath(true); // Allow moving along partial NavMesh for distant targets
-
-		EPathFollowingRequestResult::Type Result = Controller->MoveTo(MoveReq);
-
-		FString ResultStr;
-		switch(Result) {
-			case EPathFollowingRequestResult::Failed: ResultStr = "Failed"; break;
-			case EPathFollowingRequestResult::AlreadyAtGoal: ResultStr = "AlreadyAtGoal"; break;
-			case EPathFollowingRequestResult::RequestSuccessful: ResultStr = "RequestSuccessful"; break;
-		}
-
-		AINPC_LOG(Log, "Action_Attack: Moving to target (Dist: %.1f). Result: %s",
-			FMath::Sqrt(DistSq), *ResultStr);
-	}
+	// StateTree handles all movement and combat — nothing else to do here
 }
 
 void UAction_Attack::Exit_Implementation(AAIController* Controller)
 {
 	Super::Exit_Implementation(Controller);
 
-	bIsAttacking = false;
-	AttackStartTime = 0.0f;
+	StopCombatStateTree();
 
-	// Stop montage and unbind delegate to prevent stale callbacks
 	if (Controller)
 	{
-		if (ACharacter* Character = Cast<ACharacter>(Controller->GetPawn()))
-		{
-			if (AttackMontage && Character->GetMesh())
-			{
-				if (UAnimInstance* AnimInst = Character->GetMesh()->GetAnimInstance())
-				{
-					if (AnimInst->Montage_IsPlaying(AttackMontage))
-					{
-						Character->StopAnimMontage(AttackMontage);
-					}
-				}
-			}
-		}
 		Controller->StopMovement();
 		Controller->ClearFocus(EAIFocusPriority::Gameplay);
 	}
@@ -241,95 +169,98 @@ void UAction_Attack::Exit_Implementation(AAIController* Controller)
 	AINPC_LOG_VERBOSE("Action_Attack: Exited");
 }
 
-void UAction_Attack::PerformAttack(AAIController* Controller)
+void UAction_Attack::StartCombatStateTree(AAIController* Controller)
 {
-	if (bIsAttacking || !Controller)
+	AINPC_LOG(Warning, "[ST-DBG] StartCombatStateTree called. bUseCombatStateTree=%s, Controller=%s",
+		bUseCombatStateTree ? TEXT("TRUE") : TEXT("FALSE"),
+		IsValid(Controller) ? *Controller->GetName() : TEXT("INVALID"));
+
+	if (!bUseCombatStateTree || !IsValid(Controller))
 	{
 		return;
 	}
-	
-	// Get target from Focus
-	AActor* Target = Controller->GetFocusActor();
-	if (!Target)
+
+	UStateTreeAIComponent* StateTreeComponent = Controller->FindComponentByClass<UStateTreeAIComponent>();
+	if (!IsValid(StateTreeComponent))
 	{
-		AINPC_LOG_WARNING("Action_Attack::PerformAttack - No target in focus!");
-		return;
-	}
-	
-	ACharacter* Character = Cast<ACharacter>(Controller->GetPawn());
-	if (!Character)
-	{
-		AINPC_LOG_WARNING("Action_Attack: Pawn is not a Character!");
+		AINPC_LOG(Error, "[ST-DBG] No UStateTreeAIComponent on %s! It should be created in AUtilityAIController constructor.", *Controller->GetName());
 		return;
 	}
 
-	bIsAttacking = true;
-	bHasDealtDamage = false;
-	AttackStartTime = Controller->GetWorld()->GetTimeSeconds();
+	AINPC_LOG(Warning, "[ST-DBG] Found StateTreeAIComponent: %s, IsRunning=%s, HasBegunPlay=%s",
+		*StateTreeComponent->GetName(),
+		StateTreeComponent->IsRunning() ? TEXT("YES") : TEXT("NO"),
+		StateTreeComponent->HasBegunPlay() ? TEXT("YES") : TEXT("NO"));
 
-	// Stop movement and face target
-	Controller->StopMovement();
-	// Note: Focus is already set, no need to SetFocus again
-
-	// Play attack animation
-	if (AttackMontage)
+	// Stop existing StateTree if running
+	if (StateTreeComponent->IsRunning())
 	{
-		float Duration = Character->PlayAnimMontage(AttackMontage);
-		AINPC_LOG(Log, "Action_Attack: Playing Montage %s (Duration: %.2f)", *AttackMontage->GetName(), Duration);
-
-		if (Duration > 0.f)
+		if (!bAllowReplacingRunningStateTree)
 		{
-			// Setup callback for animation end
-			UAnimInstance* AnimInst = Character->GetMesh()->GetAnimInstance();
-			if (AnimInst)
+			AINPC_LOG(Warning, "[ST-DBG] StateTree already running, replacement disabled.");
+			return;
+		}
+		StateTreeComponent->StopLogic(TEXT("Action_Attack switching to combat StateTree"));
+	}
+
+	// Set the combat StateTree asset
+	if (!IsValid(CombatStateTreeAsset.Get()))
+	{
+		AINPC_LOG(Error, "[ST-DBG] CombatStateTreeAsset is NULL! Cannot start combat StateTree.");
+		return;
+	}
+
+	StateTreeComponent->SetStateTree(CombatStateTreeAsset.Get());
+	AINPC_LOG(Warning, "[ST-DBG] SetStateTree: %s", *CombatStateTreeAsset->GetName());
+
+	// Start the StateTree
+	StateTreeComponent->StartLogic();
+	AINPC_LOG(Warning, "[ST-DBG] After StartLogic(): IsRunning=%s",
+		StateTreeComponent->IsRunning() ? TEXT("YES") : TEXT("NO"));
+
+	ActiveStateTreeComponent = StateTreeComponent;
+	bCombatStateTreeActivated = StateTreeComponent->IsRunning();
+
+	AINPC_LOG(Warning, "[ST-DBG] === RESULT: bCombatStateTreeActivated=%s, ActiveComp=%s ===",
+		bCombatStateTreeActivated ? TEXT("YES") : TEXT("NO"),
+		ActiveStateTreeComponent.IsValid() ? TEXT("VALID") : TEXT("INVALID"));
+}
+
+void UAction_Attack::StopCombatStateTree()
+{
+	AINPC_LOG(Warning, "[ST-DBG] StopCombatStateTree called. bUseCombatStateTree=%s, bCombatStateTreeActivated=%s, bStopOnExit=%s",
+		bUseCombatStateTree ? TEXT("TRUE") : TEXT("FALSE"),
+		bCombatStateTreeActivated ? TEXT("TRUE") : TEXT("FALSE"),
+		bStopCombatStateTreeOnExit ? TEXT("TRUE") : TEXT("FALSE"));
+
+	if (!bUseCombatStateTree)
+	{
+		ActiveStateTreeComponent.Reset();
+		bCombatStateTreeActivated = false;
+		return;
+	}
+
+	if (bStopCombatStateTreeOnExit && bCombatStateTreeActivated)
+	{
+		if (UStateTreeAIComponent* StateTreeComponent = ActiveStateTreeComponent.Get())
+		{
+			AINPC_LOG(Warning, "[ST-DBG] Stopping combat StateTree. IsRunning=%s",
+				StateTreeComponent->IsRunning() ? TEXT("YES") : TEXT("NO"));
+			if (StateTreeComponent->IsRunning())
 			{
-				FOnMontageEnded EndDelegate;
-				EndDelegate.BindUObject(this, &UAction_Attack::OnAttackAnimFinished);
-				AnimInst->Montage_SetEndDelegate(EndDelegate, AttackMontage);
+				StateTreeComponent->StopLogic(TEXT("Action_Attack exited"));
+				AINPC_LOG(Warning, "[ST-DBG] StopLogic called. IsRunning after=%s",
+					StateTreeComponent->IsRunning() ? TEXT("YES") : TEXT("NO"));
 			}
-			
-			// Apply damage (in production, this should be triggered by AnimNotify)
-			float PreHealth = 0.f; // Debug
-			if (ACharacter* TChar = Cast<ACharacter>(Target)) 
-			{
-				 // PreHealth = TChar->GetHealth(); // If property exists
-			}
-			
-			AINPC_LOG(Log, "Action_Attack: 💥 Attempting ApplyDamage on %s (Amt: %.1f)", *Target->GetName(), DamageAmount);
-			
-			UGameplayStatics::ApplyDamage(Target, DamageAmount, Controller, Character, UDamageType::StaticClass());
-			bHasDealtDamage = true;
-			
-			AINPC_LOG(Log, "Action_Attack: ✅ Dealt %.1f damage to %s", DamageAmount, *Target->GetName());
 		}
 		else
 		{
-			// Montage failed to play! Abort locking state to prevent freeze.
-			AINPC_LOG_WARNING("Action_Attack: Montage %s failed to play! Resetting state.", *AttackMontage->GetName());
-			
-			// Still deal damage or abort? Let's deal damage for now but reset.
-			UGameplayStatics::ApplyDamage(Target, DamageAmount, Controller, Character, UDamageType::StaticClass());
-			bIsAttacking = false;
+			AINPC_LOG(Warning, "[ST-DBG] ActiveStateTreeComponent is NULL/stale during stop!");
 		}
 	}
-	else
-	{
-		// No animation - just deal damage instantly
-		AINPC_LOG_WARNING("Action_Attack: No AttackMontage assigned, dealing instant damage");
-		UGameplayStatics::ApplyDamage(Target, DamageAmount, Controller, Character, UDamageType::StaticClass());
-		bIsAttacking = false;
-		bHasDealtDamage = true;
-	}
-}
 
-void UAction_Attack::OnAttackAnimFinished(UAnimMontage* Montage, bool bInterrupted)
-{
-	if (Montage == AttackMontage)
-	{
-		bIsAttacking = false;
-		AINPC_LOG_VERBOSE("Action_Attack: Animation finished (Interrupted: %s)", bInterrupted ? TEXT("Yes") : TEXT("No"));
-		// Action can now be re-evaluated by Utility AI system
-	}
+	ActiveStateTreeComponent.Reset();
+	bCombatStateTreeActivated = false;
 }
 
 void UAction_Attack::OnTargetInvalidated(AAIController* Controller, AActor* OldTarget)
@@ -342,14 +273,11 @@ void UAction_Attack::OnTargetInvalidated(AAIController* Controller, AActor* OldT
 	AActor* CurrentTarget = Controller ? Controller->GetFocusActor() : nullptr;
 	if (CurrentTarget == OldTarget)
 	{
-		AINPC_LOG(Log, "Action_Attack: Current target %s invalidated externally! Ending action.", *OldTarget->GetName());
+		AINPC_LOG(Log, "Action_Attack: Current target %s invalidated externally! Clearing focus.", *OldTarget->GetName());
 		if (Controller)
 		{
 			Controller->ClearFocus(EAIFocusPriority::Gameplay);
 			Controller->StopMovement();
 		}
-		
-		// Force action update/exit
-		bIsAttacking = false;
 	}
 }

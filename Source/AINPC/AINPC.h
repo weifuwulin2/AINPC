@@ -18,6 +18,7 @@ DECLARE_LOG_CATEGORY_EXTERN(LogAINPCLLM, Log, All);             // LLM Communica
 DECLARE_LOG_CATEGORY_EXTERN(LogAINPCDirector, Log, All);       // WorldDirector (Tension, Beats, Scene Generation)
 DECLARE_LOG_CATEGORY_EXTERN(LogAINPCVillage, Log, All);        // Village systems (territory, registry, bootstrap)
 DECLARE_LOG_CATEGORY_EXTERN(LogAINPCBuilding, Log, All);       // Building systems (binding, placement, lifecycle)
+DECLARE_LOG_CATEGORY_EXTERN(LogAINPCCombatStateTree, Log, All); // Combat StateTree (tasks, conditions, transitions)
 
 /**
  * Logging macros with automatic class name prefix.
@@ -74,6 +75,10 @@ DECLARE_LOG_CATEGORY_EXTERN(LogAINPCBuilding, Log, All);       // Building syste
 /** Director Log: WorldDirector tension evaluation, dramatic beats, scene generation. */
 #define DIRECTOR_LOG(Verbosity, Format, ...) \
     UE_LOG(LogAINPCDirector, Verbosity, TEXT("[%s] " Format), *FString(__FUNCTION__).Left(FString(__FUNCTION__).Find(TEXT("::"))), ##__VA_ARGS__)
+
+/** Combat StateTree Log: Task enter/exit, condition checks, runtime transition debug. */
+#define COMBAT_ST_LOG(Verbosity, Format, ...) \
+    UE_LOG(LogAINPCCombatStateTree, Verbosity, TEXT("[%s] " Format), *FString(__FUNCTION__).Left(FString(__FUNCTION__).Find(TEXT("::"))), ##__VA_ARGS__)
 
 /** Village Log: village membership, territory claims, social bootstrap. */
 #define AINPC_VILLAGE_LOG(Verbosity, Format, ...) \

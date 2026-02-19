@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - 2026-02-13
 
+### Logging
+- Changed: Added dedicated `LogAINPCCombatStateTree` category and `COMBAT_ST_LOG` macro, and migrated `CombatStateTreeUtility` debug output from `LogTemp` to this category (enables focused StateTree combat debugging).
+
 ### ✨ Features
 - **World Director System**: 
   - Added `WorldDirectorSubsystem` for high-level world state management and companion control.

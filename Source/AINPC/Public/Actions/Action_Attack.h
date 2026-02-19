@@ -5,12 +5,13 @@
 #include "Base/UtilityActionBase.h"
 #include "Action_Attack.generated.h"
 
-class UAnimMontage;
+class UStateTree;
+class UStateTreeAIComponent;
 
 /**
  * Concrete Attack Action.
- * Engages in combat with hostile targets.
- * Uses the standard Enter/Execute/Exit lifecycle from UUtilityActionBase.
+ * Thin orchestrator: starts/stops the combat StateTree and monitors target validity.
+ * All combat behavior (movement, attacks, strafe) is handled by the StateTree.
  */
 UCLASS()
 class AINPC_API UAction_Attack : public UUtilityActionBase
@@ -20,19 +21,23 @@ class AINPC_API UAction_Attack : public UUtilityActionBase
 public:
 	UAction_Attack();
 
-	// --- Configuration ---
-	
-	/** Range to start attacking */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
-	float AttackRange = 150.0f;
+	// --- Combat StateTree Configuration ---
 
-	/** Damage to deal */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
-	float DamageAmount = 10.0f;
+	/** If true, this action starts a combat StateTree while active. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|StateTree")
+	bool bUseCombatStateTree = false;
 
-	/** Animation to play */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
-	UAnimMontage* AttackMontage;
+	/** StateTree asset to run when this action enters. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|StateTree", meta = (EditCondition = "bUseCombatStateTree", EditConditionHides))
+	TObjectPtr<UStateTree> CombatStateTreeAsset;
+
+	/** Stops the combat StateTree when the action exits. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|StateTree", meta = (EditCondition = "bUseCombatStateTree", EditConditionHides))
+	bool bStopCombatStateTreeOnExit = true;
+
+	/** Allows replacing an already-running StateTree on the same controller. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|StateTree", meta = (EditCondition = "bUseCombatStateTree", EditConditionHides))
+	bool bAllowReplacingRunningStateTree = false;
 
 	// --- Lifecycle Overrides ---
 	virtual void Enter_Implementation(AAIController* Controller) override;
@@ -40,20 +45,14 @@ public:
 	virtual void Exit_Implementation(AAIController* Controller) override;
 
 protected:
-	// Runtime state
-	// NOTE: TargetActor removed - use Controller->GetFocusActor() as single source of truth
-	
 	UPROPERTY()
 	AAIController* OwningController;
 
-	bool bIsAttacking;
-	bool bHasDealtDamage;
-	float AttackStartTime = 0.0f; // Timestamp for timeout safety
+	TWeakObjectPtr<UStateTreeAIComponent> ActiveStateTreeComponent;
+	bool bCombatStateTreeActivated = false;
 
-	void PerformAttack(AAIController* Controller);
-	
-	UFUNCTION()
-	void OnAttackAnimFinished(UAnimMontage* Montage, bool bInterrupted);
+	void StartCombatStateTree(AAIController* Controller);
+	void StopCombatStateTree();
 
 	/** Callback when TargetSelectionSubsystem detects target is invalid */
 	UFUNCTION()

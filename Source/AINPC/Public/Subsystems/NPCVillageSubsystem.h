@@ -36,6 +36,15 @@ struct AINPC_API FVillageTerritoryClaim
 	TObjectPtr<AActor> SourceActor = nullptr;
 };
 
+USTRUCT(BlueprintType)
+struct AINPC_API FVillageMemberList
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "NPC Village")
+	TArray<TObjectPtr<AActor>> Members;
+};
+
 /**
  * Global NPC registry grouped by VillageID.
  * Provides lightweight social bootstrap after NPC identity initialization.
@@ -149,7 +158,7 @@ private:
 	FString BuildVillageSummary(const AActor* Source, const AActor* Target, FName VillageID) const;
 
 	UPROPERTY(Transient)
-	TMap<FName, TArray<AActor*>> VillageMembers;
+	TMap<FName, FVillageMemberList> VillageMembers;
 
 	UPROPERTY(Transient)
 	TMap<AActor*, FName> ActorVillageMap;

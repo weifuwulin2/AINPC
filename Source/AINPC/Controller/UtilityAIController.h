@@ -8,6 +8,7 @@
 #include "UtilityAIController.generated.h"
 
 class UMetabolismComponent;
+class UStateTreeAIComponent;
 // 前置声明 (Forward Declarations)
 class UAIPerceptionComponent;
 class UAISenseConfig_Sight;
@@ -68,6 +69,10 @@ public:
     // 目标仲裁组件 (Goal/LOD)
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI Components")
     class UGoalComponent* GoalComp;
+
+    // 战斗 StateTree 组件 (Combat StateTree - starts idle, activated by Action_Attack)
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI Components")
+    UStateTreeAIComponent* CombatStateTreeComp;
 
     // =========================================================
     // 2. 感知配置 (Config)
