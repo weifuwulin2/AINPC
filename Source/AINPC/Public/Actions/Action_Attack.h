@@ -5,13 +5,21 @@
 #include "Base/UtilityActionBase.h"
 #include "Action_Attack.generated.h"
 
-class UStateTree;
-class UStateTreeAIComponent;
+class ACombatEnemy;
+
+/** Internal phases of the combat loop driven by Action_Attack. */
+UENUM(BlueprintType)
+enum class ECombatPhase : uint8
+{
+	ChoosingAttack,   // About to launch the next attack
+	Attacking,        // Waiting for attack animation callback (or timeout)
+	Repositioning     // Moving to a strafe / fallback position
+};
 
 /**
- * Concrete Attack Action.
- * Thin orchestrator: starts/stops the combat StateTree and monitors target validity.
- * All combat behavior (movement, attacks, strafe) is handled by the StateTree.
+ * Attack Action — self-contained combat loop.
+ * Drives the cycle: attack → reposition (strafe/fallback) → attack → ...
+ * No StateTree required; all sub-behaviour is managed here.
  */
 UCLASS()
 class AINPC_API UAction_Attack : public UUtilityActionBase
@@ -21,25 +29,48 @@ class AINPC_API UAction_Attack : public UUtilityActionBase
 public:
 	UAction_Attack();
 
-	// --- Combat StateTree Configuration ---
+	// -------------------------------------------------------
+	// Combat Loop Configuration
+	// -------------------------------------------------------
 
-	/** If true, this action starts a combat StateTree while active. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|StateTree")
-	bool bUseCombatStateTree = false;
+	/** Probability [0,1] of using charged attack instead of combo. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat",
+		meta = (ClampMin = 0, ClampMax = 1))
+	float ChargedAttackChance = 0.35f;
 
-	/** StateTree asset to run when this action enters. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|StateTree", meta = (EditCondition = "bUseCombatStateTree", EditConditionHides))
-	TObjectPtr<UStateTree> CombatStateTreeAsset;
+	/** Minimum radius around target when picking a strafe destination. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat",
+		meta = (ClampMin = 0, Units = "cm"))
+	float StrafeRadiusMin = 200.0f;
 
-	/** Stops the combat StateTree when the action exits. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|StateTree", meta = (EditCondition = "bUseCombatStateTree", EditConditionHides))
-	bool bStopCombatStateTreeOnExit = true;
+	/** Maximum radius around target when picking a strafe destination. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat",
+		meta = (ClampMin = 0, Units = "cm"))
+	float StrafeRadiusMax = 350.0f;
 
-	/** Allows replacing an already-running StateTree on the same controller. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|StateTree", meta = (EditCondition = "bUseCombatStateTree", EditConditionHides))
-	bool bAllowReplacingRunningStateTree = false;
+	/** Half-angle of the arc used to randomise the strafe direction. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat",
+		meta = (ClampMin = 0, ClampMax = 180, Units = "deg"))
+	float StrafeArcHalfAngleDeg = 60.0f;
 
-	// --- Lifecycle Overrides ---
+	/** Arrival acceptance radius for the repositioning move. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat",
+		meta = (ClampMin = 0, Units = "cm"))
+	float StrafeAcceptanceRadius = 50.0f;
+
+	/** Max time allowed for repositioning before giving up and attacking again. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat",
+		meta = (ClampMin = 0, Units = "s"))
+	float StrafeTimeout = 2.5f;
+
+	/** Safety timeout: if the attack callback never fires, move on after this. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat",
+		meta = (ClampMin = 0, Units = "s"))
+	float AttackTimeout = 5.0f;
+
+	// -------------------------------------------------------
+	// Lifecycle Overrides
+	// -------------------------------------------------------
 	virtual void Enter_Implementation(AAIController* Controller) override;
 	virtual void Execute_Implementation(AAIController* Controller) override;
 	virtual void Exit_Implementation(AAIController* Controller) override;
@@ -48,13 +79,19 @@ protected:
 	UPROPERTY()
 	AAIController* OwningController;
 
-	TWeakObjectPtr<UStateTreeAIComponent> ActiveStateTreeComponent;
-	bool bCombatStateTreeActivated = false;
+	// --- Runtime combat state ---
+	ECombatPhase CombatPhase = ECombatPhase::ChoosingAttack;
+	bool bAttackCallbackReceived = false;
+	float PhaseStartTime = 0.0f;
+	FVector RepositionTarget = FVector::ZeroVector;
 
-	void StartCombatStateTree(AAIController* Controller);
-	void StopCombatStateTree();
+	// --- Helpers ---
+	void LaunchAttack(AAIController* Controller);
+	void BeginRepositioning(AAIController* Controller);
+	bool HasReachedReposition(AAIController* Controller) const;
+	void ResetCombatState();
 
-	/** Callback when TargetSelectionSubsystem detects target is invalid */
+	/** Callback when TargetSelectionSubsystem reports the current target is invalid. */
 	UFUNCTION()
 	void OnTargetInvalidated(AAIController* Controller, AActor* OldTarget);
 };

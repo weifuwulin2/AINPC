@@ -20,6 +20,7 @@ Welcome to the AINPC Knowledge Base. This index serves as the central hub for al
 *   [**Narrative Evolution**](design/NarrativeEvolution_Design.md) - Design for Story Timeline, Directors, and Scenes.
 *   [**Unified Event Bus**](systems/UnifiedEventBus_Guide.md) - Guide to the new centralized event system.
 *   [**Action Observation**](systems/ActionObservationSystem_Guide.md) - Guide to the NPC observation and attention budget system.
+*   [**Reputation Reaction System**](design/Reputation_Reaction_System_Design.md) - **(New)** Event-driven attitude modification via EventBus → `ReputationReactionSubsystem` → `ModifyReputation`. Covers LLM social impact classification and default reaction rules.
 *   [**Universal Target Selection**](design/Universal_Target_Selection.md) - Design for Hybrid Rule-Based + LLM target acquisition.
 *   [**Neural Utility Architecture**](design/Neural_Utility_Architecture.md) - **(North Star)** "System 1" (Vector) & "System 2" (LLM) hybrid architecture design.
 *   [**Token Optimization Changelog**](design/Token_Optimization_Changelog.md) - Detailed breakdown of LLM token savings and dual-mode API refactor.
@@ -57,4 +58,4 @@ Welcome to the AINPC Knowledge Base. This index serves as the central hub for al
 *   [**Concurrent Request Fix**](reports/Bug4_Fix_Report.md)
 
 ---
-*Last Updated: 2026-02-17*
+*Last Updated: 2026-02-20*

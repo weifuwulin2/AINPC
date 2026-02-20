@@ -19,6 +19,10 @@
 #include "Components/MemoryComponent.h" // ✅ Added
 #include "Social/SocialTypes.h"         // ✅ Added
 #include "Utilities/FactionHelpers.h"   // ✅ Added for GetAttitudeDescription
+#include "Utilities/AINPCHelpers.h"
+#include "Social/SocialGameplayTags.h"
+#include "Subsystems/EventBusSubsystem.h"
+#include "Events/EventTypes.h"
 
 // ✅ Performance Tracking
 
@@ -335,6 +339,53 @@ void UCognitionComponent::ProcessStimulus(FString SituationDescription, bool bFo
 	LLMService->SendRoleplayRequest(Prompt, FOnLLMResponse::CreateUObject(this, &UCognitionComponent::OnLLMReply));
 }
 
+// Verb string → GameplayTag lookup table (initialized once)
+static const TMap<FString, FGameplayTag>& GetSocialVerbTagMap()
+{
+	static TMap<FString, FGameplayTag> Map = {
+		{ TEXT("Insult"),     AINPCTags::Social_Conflict_Insult    },
+		{ TEXT("Compliment"), AINPCTags::Social_Interact_Compliment },
+		{ TEXT("Threat"),     AINPCTags::Social_Interact_Threat     },
+		{ TEXT("Gift"),       AINPCTags::Social_Interact_Gift       },
+		{ TEXT("Beg"),        AINPCTags::Social_Interact_Beg        },
+	};
+	return Map;
+}
+
+void UCognitionComponent::PublishSocialImpactEvent(const FSocialImpact& Impact)
+{
+	if (Impact.IsNone()) return;
+
+	const FGameplayTag* FoundTag = GetSocialVerbTagMap().Find(Impact.Verb);
+	if (!FoundTag || !FoundTag->IsValid()) return;
+
+	AAIController* AICon = Cast<AAIController>(GetOwner());
+	if (!AICon) return;
+
+	APawn* SelfPawn = AICon->GetPawn();
+	AActor* TargetActor = AICon->GetFocusActor();
+	if (!SelfPawn || !TargetActor) return;
+
+	FSemanticEvent SocialEvent;
+	SocialEvent.Instigator = SelfPawn;
+	SocialEvent.Target     = TargetActor;
+	SocialEvent.Verb       = *FoundTag;
+	SocialEvent.Magnitude  = FMath::Clamp(Impact.Magnitude, 0.0f, 1.0f);
+	SocialEvent.Content    = FString::Printf(TEXT("%s %s → %s"),
+		*AINPCHelpers::GetSmartActorName(SelfPawn),
+		*Impact.Verb,
+		*AINPCHelpers::GetSmartActorName(TargetActor));
+	SocialEvent.Timestamp  = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f;
+	SocialEvent.Location   = SelfPawn->GetActorLocation();
+
+	if (UEventBusSubsystem* EventBus = GetWorld()->GetSubsystem<UEventBusSubsystem>())
+	{
+		EventBus->BroadcastSemanticEvent(SocialEvent, EEventPriority::Normal);
+		AINPC_LOG(Log, "[Cognition] Published SocialImpact: %s (Magnitude=%.2f, Target=%s)",
+			*Impact.Verb, Impact.Magnitude, *AINPCHelpers::GetSmartActorName(TargetActor));
+	}
+}
+
 void UCognitionComponent::OnLLMReply(bool bSuccess, const FMentalState& NewState)
 {
 	if (bSuccess)
@@ -344,7 +395,7 @@ void UCognitionComponent::OnLLMReply(bool bSuccess, const FMentalState& NewState
 		AINPC_LOG(Warning, TEXT("  🗣️ Speech: \"%s\""), NewState.Speech.IsEmpty() ? TEXT("(none)") : *NewState.Speech);
 		AINPC_LOG(Warning, TEXT("  🎭 Emotion: %s"), NewState.Emotion.IsEmpty() ? TEXT("Neutral") : *NewState.Emotion);
 		AINPC_LOG(Warning, TEXT("  🎯 Intention: %s"), NewState.Intention.IsEmpty() ? TEXT("(none)") : *NewState.Intention);
-		AINPC_LOG(Warning, TEXT("  📊 Threat: %.2f | Indignity: %.2f | Loneliness: %.2f | Boredom: %.2f"), 
+		AINPC_LOG(Warning, TEXT("  📊 Threat: %.2f | Indignity: %.2f | Loneliness: %.2f | Boredom: %.2f"),
 			NewState.Perceived_Threat, NewState.Indignity, NewState.Loneliness, NewState.Boredom);
 		AINPC_LOG(Warning, TEXT("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"));
 
@@ -365,6 +416,9 @@ void UCognitionComponent::OnLLMReply(bool bSuccess, const FMentalState& NewState
 			// 仍然广播事件，但现在是"目标值已设置"的通知
 			// Still broadcast event, but now it's a "target values set" notification
 			OnMentalStateChanged.Broadcast(NewState);
+
+			// Publish social impact event to EventBus (drives ReputationReactionSubsystem)
+			PublishSocialImpactEvent(NewState.SocialImpact);
 
 			// ✅ 触发 Utility AI 的详细日志
 			// Trigger detailed Utility AI logging

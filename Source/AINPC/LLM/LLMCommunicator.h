@@ -10,6 +10,31 @@
 
 class USentimentMapper;
 
+/**
+ * Social impact of a single dialogue turn, classified by the LLM.
+ * Verb strings: "None" | "Insult" | "Compliment" | "Threat" | "Gift" | "Beg"
+ * Published to EventBus by CognitionComponent and consumed by ReputationReactionSubsystem.
+ */
+USTRUCT(BlueprintType)
+struct FSocialImpact
+{
+	GENERATED_BODY()
+
+	/** Social act type. "None" means no notable social event occurred. */
+	UPROPERTY(BlueprintReadWrite)
+	FString Verb = TEXT("None");
+
+	/** Name of the target actor (used as hint; actual actor resolved from focus). */
+	UPROPERTY(BlueprintReadWrite)
+	FString Target = TEXT("None");
+
+	/** Intensity of the act [0.0-1.0]. */
+	UPROPERTY(BlueprintReadWrite)
+	float Magnitude = 0.0f;
+
+	bool IsNone() const { return Verb.IsEmpty() || Verb.Equals(TEXT("None"), ESearchCase::IgnoreCase); }
+};
+
 // 1. The Data Structure (自动生成)
 USTRUCT(BlueprintType)
 struct FMentalState
@@ -35,6 +60,10 @@ struct FMentalState
 	// 对话内容 / Speech Content
 	UPROPERTY(BlueprintReadWrite)
 	FString Speech = TEXT("");
+
+	/** Social impact of this dialogue turn (LLM-classified). */
+	UPROPERTY(BlueprintReadWrite)
+	FSocialImpact SocialImpact;
 };
 
 // 2. The Callback Delegates

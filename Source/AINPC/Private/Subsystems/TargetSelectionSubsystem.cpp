@@ -663,10 +663,10 @@ bool UTargetSelectionSubsystem::IsValidTarget(
 		{
 			float Attitude = FactionComp->GetAttitudeTowards(Target);
 			TARGET_LOG(Verbose, "   → Attitude check: %.1f (Threshold: %.1f)", Attitude, Config.FriendlyReputationThreshold);
-			
+
 			if (Attitude > Config.FriendlyReputationThreshold)
 			{
-				TARGET_LOG(Verbose, "   ❌ REJECTED: Too friendly (Attitude %.1f > %.1f)", 
+				TARGET_LOG(Verbose, "   ❌ REJECTED: Too friendly (Attitude %.1f > %.1f)",
 					Attitude, Config.FriendlyReputationThreshold);
 				return false;  // Too friendly to attack
 			}

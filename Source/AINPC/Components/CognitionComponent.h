@@ -11,6 +11,7 @@
 class ULLMCommunicator;
 class USentimentMapper;
 class UMentalStateInterpolator;
+struct FSocialImpact;
 
 // 定义广播委托：当大脑想明白后，通知订阅者（Controller）
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMentalStateChanged, const FMentalState&, NewState);
@@ -119,6 +120,9 @@ protected:
 	
 	// 内部回调：处理 LLMCommunicator 返回的原始结果
 	void OnLLMReply(bool bSuccess, const FMentalState& NewState);
+
+	/** Publish a social impact event (from LLM SocialImpact field) to the EventBus. */
+	void PublishSocialImpactEvent(const FSocialImpact& Impact);
 
 private:
 	// 专门的回调：处理总结结果

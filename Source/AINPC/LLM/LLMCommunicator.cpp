@@ -81,8 +81,16 @@ FString ULLMCommunicator::BuildRoleplaySystemPrompt() const
         "%s"
         "  \"Intention\": \"Attack\" | \"Flee\" | \"Idle\" | \"Talk\",\n"
         "  \"Emotion\": \"Neutral\" | \"Angry\" | \"Scared\" | \"Sad\" | \"Happy\" | \"Curious\" | \"Disgust\",\n"
-        "  \"Speech\": \"string (STRICT 8-12 words max, short and punchy, in-character)\"\n"
+        "  \"Speech\": \"string (STRICT 8-12 words max, short and punchy, in-character)\",\n"
+        "  \"social_impact\": {\n"
+        "    \"verb\": \"None\" | \"Insult\" | \"Compliment\" | \"Threat\" | \"Gift\" | \"Beg\",\n"
+        "    \"target\": \"<actor name or None>\",\n"
+        "    \"magnitude\": <0.0-1.0>\n"
+        "  }\n"
         "}\n"
+        "10. [SOCIAL IMPACT] If your Speech performs a notable social act (insult, compliment, threat, gift offer, begging), "
+        "set social_impact.verb accordingly and magnitude to how strong it is (0.0=weak, 1.0=extreme). "
+        "If your Speech is neutral/combat/idle, output social_impact.verb as \"None\".\n"
         "Do not include markdown formatting (```json). Just raw JSON."
     ), *FieldsList);
 
@@ -329,6 +337,24 @@ void ULLMCommunicator::SendRoleplayRequest(const FString& UserPrompt, FOnLLMResp
 
             ResultState.Speech = InnerJsonObject->HasField(TEXT("Speech"))
                 ? InnerJsonObject->GetStringField(TEXT("Speech")) : TEXT("");
+
+            // Extract social_impact (optional field — graceful degradation if absent)
+            if (const TSharedPtr<FJsonObject>* SocialObj = nullptr;
+                InnerJsonObject->TryGetObjectField(TEXT("social_impact"), SocialObj) && SocialObj && (*SocialObj).IsValid())
+            {
+                (*SocialObj)->TryGetStringField(TEXT("verb"),   ResultState.SocialImpact.Verb);
+                (*SocialObj)->TryGetStringField(TEXT("target"), ResultState.SocialImpact.Target);
+                double Mag = 0.0;
+                if ((*SocialObj)->TryGetNumberField(TEXT("magnitude"), Mag))
+                {
+                    ResultState.SocialImpact.Magnitude = static_cast<float>(Mag);
+                }
+                if (!ResultState.SocialImpact.IsNone())
+                {
+                    LLM_LOG(Warning, "[Roleplay] SocialImpact: Verb=%s, Target=%s, Magnitude=%.2f",
+                        *ResultState.SocialImpact.Verb, *ResultState.SocialImpact.Target, ResultState.SocialImpact.Magnitude);
+                }
+            }
 
             LLM_LOG(Warning, "[Roleplay] Parsed: Emotion=%s, Intention=%s, Speech=\"%s\", Threat=%.2f",
                 *ResultState.Emotion, *ResultState.Intention, *ResultState.Speech, ResultState.Perceived_Threat);

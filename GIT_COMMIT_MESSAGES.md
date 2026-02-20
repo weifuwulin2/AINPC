@@ -4,6 +4,18 @@ This file contains a log of commit messages for the AINPC project.
 
 ---
 
+## [2026-02-20] Add Reputation Reaction System and LLM Social Impact Classification
+**Type**: feat/refactor
+**Scope**: ReputationReactionSubsystem, CognitionComponent, LLMCommunicator, Action_Attack, SocialGameplayTags
+**Description**:
+- Added `UReputationReactionSubsystem` (WorldSubsystem) that subscribes to EventBus and calls `ModifyReputation` on `FactionReputationComponent` when social/combat events occur. Supports optional DataTable override for designer tuning; built-in default rules cover Combat.Damage, Death.Witnessed, Social.Conflict.Insult, Social.Interact.Compliment/Threat/Gift/Beg.
+- Added `FSocialImpact` struct to `FMentalState` (Verb/Target/Magnitude fields). Extended `BuildRoleplaySystemPrompt` JSON schema with `social_impact` field; LLM now classifies social acts (Insult/Compliment/Threat/Gift/Beg/None) alongside the mental state. Added `social_impact` parsing in `SendRoleplayRequest`.
+- Added `UCognitionComponent::PublishSocialImpactEvent` — maps verb strings to GameplayTags and broadcasts `FSemanticEvent` to EventBus in `OnLLMReply` when `SocialImpact.Verb != None`.
+- Added four new GameplayTags: `Social.Interact.Compliment`, `Social.Interact.Threat`, `Social.Interact.Gift`, `Social.Interact.Beg`.
+- Removed all StateTree references from `Action_Attack` pipeline: replaced StateTree-driven combat with a direct C++ `ECombatPhase` state machine (ChoosingAttack/Attacking/Repositioning) in `Execute_Implementation`. Removed StateTree fields from `FUtilityActionConfig` in `UtilityActionBase.h` and StateTree config injection block from `UtilityAIComponent.cpp`.
+
+---
+
 ## [2026-02-17] Add Village Scenario Spawner Pipeline and Test Guide
 **Type**: feat/docs
 **Scope**: VillageSpawner, VillageScenarioTypes, NPCDefinitionComponent, Documentation

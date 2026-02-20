@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased] - 2026-02-20
+
+### ✨ Features
+- **Reputation Reaction System**: Added `UReputationReactionSubsystem` — subscribes to EventBus and automatically calls `FactionReputationComponent::ModifyReputation` when social or combat events occur. Includes built-in default rules (Combat.Damage, Death.Witnessed, Social.Insult, Compliment, Threat, Gift, Beg) with optional DataTable override.
+- **LLM Social Impact Classification**: Extended `FMentalState` with `FSocialImpact` (Verb/Target/Magnitude). `BuildRoleplaySystemPrompt` now instructs the LLM to output a `social_impact` JSON field; `SendRoleplayRequest` parses it. `CognitionComponent::OnLLMReply` publishes the classified social event to EventBus automatically.
+- **Social Interaction Tags**: Added `Social.Interact.Compliment`, `Social.Interact.Threat`, `Social.Interact.Gift`, `Social.Interact.Beg` GameplayTags for fine-grained social event classification.
+
+### 🔧 Refactor / Cleanup
+- **Action_Attack StateTree Removal**: Fully removed StateTree dependency from `Action_Attack`. Replaced with a self-contained C++ combat loop (`ECombatPhase` state machine: ChoosingAttack → Attacking → Repositioning). Cleaned up `UtilityActionBase.h` (removed StateTree fields from `FUtilityActionConfig`) and `UtilityAIComponent.cpp` (removed StateTree config injection block and `#include "StateTree.h"`).
+
+---
+
 ## [Unreleased] - 2026-02-13
 
 ### Logging

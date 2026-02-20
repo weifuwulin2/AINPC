@@ -28,6 +28,12 @@ namespace AINPCTags
 	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Social_Relationship);
 	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Social_Faction);
 
+	// Social Interactions (LLM-classified, used for ReputationReaction)
+	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Social_Interact_Compliment);  // Praising / flattering
+	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Social_Interact_Threat);      // Threatening / intimidating
+	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Social_Interact_Gift);        // Offering / giving
+	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Social_Interact_Beg);         // Begging / pleading
+
 	// Event
 	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Danger);
 	AINPC_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Danger_Combat);

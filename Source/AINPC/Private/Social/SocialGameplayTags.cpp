@@ -21,6 +21,12 @@ namespace AINPCTags
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Social_Relationship, "Social.Relationship", "Personal relationship change");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Social_Faction, "Social.Faction", "Faction reputation change");
 
+	// Social Interactions (LLM-classified)
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Social_Interact_Compliment, "Social.Interact.Compliment", "Compliment / praise");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Social_Interact_Threat,     "Social.Interact.Threat",     "Threat / intimidation");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Social_Interact_Gift,       "Social.Interact.Gift",       "Gift / offering");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Social_Interact_Beg,        "Social.Interact.Beg",        "Beg / plead");
+
 	// Event
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Event_Danger, "Event.Danger", "General danger event");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Event_Danger_Combat, "Event.Danger.Combat", "Combat danger triggering fight/flight");
