@@ -10,7 +10,8 @@
       "Bash(cmd.exe:*)",
       "Bash(git -C \"D:\\\\UnrealProject\\\\AINPC\" status --short)",
       "Bash(git -C \"D:\\\\UnrealProject\\\\AINPC\" diff Source/AINPC/Components/FactionReputationComponent.h Source/AINPC/Components/FactionReputationComponent.cpp Source/AINPC/Public/Social/SocialTypes.h Source/AINPC/Components/NPCDefinitionComponent.h Source/AINPC/Components/NPCDefinitionComponent.cpp)",
-      "Bash(\"C:/Program Files/Epic Games/UE_5.5/Engine/Build/BatchFiles/Build.bat\" AINPCEditor Win64 Development -Project=\"D:/UnrealProject/AINPC/AINPC.uproject\" -waitmutex)"
+      "Bash(\"C:/Program Files/Epic Games/UE_5.5/Engine/Build/BatchFiles/Build.bat\" AINPCEditor Win64 Development -Project=\"D:/UnrealProject/AINPC/AINPC.uproject\" -waitmutex)",
+      "Bash(find:*)"
     ]
   }
 }

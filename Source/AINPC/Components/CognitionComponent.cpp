@@ -381,7 +381,7 @@ void UCognitionComponent::PublishSocialImpactEvent(const FSocialImpact& Impact)
 	if (UEventBusSubsystem* EventBus = GetWorld()->GetSubsystem<UEventBusSubsystem>())
 	{
 		EventBus->BroadcastSemanticEvent(SocialEvent, EEventPriority::Normal);
-		AINPC_LOG(Log, "[Cognition] Published SocialImpact: %s (Magnitude=%.2f, Target=%s)",
+		FACTION_REPUTATION_LOG(Log, "Published SocialImpact: %s (Magnitude=%.2f, Target=%s)",
 			*Impact.Verb, Impact.Magnitude, *AINPCHelpers::GetSmartActorName(TargetActor));
 	}
 }

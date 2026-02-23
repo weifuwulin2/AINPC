@@ -1,0 +1,161 @@
+[
+	{
+		"---":     "=== HUMANS ===",
+		"Name":    "Human_Civilian",
+		"MaxHealth":            50.0,
+		"BaseAttackDamage":      5.0,
+		"DamageResistance":      0.0,
+		"KnockbackResistance":   0.0,
+		"WalkSpeed":           275.0,
+		"AttackRange":          90.0
+	},
+	{
+		"Name":    "Human_Commoner",
+		"MaxHealth":            50.0,
+		"BaseAttackDamage":      4.0,
+		"DamageResistance":      0.0,
+		"KnockbackResistance":   0.0,
+		"WalkSpeed":           270.0,
+		"AttackRange":          90.0
+	},
+	{
+		"Name":    "Human_Merchant",
+		"MaxHealth":            40.0,
+		"BaseAttackDamage":      3.0,
+		"DamageResistance":      0.0,
+		"KnockbackResistance":   0.0,
+		"WalkSpeed":           260.0,
+		"AttackRange":          85.0
+	},
+	{
+		"Name":    "Human_Guard",
+		"MaxHealth":           100.0,
+		"BaseAttackDamage":     12.0,
+		"DamageResistance":      0.1,
+		"KnockbackResistance":   0.1,
+		"WalkSpeed":           310.0,
+		"AttackRange":         130.0
+	},
+	{
+		"Name":    "Human_Leader",
+		"MaxHealth":           150.0,
+		"BaseAttackDamage":     16.0,
+		"DamageResistance":     0.15,
+		"KnockbackResistance":  0.2,
+		"WalkSpeed":           310.0,
+		"AttackRange":         130.0
+	},
+	{
+		"---":     "=== NARRATIVE HUMANS (share same stats as archetype) ===",
+		"Name":    "Narrative_Human_Guard",
+		"MaxHealth":           100.0,
+		"BaseAttackDamage":     12.0,
+		"DamageResistance":      0.1,
+		"KnockbackResistance":   0.1,
+		"WalkSpeed":           310.0,
+		"AttackRange":         130.0
+	},
+	{
+		"Name":    "Narrative_Human_Leader",
+		"MaxHealth":           150.0,
+		"BaseAttackDamage":     16.0,
+		"DamageResistance":     0.15,
+		"KnockbackResistance":  0.2,
+		"WalkSpeed":           310.0,
+		"AttackRange":         130.0
+	},
+	{
+		"---":     "=== VILLAGE HUMANS ===",
+		"Name":    "Village_Human_Lord",
+		"MaxHealth":           160.0,
+		"BaseAttackDamage":     18.0,
+		"DamageResistance":     0.15,
+		"KnockbackResistance":  0.25,
+		"WalkSpeed":           310.0,
+		"AttackRange":         135.0
+	},
+	{
+		"Name":    "Village_Human_Guard",
+		"MaxHealth":           100.0,
+		"BaseAttackDamage":     12.0,
+		"DamageResistance":      0.1,
+		"KnockbackResistance":   0.1,
+		"WalkSpeed":           310.0,
+		"AttackRange":         130.0
+	},
+	{
+		"Name":    "Village_Human_Commoner",
+		"MaxHealth":            50.0,
+		"BaseAttackDamage":      4.0,
+		"DamageResistance":      0.0,
+		"KnockbackResistance":   0.0,
+		"WalkSpeed":           270.0,
+		"AttackRange":          90.0
+	},
+	{
+		"Name":    "Village_Human_Merchant",
+		"MaxHealth":            40.0,
+		"BaseAttackDamage":      3.0,
+		"DamageResistance":      0.0,
+		"KnockbackResistance":   0.0,
+		"WalkSpeed":           260.0,
+		"AttackRange":          85.0
+	},
+	{
+		"---":     "=== ELVES ===",
+		"Name":    "Elf_Ranger",
+		"MaxHealth":            80.0,
+		"BaseAttackDamage":     10.0,
+		"DamageResistance":     0.05,
+		"KnockbackResistance":  0.05,
+		"WalkSpeed":           350.0,
+		"AttackRange":         200.0
+	},
+	{
+		"---":     "=== ORCS ===",
+		"Name":    "Orc_Warrior",
+		"MaxHealth":           180.0,
+		"BaseAttackDamage":     20.0,
+		"DamageResistance":      0.2,
+		"KnockbackResistance":   0.3,
+		"WalkSpeed":           320.0,
+		"AttackRange":         145.0
+	},
+	{
+		"Name":    "Narrative_Orc_Slave",
+		"MaxHealth":            70.0,
+		"BaseAttackDamage":      7.0,
+		"DamageResistance":     0.05,
+		"KnockbackResistance":   0.1,
+		"WalkSpeed":           280.0,
+		"AttackRange":         115.0
+	},
+	{
+		"Name":    "Orc_Warlord_Boss",
+		"MaxHealth":           500.0,
+		"BaseAttackDamage":     35.0,
+		"DamageResistance":      0.4,
+		"KnockbackResistance":   0.6,
+		"WalkSpeed":           300.0,
+		"AttackRange":         160.0
+	},
+	{
+		"---":     "=== MONSTERS ===",
+		"Name":    "Zombie_Basic",
+		"MaxHealth":            60.0,
+		"BaseAttackDamage":      8.0,
+		"DamageResistance":      0.1,
+		"KnockbackResistance":   0.2,
+		"WalkSpeed":           200.0,
+		"AttackRange":         110.0
+	},
+	{
+		"Name":    "Zombie_Brute",
+		"MaxHealth":           200.0,
+		"BaseAttackDamage":     18.0,
+		"DamageResistance":     0.25,
+		"KnockbackResistance":   0.5,
+		"WalkSpeed":           180.0,
+		"AttackRange":         130.0
+	}
+]

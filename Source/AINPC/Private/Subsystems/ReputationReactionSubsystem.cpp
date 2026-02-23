@@ -28,7 +28,7 @@ void UReputationReactionSubsystem::Initialize(FSubsystemCollectionBase& Collecti
 	Callback.BindUFunction(this, FName("OnEventReceived"));
 	SubscriptionId = EventBus->Subscribe(this, EmptyFilter, EEventPriority::Deferred, Callback);
 
-	AINPC_LOG(Log, "[ReputationReaction] Initialized with %d rules", Rules.Num());
+	FACTION_REPUTATION_LOG(Log, "Initialized with %d rules", Rules.Num());
 }
 
 void UReputationReactionSubsystem::Deinitialize()
@@ -62,7 +62,7 @@ void UReputationReactionSubsystem::LoadRules()
 					Rules.Add(Row->EventTag, *Row);
 				}
 			}
-			AINPC_LOG(Log, "[ReputationReaction] Loaded %d rules from DataTable", Rules.Num());
+			FACTION_REPUTATION_LOG(Log, "Loaded %d rules from DataTable", Rules.Num());
 			return;
 		}
 	}
@@ -145,7 +145,7 @@ void UReputationReactionSubsystem::RegisterDefaultRules()
 		Add(R);
 	}
 
-	AINPC_LOG(Log, "[ReputationReaction] Registered %d built-in default rules", Rules.Num());
+	FACTION_REPUTATION_LOG(Log, "Registered %d built-in default rules", Rules.Num());
 }
 
 // ============================================================
@@ -198,7 +198,7 @@ void UReputationReactionSubsystem::ApplyReactionRule(const FSemanticEvent& Event
 		if (UFactionReputationComponent* TargetComp = FindFactionComp(Target))
 		{
 			TargetComp->ModifyReputation(Instigator, Rule.TargetDeltaTowardInstigator * Scale);
-			AINPC_LOG(Log, "[ReputationReaction] %s → %s attitude toward %s: %+.1f",
+			FACTION_REPUTATION_LOG(Log, "%s → %s attitude toward %s: %+.1f",
 				*Event.Verb.ToString(),
 				*Target->GetName(),
 				*Instigator->GetName(),
@@ -272,7 +272,7 @@ void UReputationReactionSubsystem::ApplyWitnessReaction(const FSemanticEvent& Ev
 
 	if (WitnessCount > 0)
 	{
-		AINPC_LOG(Log, "[ReputationReaction] %s witnessed by %d NPCs → attitude toward %s: %+.1f",
+		FACTION_REPUTATION_LOG(Log, "%s witnessed by %d NPCs → attitude toward %s: %+.1f",
 			*Event.Verb.ToString(), WitnessCount, *Instigator->GetName(), WitnessDelta);
 	}
 }

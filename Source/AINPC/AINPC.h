@@ -19,6 +19,8 @@ DECLARE_LOG_CATEGORY_EXTERN(LogAINPCDirector, Log, All);       // WorldDirector 
 DECLARE_LOG_CATEGORY_EXTERN(LogAINPCVillage, Log, All);        // Village systems (territory, registry, bootstrap)
 DECLARE_LOG_CATEGORY_EXTERN(LogAINPCBuilding, Log, All);       // Building systems (binding, placement, lifecycle)
 DECLARE_LOG_CATEGORY_EXTERN(LogAINPCCombatStateTree, Log, All); // Combat StateTree (tasks, conditions, transitions)
+DECLARE_LOG_CATEGORY_EXTERN(LogAINPCFactionReputation, Log, All); // Faction reputation and relationships
+DECLARE_LOG_CATEGORY_EXTERN(LogAINPCCombat, Log, All);           // Combat runtime (damage, stats, detection, death)
 
 /**
  * Logging macros with automatic class name prefix.
@@ -111,3 +113,11 @@ DECLARE_LOG_CATEGORY_EXTERN(LogAINPCCombatStateTree, Log, All); // Combat StateT
 /** Building Log Error helper. */
 #define AINPC_BUILDING_LOG_ERROR(Format, ...) \
     UE_LOG(LogAINPCBuilding, Error, TEXT("[%s] " Format), *FString(__FUNCTION__).Left(FString(__FUNCTION__).Find(TEXT("::"))), ##__VA_ARGS__)
+
+/** Faction Reputation Log. */
+#define FACTION_REPUTATION_LOG(Verbosity, Format, ...) \
+    UE_LOG(LogAINPCFactionReputation, Verbosity, TEXT("[%s] " Format), *FString(__FUNCTION__).Left(FString(__FUNCTION__).Find(TEXT("::"))), ##__VA_ARGS__)
+
+/** Combat Log: damage application, stat loading, detection hits, death events. */
+#define COMBAT_LOG(Verbosity, Format, ...) \
+    UE_LOG(LogAINPCCombat, Verbosity, TEXT("[%s] " Format), *FString(__FUNCTION__).Left(FString(__FUNCTION__).Find(TEXT("::"))), ##__VA_ARGS__)

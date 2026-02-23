@@ -22,6 +22,8 @@
 #include "Components/FactionReputationComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Subsystems/NarrativeHistorySubsystem.h"
+#include "Components/DamageDetectionComponent.h"
+#include "Components/CombatStatsComponent.h"
 
 ACombatEnemy::ACombatEnemy()
 {
@@ -42,6 +44,12 @@ ACombatEnemy::ACombatEnemy()
 	// create the life bar
 	LifeBar = CreateDefaultSubobject<UWidgetComponent>(TEXT("LifeBar"));
 	LifeBar->SetupAttachment(RootComponent);
+
+	// continuous multi-socket damage detection (configure DamageSockets in BP/editor)
+	DamageDetection = CreateDefaultSubobject<UDamageDetectionComponent>(TEXT("DamageDetection"));
+
+	// centralised combat stats (HP, attack damage, defense, speed, range)
+	CombatStats = CreateDefaultSubobject<UCombatStatsComponent>(TEXT("CombatStats"));
 
 	// create NPC Definition (Profile)
 	NPCDefinition = CreateDefaultSubobject<UNPCDefinitionComponent>(TEXT("NPCDefinition"));
@@ -86,6 +94,9 @@ void ACombatEnemy::DoAIComboAttack()
 		{
 			// set the end delegate for the montage
 			AnimInstance->Montage_SetEndDelegate(OnAttackMontageEnded, ComboAttackMontage);
+
+			// begin continuous damage detection for the full attack window
+			DamageDetection->StartDetection(MeleeDamage);
 		}
 	}
 }
@@ -117,6 +128,9 @@ void ACombatEnemy::DoAIChargedAttack()
 		{
 			// set the end delegate for the montage
 			AnimInstance->Montage_SetEndDelegate(OnAttackMontageEnded, ChargedAttackMontage);
+
+			// begin continuous damage detection for the full attack window
+			DamageDetection->StartDetection(MeleeDamage);
 		}
 	}
 }
@@ -126,50 +140,48 @@ void ACombatEnemy::AttackMontageEnded(UAnimMontage* Montage, bool bInterrupted)
 	// reset the attacking flag
 	bIsAttacking = false;
 
+	// close the damage detection window (also handles interrupted montages)
+	DamageDetection->StopDetection();
+
 	// call the attack completed delegate so the StateTree can continue execution
 	OnAttackCompleted.ExecuteIfBound();
 }
 
 void ACombatEnemy::DoAttackTrace(FName DamageSourceBone)
 {
-	// sweep for objects in front of the character to be hit by the attack
+	// If the continuous detection window is already running (started by DoAIComboAttack /
+	// DoAIChargedAttack), the component handles hits every tick - nothing to do here.
+	if (DamageDetection->IsDetecting())
+	{
+		return;
+	}
+
+	// Legacy fallback: AnimNotify fired outside the normal AI attack flow (e.g. player-driven
+	// or Blueprint attack).  Fall back to the original single-frame forward sweep.
 	TArray<FHitResult> OutHits;
 
-	// start at the provided socket location, sweep forward
 	const FVector TraceStart = GetMesh()->GetSocketLocation(DamageSourceBone);
-	const FVector TraceEnd = TraceStart + (GetActorForwardVector() * MeleeTraceDistance);
+	const FVector TraceEnd   = TraceStart + (GetActorForwardVector() * MeleeTraceDistance);
 
-	// enemies only affect Pawn collision objects; they don't knock back boxes
 	FCollisionObjectQueryParams ObjectParams;
 	ObjectParams.AddObjectTypesToQuery(ECC_Pawn);
 
-	// use a sphere shape for the sweep
 	FCollisionShape CollisionShape;
 	CollisionShape.SetSphere(MeleeTraceRadius);
 
-	// ignore self
 	FCollisionQueryParams QueryParams;
 	QueryParams.AddIgnoredActor(this);
 
 	if (GetWorld()->SweepMultiByObjectType(OutHits, TraceStart, TraceEnd, FQuat::Identity, ObjectParams, CollisionShape, QueryParams))
 	{
-		// iterate over each object hit
 		for (const FHitResult& CurrentHit : OutHits)
 		{
-			/** does the actor have the player tag? */
 			if (CurrentHit.GetActor()->ActorHasTag(FName("Player")))
 			{
-				// check if the actor is damageable
-				ICombatDamageable* Damageable = Cast<ICombatDamageable>(CurrentHit.GetActor());
-
-				if (Damageable)
+				if (ICombatDamageable* Damageable = Cast<ICombatDamageable>(CurrentHit.GetActor()))
 				{
-					// knock upwards and away from the impact normal
 					const FVector Impulse = (CurrentHit.ImpactNormal * -MeleeKnockbackImpulse) + (FVector::UpVector * MeleeLaunchImpulse);
-
-					// pass the damage event to the actor
 					Damageable->ApplyDamage(MeleeDamage, this, CurrentHit.ImpactPoint, Impulse);
-
 				}
 			}
 		}
@@ -206,49 +218,48 @@ void ACombatEnemy::CheckChargedAttack()
 
 void ACombatEnemy::ApplyDamage(float Damage, AActor* DamageCauser, const FVector& DamageLocation, const FVector& DamageImpulse)
 {
-	
-	// pass the damage event to the actor
-	FDamageEvent DamageEvent;
-	const float ActualDamage = TakeDamage(Damage, DamageEvent, nullptr, DamageCauser);
+	if (!CombatStats->IsAlive()) return;
 
-	// only process knockback and effects if we received nonzero damage
+	// track last attacker for death reporting
+	if (DamageCauser)
+	{
+		LastDamageCauser = DamageCauser;
+	}
+
+	// delegate HP math and resistance to the component
+	const float ActualDamage = CombatStats->ReceiveDamage(Damage, DamageCauser);
+
 	if (ActualDamage > 0.0f)
 	{
-		// apply the knockback impulse
-		GetCharacterMovement()->AddImpulse(DamageImpulse, true);
+		// apply knockback scaled by the component's KnockbackResistance
+		const FVector ScaledImpulse = CombatStats->ScaleKnockback(DamageImpulse);
+		GetCharacterMovement()->AddImpulse(ScaledImpulse, true);
 
-		// is the character ragdolling?
 		if (GetMesh()->IsSimulatingPhysics())
 		{
-			// apply an impulse to the ragdoll
-			GetMesh()->AddImpulseAtLocation(DamageImpulse * GetMesh()->GetMass(), DamageLocation);
+			GetMesh()->AddImpulseAtLocation(ScaledImpulse * GetMesh()->GetMass(), DamageLocation);
 		}
 
-		// stop the attack montages to interrupt the attack
+		// interrupt any playing attack montages
 		if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
 		{
 			AnimInstance->Montage_Stop(0.1f, ComboAttackMontage);
 			AnimInstance->Montage_Stop(0.1f, ChargedAttackMontage);
 		}
 
-		// pass control to BP to play effects, etc.
 		ReceivedDamage(ActualDamage, DamageLocation, DamageImpulse.GetSafeNormal());
 	}
 }
 
 void ACombatEnemy::HandleDeath()
 {
-	UE_LOG(LogAINPC, Warning, TEXT("☠️ [CombatEnemy::HandleDeath] %s is dying! Adding Dead tags..."), *GetName());
-	
-	// ✅ Mark as dead for AI logic & Narrative Linking
-	Tags.Add(FName("Dead"));       // For AI Perception (Legacy)
-	Tags.Add(FName("Status.Dead")); // For Narrative CompletionTags Matching
-	
-	// 🔍 Verify tags were added
-	UE_LOG(LogAINPC, Warning, TEXT("☠️ [CombatEnemy::HandleDeath] %s - Tags after add: Dead=%s, Status.Dead=%s"), 
+	COMBAT_LOG(Log, TEXT("%s died. Killer: %s"),
 		*GetName(),
-		ActorHasTag(FName("Dead")) ? TEXT("YES") : TEXT("NO"),
-		ActorHasTag(FName("Status.Dead")) ? TEXT("YES") : TEXT("NO"));
+		LastDamageCauser ? *LastDamageCauser->GetName() : TEXT("None"));
+
+	// Mark as dead for AI perception and narrative systems
+	Tags.Add(FName("Dead"));
+	Tags.Add(FName("Status.Dead"));
 	
 	// ✅ REPORT TO NARRATIVE DIRECTOR
 	if (UWorld* World = GetWorld())
@@ -313,7 +324,32 @@ void ACombatEnemy::HandleDeath()
 
 void ACombatEnemy::ApplyHealing(float Healing, AActor* Healer)
 {
-	// stub
+	CombatStats->RestoreHealth(Healing);
+}
+
+void ACombatEnemy::OnCombatHealthChanged(float NewHealth, float MaxHealth, float Delta)
+{
+	// Keep legacy mirror in sync
+	CurrentHP = NewHealth;
+
+	if (LifeBarWidget)
+	{
+		LifeBarWidget->SetLifePercentage(CombatStats->GetHealthPercent());
+	}
+
+	// Apply partial ragdoll physics on hit (only while alive)
+	if (NewHealth > 0.0f)
+	{
+		GetMesh()->SetPhysicsBlendWeight(0.5f);
+		GetMesh()->SetBodySimulatePhysics(PelvisBoneName, false);
+	}
+}
+
+void ACombatEnemy::OnCombatDeath(AActor* Killer)
+{
+	// Sync mirror to 0 before HandleDeath reads/broadcasts anything
+	CurrentHP = 0.0f;
+	HandleDeath();
 }
 
 void ACombatEnemy::RemoveFromLevel()
@@ -324,39 +360,16 @@ void ACombatEnemy::RemoveFromLevel()
 
 float ACombatEnemy::TakeDamage(float Damage, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
-	// only process damage if the character is still alive
-	if (CurrentHP <= 0.0f)
+	if (!CombatStats->IsAlive()) return 0.0f;
+
+	if (DamageCauser)
 	{
-		return 0.0f;
+		LastDamageCauser = DamageCauser;
 	}
 
-	// reduce the current HP
-	CurrentHP -= Damage;
-    
-    // update last attacker
-    if (DamageCauser)
-    {
-        LastDamageCauser = DamageCauser;
-    }
-
-	// have we run out of HP?
-	if (CurrentHP <= 0.0f)
-	{
-		// die
-		HandleDeath();
-	}
-	else
-	{
-		// update the life bar
-		LifeBarWidget->SetLifePercentage(CurrentHP / MaxHP);
-
-		// enable partial ragdoll physics, but keep the pelvis vertical
-		GetMesh()->SetPhysicsBlendWeight(0.5f);
-		GetMesh()->SetBodySimulatePhysics(PelvisBoneName, false);
-	}
-
-	// return the received damage amount
-	return Damage;
+	// Delegate HP management to CombatStatsComponent.
+	// OnHealthChanged / OnDeath delegates handle UI and death flow.
+	return CombatStats->ReceiveDamage(Damage, DamageCauser);
 }
 
 void ACombatEnemy::Landed(const FHitResult& Hit)
@@ -376,26 +389,21 @@ void ACombatEnemy::Landed(const FHitResult& Hit)
 
 void ACombatEnemy::BeginPlay()
 {
-	// reset HP to maximum
-	CurrentHP = MaxHP;
-
-	// we top the HP before BeginPlay so StateTree picks it up at the right value
+	// we call Super first so components (including CombatStatsComponent) initialize
+	// and LoadFromTable + ResetHealth run before we read stats below
 	Super::BeginPlay();
 
-	// ✅ Configure AI Personality via NPCDefinition
+	// Configure AI Personality via NPCDefinition
 	if (NPCDefinition)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"));
-		UE_LOG(LogTemp, Warning, TEXT("[CombatEnemy] BeginPlay: Applying NPC Definition..."));
-		
-		// ✅ CRITICAL: Skip ApplyDefinition if MonsterComponent exists
-		// Monster settings are already applied in UtilityAIController::OnPossess
-		// Applying NPCDefinition here would OVERWRITE those settings!
+		COMBAT_LOG(Log, TEXT("%s: Applying NPC Definition..."), *GetName());
+
+		// CRITICAL: Skip ApplyDefinition if MonsterComponent exists.
+		// Monster settings are already applied in UtilityAIController::OnPossess;
+		// calling ApplyDefinition here would overwrite those settings.
 		if (UMonsterComponent* MonsterComp = FindComponentByClass<UMonsterComponent>())
 		{
-			UE_LOG(LogTemp, Warning, TEXT("[CombatEnemy] MonsterComponent detected! Skipping NPCDefinition (already configured in OnPossess)"));
-			UE_LOG(LogTemp, Warning, TEXT("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"));
-			// Early return - don't call ApplyDefinition
+			COMBAT_LOG(Log, TEXT("%s: MonsterComponent detected - skipping NPCDefinition (configured in OnPossess)."), *GetName());
 		}
 		else if (AController* MyController = GetController())
 		{
@@ -412,20 +420,36 @@ void ACombatEnemy::BeginPlay()
 							NPCDefinition->ApplyDefinition(AICon);
 						}
 					},
-					0.1f, 
+					0.1f,
 					false
 				);
 			}
 		}
-		
-		UE_LOG(LogTemp, Warning, TEXT("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"));
 	}
 
 	// get the life bar widget from the widget comp
 	LifeBarWidget = Cast<UCombatLifeBar>(LifeBar->GetUserWidgetObject());
 	check(LifeBarWidget);
 
-	// fill the life bar
+	// --- Wire up CombatStatsComponent ---
+
+	// Keep the deprecated CurrentHP mirror in sync so existing Blueprints still work
+	CombatStats->OnHealthChanged.AddDynamic(this, &ACombatEnemy::OnCombatHealthChanged);
+
+	// Let the component's death event drive HandleDeath so HP logic stays in one place
+	CombatStats->OnDeath.AddDynamic(this, &ACombatEnemy::OnCombatDeath);
+
+	// Feed attack damage into DamageDetectionComponent so there's a single source of truth
+	DamageDetection->BaseDamage = CombatStats->GetAttackDamage();
+
+	// Apply movement speed from stats (CombatStatsComponent::BeginPlay runs first via
+	// component registration order, so BaseStats is already populated from the table)
+	GetCharacterMovement()->MaxWalkSpeed = CombatStats->GetWalkSpeed();
+
+	// Sync legacy CurrentHP for Blueprints that read it directly
+	CurrentHP = CombatStats->GetCurrentHealth();
+
+	// Fill the life bar (component already reset health in its own BeginPlay)
 	LifeBarWidget->SetLifePercentage(1.0f);
 }
 

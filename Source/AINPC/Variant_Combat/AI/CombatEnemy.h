@@ -13,6 +13,8 @@
 class UWidgetComponent;
 class UCombatLifeBar;
 class UAnimMontage;
+class UDamageDetectionComponent;
+class UCombatStatsComponent;
 
 /** Completed attack animation delegate for StateTree */
 DECLARE_DELEGATE(FOnEnemyAttackCompleted);
@@ -37,6 +39,14 @@ class ACombatEnemy : public ACharacter, public ICombatAttacker, public ICombatDa
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
 	UWidgetComponent* LifeBar;
 
+	/** Continuous multi-socket damage detection for melee attacks */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
+	UDamageDetectionComponent* DamageDetection;
+
+	/** Centralised combat stats: HP, attack damage, defense, speed, attack range */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
+	UCombatStatsComponent* CombatStats;
+
 public:
 	
 	/** Constructor */
@@ -44,8 +54,11 @@ public:
 
 protected:
 
-	/** Max amount of HP the character will have on respawn */
-	UPROPERTY(EditAnywhere, Category="Damage")
+	/**
+	 * [Deprecated] Max HP - now managed by CombatStatsComponent::BaseStats.MaxHealth.
+	 * Kept for Blueprint backward-compatibility only; not used in C++ logic.
+	 */
+	UPROPERTY(EditAnywhere, Category="Damage", meta=(DeprecatedProperty, DeprecationMessage="Use CombatStats->BaseStats.MaxHealth instead."))
 	float MaxHP = 3.0f;
 
 	// Unified NPC Profile (Personality, Profession, etc.)
@@ -59,8 +72,11 @@ protected:
 
 public:
 
-	/** Current amount of HP the character has */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Damage", meta = (ClampMin = 0, ClampMax = 100))
+	/**
+	 * [Deprecated] Current HP mirror - kept for Blueprint/UI compat.
+	 * Authoritative value is CombatStats->CurrentHealth; this is synced via OnHealthChanged.
+	 */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Damage")
 	float CurrentHP = 0.0f;
 
 protected:
@@ -206,6 +222,14 @@ protected:
 
 	/** Removes this character from the level after it dies */
 	void RemoveFromLevel();
+
+	/** Bound to CombatStats::OnHealthChanged - syncs mirror fields and updates UI / ragdoll */
+	UFUNCTION()
+	void OnCombatHealthChanged(float NewHealth, float MaxHealth, float Delta);
+
+	/** Bound to CombatStats::OnDeath - routes into HandleDeath() */
+	UFUNCTION()
+	void OnCombatDeath(AActor* Killer);
 
 public:
 

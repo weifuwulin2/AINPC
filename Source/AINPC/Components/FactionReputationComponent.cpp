@@ -82,7 +82,7 @@ void UFactionReputationComponent::BeginPlay()
 					if (!PawnDefComp->FactionID.IsNone() && PawnDefComp->FactionID != "None")
 					{
 						FactionID = PawnDefComp->FactionID;
-						AINPC_LOG(Log, "[FactionReputation] Auto-synced FactionID from Pawn's NPCDefinitionComponent: %s", *FactionID.ToString());
+						FACTION_REPUTATION_LOG(Log, "Auto-synced FactionID from Pawn's NPCDefinitionComponent: %s", *FactionID.ToString());
 					}
 				}
 			}
@@ -95,17 +95,17 @@ bool UFactionReputationComponent::EvaluateCombatPolicy(const AActor* Source, con
 {
 	if (!Source || !Target) return false;
 
-	UE_LOG(LogAINPC, Warning, TEXT("🔍 [CombatPolicy] Evaluating: %s → %s"), *Source->GetName(), *Target->GetName());
+	FACTION_REPUTATION_LOG(Warning, "🔍 [CombatPolicy] Evaluating: %s → %s", *Source->GetName(), *Target->GetName());
 
 	// 1. Physical Incapacitation (Highest Priority - Never Combat)
 	if (Source->ActorHasTag("Status.Dead") || Target->ActorHasTag("Status.Dead"))
 	{
-		UE_LOG(LogAINPC, Verbose, TEXT("   ❌ DENIED: Dead actor"));
+		FACTION_REPUTATION_LOG(Verbose, "   ❌ DENIED: Dead actor");
 		return false;
 	}
 	if (Source->ActorHasTag("Status.Unconscious") || Target->ActorHasTag("Status.Unconscious"))
 	{
-		UE_LOG(LogAINPC, Verbose, TEXT("   ❌ DENIED: Unconscious actor"));
+		FACTION_REPUTATION_LOG(Verbose, "   ❌ DENIED: Unconscious actor");
 		return false;
 	}
 
@@ -121,7 +121,7 @@ bool UFactionReputationComponent::EvaluateCombatPolicy(const AActor* Source, con
 		
 		if (bHasAny)
 		{
-			UE_LOG(LogAINPC, Warning, TEXT("   ✅ %s has Combat Tag: Event.Danger=%d, Directive=%d, GuardsHostile=%d, Legacy=%d"), 
+			FACTION_REPUTATION_LOG(Warning, "   ✅ %s has Combat Tag: Event.Danger=%d, Directive=%d, GuardsHostile=%d, Legacy=%d", 
 				*Actor->GetName(), bHasCombat, bHasDirective, bHasGuardsHostile, bHasLegacy);
 		}
 		
@@ -133,7 +133,7 @@ bool UFactionReputationComponent::EvaluateCombatPolicy(const AActor* Source, con
 	
 	if (bSourceHasCombat || bTargetHasCombat)
 	{
-		UE_LOG(LogAINPC, Warning, TEXT("   ✅ ALLOWED: Combat Tag Override (Source=%d, Target=%d)"), bSourceHasCombat, bTargetHasCombat);
+		FACTION_REPUTATION_LOG(Warning, "   ✅ ALLOWED: Combat Tag Override (Source=%d, Target=%d)", bSourceHasCombat, bTargetHasCombat);
 		return true;
 	}
 
@@ -141,7 +141,7 @@ bool UFactionReputationComponent::EvaluateCombatPolicy(const AActor* Source, con
 	if (Source->ActorHasTag("Combat.AlwaysHostile") || Target->ActorHasTag("Combat.AlwaysHostile"))
 	{
 		// Also check Pawn/Controller pair for the tag
-		UE_LOG(LogAINPC, Warning, TEXT("   ✅ ALLOWED: Combat.AlwaysHostile tag (Monster bypass)"));
+		FACTION_REPUTATION_LOG(Warning, "   ✅ ALLOWED: Combat.AlwaysHostile tag (Monster bypass)");
 		return true;
 	}
 	// Check Pawn/Controller pair for AlwaysHostile tag
@@ -159,7 +159,7 @@ bool UFactionReputationComponent::EvaluateCombatPolicy(const AActor* Source, con
 	};
 	if (HasAlwaysHostileTag(Source) || HasAlwaysHostileTag(Target))
 	{
-		UE_LOG(LogAINPC, Warning, TEXT("   ✅ ALLOWED: Combat.AlwaysHostile on Pawn/Controller pair (Monster bypass)"));
+		FACTION_REPUTATION_LOG(Warning, "   ✅ ALLOWED: Combat.AlwaysHostile on Pawn/Controller pair (Monster bypass)");
 		return true;
 	}
 
@@ -169,12 +169,12 @@ bool UFactionReputationComponent::EvaluateCombatPolicy(const AActor* Source, con
 
 	if (bSourceInScene || bTargetInScene)
 	{
-		UE_LOG(LogAINPC, Warning, TEXT("   ❌ DENIED: Scene Safety (Source.InScene=%d, Target.InScene=%d)"), bSourceInScene, bTargetInScene);
+		FACTION_REPUTATION_LOG(Warning, "   ❌ DENIED: Scene Safety (Source.InScene=%d, Target.InScene=%d)", bSourceInScene, bTargetInScene);
 		return false;
 	}
 
 	// 4. Default: Allow Combat (Let Faction logic decide hostility)
-	UE_LOG(LogAINPC, Verbose, TEXT("   ✅ ALLOWED: Default (no restrictions)"));
+	FACTION_REPUTATION_LOG(Verbose, "   ✅ ALLOWED: Default (no restrictions)");
 	return true;
 }
 
@@ -582,7 +582,7 @@ void UFactionReputationComponent::ModifyReputation(AActor* Target, float Delta)
 
 	OnRelationshipChanged.Broadcast(GetOwner(), Target, SourceID, FinalTargetID, Current, NewVal, bCrossedBondThreshold);
 	
-	AINPC_LOG(Log, "Reputation Modified for %s: %.1f -> %.1f", *Target->GetName(), Current, NewVal);
+	FACTION_REPUTATION_LOG(Log, "Reputation Modified for %s: %.1f -> %.1f", *Target->GetName(), Current, NewVal);
 }
 
 FName UFactionReputationComponent::GetFactionID(AActor* Actor)
